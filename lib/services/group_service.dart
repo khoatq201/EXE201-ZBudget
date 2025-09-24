@@ -7,10 +7,12 @@ class GroupService extends ChangeNotifier {
   String _currentUserName = 'Bạn';
 
   List<Group> get groups => _groups;
-  List<Group> get myGroups => _groups.where((g) => 
-    g.members.any((m) => m.id == _currentUserId && m.isOwner)).toList();
-  List<Group> get sharedGroups => _groups.where((g) => 
-    g.members.any((m) => m.id == _currentUserId && !m.isOwner)).toList();
+  List<Group> get myGroups => _groups
+      .where((g) => g.members.any((m) => m.id == _currentUserId && m.isOwner))
+      .toList();
+  List<Group> get sharedGroups => _groups
+      .where((g) => g.members.any((m) => m.id == _currentUserId && !m.isOwner))
+      .toList();
 
   String get currentUserId => _currentUserId;
   String get currentUserName => _currentUserName;
@@ -83,7 +85,12 @@ class GroupService extends ChangeNotifier {
             paidByName: 'Bạn',
             paidByAvatar: '👤',
             participants: ['user1', 'user2', 'user3', 'user4'],
-            splitDetails: {'user1': 200000, 'user2': 200000, 'user3': 200000, 'user4': 200000},
+            splitDetails: {
+              'user1': 200000,
+              'user2': 200000,
+              'user3': 200000,
+              'user4': 200000,
+            },
             date: DateTime.now().subtract(const Duration(hours: 2)),
             category: 'accommodation',
             categoryIcon: '🏨',
@@ -98,7 +105,12 @@ class GroupService extends ChangeNotifier {
             paidByName: 'Linh',
             paidByAvatar: '👩',
             participants: ['user1', 'user2', 'user3', 'user4'],
-            splitDetails: {'user1': 112500, 'user2': 112500, 'user3': 112500, 'user4': 112500},
+            splitDetails: {
+              'user1': 112500,
+              'user2': 112500,
+              'user3': 112500,
+              'user4': 112500,
+            },
             date: DateTime.now().subtract(const Duration(days: 1)),
             category: 'transport',
             categoryIcon: '✈️',
@@ -113,7 +125,12 @@ class GroupService extends ChangeNotifier {
             paidByName: 'Minh',
             paidByAvatar: '🧑',
             participants: ['user1', 'user2', 'user3', 'user4'],
-            splitDetails: {'user1': 80000, 'user2': 80000, 'user3': 80000, 'user4': 80000},
+            splitDetails: {
+              'user1': 80000,
+              'user2': 80000,
+              'user3': 80000,
+              'user4': 80000,
+            },
             date: DateTime.now().subtract(const Duration(days: 2)),
             category: 'food',
             categoryIcon: '🍽️',
@@ -261,15 +278,18 @@ class GroupService extends ChangeNotifier {
   }
 
   // CRUD Operations for Groups
-  Future<void> addExpenseToGroup(String groupId, GroupTransaction transaction) async {
+  Future<void> addExpenseToGroup(
+    String groupId,
+    GroupTransaction transaction,
+  ) async {
     final groupIndex = _groups.indexWhere((g) => g.id == groupId);
     if (groupIndex == -1) throw Exception('Group not found');
-    
+
     final group = _groups[groupIndex];
-    
+
     // Add transaction to group
     final updatedTransactions = [...group.transactions, transaction];
-    
+
     // Update member balances
     final updatedMembers = group.members.map((member) {
       if (member.id == transaction.paidBy) {
@@ -277,47 +297,46 @@ class GroupService extends ChangeNotifier {
         final newTotalPaid = member.totalPaid + transaction.amount;
         final splitAmount = transaction.splitDetails[member.id] ?? 0;
         final newBalance = member.balance + transaction.amount - splitAmount;
-        
-        return member.copyWith(
-          totalPaid: newTotalPaid,
-          balance: newBalance,
-        );
+
+        return member.copyWith(totalPaid: newTotalPaid, balance: newBalance);
       } else if (transaction.splitDetails.containsKey(member.id)) {
         // Person who owes money gets debited
         final splitAmount = transaction.splitDetails[member.id]!;
         final newTotalOwed = member.totalOwed + splitAmount;
         final newBalance = member.balance - splitAmount;
-        
-        return member.copyWith(
-          totalOwed: newTotalOwed,
-          balance: newBalance,
-        );
+
+        return member.copyWith(totalOwed: newTotalOwed, balance: newBalance);
       }
       return member;
     }).toList();
-    
+
     // Update group spent amount
     final updatedSpent = group.spent + transaction.amount;
-    
+
     // Create updated group
     final updatedGroup = group.copyWith(
       transactions: updatedTransactions,
       members: updatedMembers,
       spent: updatedSpent,
     );
-    
+
     _groups[groupIndex] = updatedGroup;
     notifyListeners();
   }
 
-  Future<void> updateExpense(String groupId, GroupTransaction updatedTransaction) async {
+  Future<void> updateExpense(
+    String groupId,
+    GroupTransaction updatedTransaction,
+  ) async {
     final groupIndex = _groups.indexWhere((g) => g.id == groupId);
     if (groupIndex == -1) throw Exception('Group not found');
-    
+
     final group = _groups[groupIndex];
-    final transactionIndex = group.transactions.indexWhere((t) => t.id == updatedTransaction.id);
+    final transactionIndex = group.transactions.indexWhere(
+      (t) => t.id == updatedTransaction.id,
+    );
     if (transactionIndex == -1) throw Exception('Transaction not found');
-    
+
     // Remove old transaction impact and add new one
     final oldTransaction = group.transactions[transactionIndex];
     await _removeTransactionImpact(groupId, oldTransaction);
@@ -327,54 +346,55 @@ class GroupService extends ChangeNotifier {
   Future<void> deleteExpense(String groupId, String transactionId) async {
     final groupIndex = _groups.indexWhere((g) => g.id == groupId);
     if (groupIndex == -1) throw Exception('Group not found');
-    
+
     final group = _groups[groupIndex];
-    final transaction = group.transactions.firstWhere((t) => t.id == transactionId);
-    
+    final transaction = group.transactions.firstWhere(
+      (t) => t.id == transactionId,
+    );
+
     await _removeTransactionImpact(groupId, transaction);
   }
 
-  Future<void> _removeTransactionImpact(String groupId, GroupTransaction transaction) async {
+  Future<void> _removeTransactionImpact(
+    String groupId,
+    GroupTransaction transaction,
+  ) async {
     final groupIndex = _groups.indexWhere((g) => g.id == groupId);
     final group = _groups[groupIndex];
-    
+
     // Remove transaction from list
-    final updatedTransactions = group.transactions.where((t) => t.id != transaction.id).toList();
-    
+    final updatedTransactions = group.transactions
+        .where((t) => t.id != transaction.id)
+        .toList();
+
     // Reverse balance changes
     final updatedMembers = group.members.map((member) {
       if (member.id == transaction.paidBy) {
         final newTotalPaid = member.totalPaid - transaction.amount;
         final splitAmount = transaction.splitDetails[member.id] ?? 0;
         final newBalance = member.balance - transaction.amount + splitAmount;
-        
-        return member.copyWith(
-          totalPaid: newTotalPaid,
-          balance: newBalance,
-        );
+
+        return member.copyWith(totalPaid: newTotalPaid, balance: newBalance);
       } else if (transaction.splitDetails.containsKey(member.id)) {
         final splitAmount = transaction.splitDetails[member.id]!;
         final newTotalOwed = member.totalOwed - splitAmount;
         final newBalance = member.balance + splitAmount;
-        
-        return member.copyWith(
-          totalOwed: newTotalOwed,
-          balance: newBalance,
-        );
+
+        return member.copyWith(totalOwed: newTotalOwed, balance: newBalance);
       }
       return member;
     }).toList();
-    
+
     // Update group spent amount
     final updatedSpent = group.spent - transaction.amount;
-    
+
     // Create updated group
     final updatedGroup = group.copyWith(
       transactions: updatedTransactions,
       members: updatedMembers,
       spent: updatedSpent,
     );
-    
+
     _groups[groupIndex] = updatedGroup;
     notifyListeners();
   }
@@ -406,7 +426,9 @@ class GroupService extends ChangeNotifier {
     final groupIndex = _groups.indexWhere((g) => g.id == groupId);
     if (groupIndex != -1) {
       final group = _groups[groupIndex];
-      final updatedMembers = group.members.where((m) => m.id != memberId).toList();
+      final updatedMembers = group.members
+          .where((m) => m.id != memberId)
+          .toList();
       _groups[groupIndex] = group.copyWith(members: updatedMembers);
       notifyListeners();
     }
@@ -415,32 +437,37 @@ class GroupService extends ChangeNotifier {
   // Settlement calculations
   List<Settlement> calculateOptimalSettlements(Group group) {
     final balances = <String, double>{};
-    
+
     // Initialize balances
     for (final member in group.members) {
       balances[member.id] = member.balance;
     }
-    
+
     final settlements = <Settlement>[];
-    
+
     while (balances.values.any((balance) => balance.abs() > 0.01)) {
       final creditor = balances.entries
           .where((e) => e.value > 0.01)
           .reduce((a, b) => a.value > b.value ? a : b);
-      
+
       final debtor = balances.entries
           .where((e) => e.value < -0.01)
           .reduce((a, b) => a.value < b.value ? a : b);
 
-      final amount = [creditor.value, -debtor.value].reduce((a, b) => a < b ? a : b);
-      
-      settlements.add(Settlement(
-        fromId: debtor.key,
-        toId: creditor.key,
-        amount: amount,
-        fromName: group.members.firstWhere((m) => m.id == debtor.key).name,
-        toName: group.members.firstWhere((m) => m.id == creditor.key).name,
-      ));
+      final amount = [
+        creditor.value,
+        -debtor.value,
+      ].reduce((a, b) => a < b ? a : b);
+
+      settlements.add(
+        Settlement(
+          fromId: debtor.key,
+          toId: creditor.key,
+          amount: amount,
+          fromName: group.members.firstWhere((m) => m.id == debtor.key).name,
+          toName: group.members.firstWhere((m) => m.id == creditor.key).name,
+        ),
+      );
 
       balances[creditor.key] = creditor.value - amount;
       balances[debtor.key] = debtor.value + amount;

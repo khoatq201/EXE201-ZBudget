@@ -67,9 +67,7 @@ class _GroupListScreenState extends State<GroupListScreen>
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => const CreateGroupScreen(),
-            ),
+            MaterialPageRoute(builder: (context) => const CreateGroupScreen()),
           );
         },
         backgroundColor: AppColors.primary500,
@@ -124,11 +122,7 @@ class _GroupListScreenState extends State<GroupListScreen>
                 color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
-                Icons.group,
-                color: Colors.white,
-                size: 28,
-              ),
+              child: const Icon(Icons.group, color: Colors.white, size: 28),
             ),
           ],
         ),
@@ -233,7 +227,7 @@ class _GroupListScreenState extends State<GroupListScreen>
     return Consumer<GroupService>(
       builder: (context, groupService, child) {
         final myGroups = groupService.myGroups;
-        
+
         if (myGroups.isEmpty) {
           return _buildEmptyState(
             'Chưa có nhóm nào',
@@ -258,7 +252,7 @@ class _GroupListScreenState extends State<GroupListScreen>
     return Consumer<GroupService>(
       builder: (context, groupService, child) {
         final sharedGroups = groupService.sharedGroups;
-        
+
         if (sharedGroups.isEmpty) {
           return _buildEmptyState(
             'Chưa tham gia nhóm nào',
@@ -292,11 +286,7 @@ class _GroupListScreenState extends State<GroupListScreen>
                 color: AppColors.backgroundSecondary,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Icon(
-                icon,
-                size: 48,
-                color: AppColors.textSecondary,
-              ),
+              child: Icon(icon, size: 48, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
             Text(
@@ -322,7 +312,7 @@ class _GroupListScreenState extends State<GroupListScreen>
 
   Widget _buildGroupCard(Group group) {
     final progressPercentage = group.spentPercentage;
-    
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -384,9 +374,16 @@ class _GroupListScreenState extends State<GroupListScreen>
                     ],
                   ),
                 ),
-                if (group.members.any((m) => m.id == context.read<GroupService>().currentUserId && m.isOwner))
+                if (group.members.any(
+                  (m) =>
+                      m.id == context.read<GroupService>().currentUserId &&
+                      m.isOwner,
+                ))
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primary500,
                       borderRadius: BorderRadius.circular(8),

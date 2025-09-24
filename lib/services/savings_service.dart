@@ -85,12 +85,15 @@ class SavingsService extends ChangeNotifier {
   ];
 
   List<SavingsGoal> get savingsGoals => List.unmodifiable(_savingsGoals);
-  List<SavingsGoal> get activeSavingsGoals => 
+  List<SavingsGoal> get activeSavingsGoals =>
       _savingsGoals.where((goal) => goal.isActive).toList();
 
-  int get totalSaved => _savingsGoals.fold(0, (sum, goal) => sum + goal.currentAmount);
-  int get totalTarget => _savingsGoals.fold(0, (sum, goal) => sum + goal.targetAmount);
-  double get overallProgress => totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
+  int get totalSaved =>
+      _savingsGoals.fold(0, (sum, goal) => sum + goal.currentAmount);
+  int get totalTarget =>
+      _savingsGoals.fold(0, (sum, goal) => sum + goal.targetAmount);
+  double get overallProgress =>
+      totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
 
   List<SavingsContribution> getContributionsForGoal(String goalId) {
     return _contributions
@@ -136,27 +139,34 @@ class SavingsService extends ChangeNotifier {
   // Contribution Operations
   void addContribution(SavingsContribution contribution) {
     _contributions.add(contribution);
-    
+
     // Update goal's current amount
-    final goalIndex = _savingsGoals.indexWhere((goal) => goal.id == contribution.goalId);
+    final goalIndex = _savingsGoals.indexWhere(
+      (goal) => goal.id == contribution.goalId,
+    );
     if (goalIndex != -1) {
       final updatedGoal = _savingsGoals[goalIndex].copyWith(
-        currentAmount: _savingsGoals[goalIndex].currentAmount + contribution.amount,
+        currentAmount:
+            _savingsGoals[goalIndex].currentAmount + contribution.amount,
       );
       _savingsGoals[goalIndex] = updatedGoal;
     }
-    
+
     notifyListeners();
   }
 
   void updateContribution(SavingsContribution updatedContribution) {
-    final index = _contributions.indexWhere((c) => c.id == updatedContribution.id);
+    final index = _contributions.indexWhere(
+      (c) => c.id == updatedContribution.id,
+    );
     if (index != -1) {
       final oldAmount = _contributions[index].amount;
       _contributions[index] = updatedContribution;
-      
+
       // Update goal's current amount
-      final goalIndex = _savingsGoals.indexWhere((goal) => goal.id == updatedContribution.goalId);
+      final goalIndex = _savingsGoals.indexWhere(
+        (goal) => goal.id == updatedContribution.goalId,
+      );
       if (goalIndex != -1) {
         final difference = updatedContribution.amount - oldAmount;
         final updatedGoal = _savingsGoals[goalIndex].copyWith(
@@ -164,26 +174,31 @@ class SavingsService extends ChangeNotifier {
         );
         _savingsGoals[goalIndex] = updatedGoal;
       }
-      
+
       notifyListeners();
     }
   }
 
   void deleteContribution(String contributionId) {
-    final contributionIndex = _contributions.indexWhere((c) => c.id == contributionId);
+    final contributionIndex = _contributions.indexWhere(
+      (c) => c.id == contributionId,
+    );
     if (contributionIndex != -1) {
       final contribution = _contributions[contributionIndex];
       _contributions.removeAt(contributionIndex);
-      
+
       // Update goal's current amount
-      final goalIndex = _savingsGoals.indexWhere((goal) => goal.id == contribution.goalId);
+      final goalIndex = _savingsGoals.indexWhere(
+        (goal) => goal.id == contribution.goalId,
+      );
       if (goalIndex != -1) {
         final updatedGoal = _savingsGoals[goalIndex].copyWith(
-          currentAmount: _savingsGoals[goalIndex].currentAmount - contribution.amount,
+          currentAmount:
+              _savingsGoals[goalIndex].currentAmount - contribution.amount,
         );
         _savingsGoals[goalIndex] = updatedGoal;
       }
-      
+
       notifyListeners();
     }
   }
@@ -192,7 +207,8 @@ class SavingsService extends ChangeNotifier {
   Map<SavingsCategory, int> getCategoryBreakdown() {
     final breakdown = <SavingsCategory, int>{};
     for (final goal in _savingsGoals) {
-      breakdown[goal.category] = (breakdown[goal.category] ?? 0) + goal.currentAmount;
+      breakdown[goal.category] =
+          (breakdown[goal.category] ?? 0) + goal.currentAmount;
     }
     return breakdown;
   }
@@ -200,7 +216,8 @@ class SavingsService extends ChangeNotifier {
   Map<String, int> getMonthlyContributions() {
     final monthly = <String, int>{};
     for (final contribution in _contributions) {
-      final monthKey = '${contribution.date.year}-${contribution.date.month.toString().padLeft(2, '0')}';
+      final monthKey =
+          '${contribution.date.year}-${contribution.date.month.toString().padLeft(2, '0')}';
       monthly[monthKey] = (monthly[monthKey] ?? 0) + contribution.amount;
     }
     return monthly;
@@ -224,7 +241,9 @@ class SavingsService extends ChangeNotifier {
     final now = DateTime.now();
     return _savingsGoals.where((goal) {
       final daysRemaining = goal.targetDate.difference(now).inDays;
-      return daysRemaining <= daysThreshold && daysRemaining > 0 && !goal.isCompleted;
+      return daysRemaining <= daysThreshold &&
+          daysRemaining > 0 &&
+          !goal.isCompleted;
     }).toList();
   }
 

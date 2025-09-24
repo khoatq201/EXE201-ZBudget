@@ -16,12 +16,7 @@ enum SavingsCategory {
   other,
 }
 
-enum SavingsPriority {
-  low,
-  medium,
-  high,
-  urgent,
-}
+enum SavingsPriority { low, medium, high, urgent }
 
 class SavingsCategoryOption {
   final SavingsCategory category;
@@ -43,7 +38,8 @@ class CreateSavingsGoalScreen extends StatefulWidget {
   const CreateSavingsGoalScreen({super.key});
 
   @override
-  State<CreateSavingsGoalScreen> createState() => _CreateSavingsGoalScreenState();
+  State<CreateSavingsGoalScreen> createState() =>
+      _CreateSavingsGoalScreenState();
 }
 
 class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
@@ -51,7 +47,8 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
   final TextEditingController _goalNameController = TextEditingController();
   final TextEditingController _targetAmountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _monthlyContributionController = TextEditingController();
+  final TextEditingController _monthlyContributionController =
+      TextEditingController();
 
   SavingsCategory? _selectedCategory;
   SavingsPriority _selectedPriority = SavingsPriority.medium;
@@ -151,21 +148,15 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
       vsync: this,
     );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
+    _slideAnimation = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+        .animate(
+          CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+        );
 
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeIn,
-    ));
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeIn));
 
     _slideController.forward();
     _fadeController.forward();
@@ -214,8 +205,9 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
 
   int _calculateMonthsToTarget() {
     final targetAmount = int.tryParse(_targetAmountController.text) ?? 0;
-    final monthlyContribution = int.tryParse(_monthlyContributionController.text) ?? 0;
-    
+    final monthlyContribution =
+        int.tryParse(_monthlyContributionController.text) ?? 0;
+
     if (targetAmount > 0 && monthlyContribution > 0) {
       return (targetAmount / monthlyContribution).ceil();
     }
@@ -251,8 +243,8 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
   }
 
   Future<void> _saveSavingsGoal() async {
-    if (_goalNameController.text.isEmpty || 
-        _targetAmountController.text.isEmpty || 
+    if (_goalNameController.text.isEmpty ||
+        _targetAmountController.text.isEmpty ||
         _selectedCategory == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin')),
@@ -279,9 +271,9 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
 
       Navigator.pop(context);
     } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Lỗi: $error')));
     } finally {
       setState(() {
         _isLoading = false;
@@ -380,11 +372,7 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
               color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
-              Icons.savings,
-              color: Colors.white,
-              size: 28,
-            ),
+            child: const Icon(Icons.savings, color: Colors.white, size: 28),
           ),
         ],
       ),
@@ -416,7 +404,7 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Goal Name
           Text(
             'Tên mục tiêu',
@@ -495,17 +483,23 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
                     margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: isSelected ? getPriorityColor(priority) : AppColors.backgroundSecondary,
+                      color: isSelected
+                          ? getPriorityColor(priority)
+                          : AppColors.backgroundSecondary,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: isSelected ? getPriorityColor(priority) : AppColors.dark300,
+                        color: isSelected
+                            ? getPriorityColor(priority)
+                            : AppColors.dark300,
                       ),
                     ),
                     child: Text(
                       getPriorityText(priority),
                       textAlign: TextAlign.center,
                       style: AppTypography.caption.copyWith(
-                        color: isSelected ? Colors.white : AppColors.textSecondary,
+                        color: isSelected
+                            ? Colors.white
+                            : AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -552,9 +546,7 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
           const SizedBox(height: 8),
           Text(
             'Chọn loại mục tiêu tiết kiệm của bạn',
-            style: AppTypography.body.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: AppTypography.body.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 16),
           GridView.builder(
@@ -579,8 +571,8 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isSelected 
-                        ? category.color.withValues(alpha: 0.1) 
+                    color: isSelected
+                        ? category.color.withValues(alpha: 0.1)
                         : AppColors.backgroundSecondary,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
@@ -666,7 +658,7 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
             ],
           ),
           const SizedBox(height: 16),
-          
+
           // Target Amount
           Text(
             'Số tiền mục tiêu',
@@ -763,9 +755,10 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
               fillColor: AppColors.backgroundSecondary,
             ),
           ),
-          
+
           // Progress Calculation
-          if (_targetAmountController.text.isNotEmpty && _monthlyContributionController.text.isNotEmpty) ...[
+          if (_targetAmountController.text.isNotEmpty &&
+              _monthlyContributionController.text.isNotEmpty) ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
@@ -826,14 +819,14 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
             ],
           ),
           const SizedBox(height: 16),
-          
+
           _buildSwitchOption(
             'Tự động tiết kiệm',
             'Tự động chuyển tiền vào mục tiêu hàng tháng',
             _autoSaveEnabled,
             (value) => setState(() => _autoSaveEnabled = value),
           ),
-          
+
           _buildSwitchOption(
             'Thông báo nhắc nhở',
             'Nhận thông báo về tiến độ tiết kiệm',
@@ -854,12 +847,12 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
             Row(
               children: ['daily', 'weekly', 'monthly'].map((frequency) {
                 final isSelected = _reminderFrequency == frequency;
-                final frequencyText = frequency == 'daily' 
-                    ? 'Hàng ngày' 
-                    : frequency == 'weekly' 
-                        ? 'Hàng tuần' 
-                        : 'Hàng tháng';
-                
+                final frequencyText = frequency == 'daily'
+                    ? 'Hàng ngày'
+                    : frequency == 'weekly'
+                    ? 'Hàng tuần'
+                    : 'Hàng tháng';
+
                 return Expanded(
                   child: GestureDetector(
                     onTap: () {
@@ -871,17 +864,23 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
                       margin: const EdgeInsets.only(right: 8),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.success : AppColors.backgroundSecondary,
+                        color: isSelected
+                            ? AppColors.success
+                            : AppColors.backgroundSecondary,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: isSelected ? AppColors.success : AppColors.dark300,
+                          color: isSelected
+                              ? AppColors.success
+                              : AppColors.dark300,
                         ),
                       ),
                       child: Text(
                         frequencyText,
                         textAlign: TextAlign.center,
                         style: AppTypography.caption.copyWith(
-                          color: isSelected ? Colors.white : AppColors.textSecondary,
+                          color: isSelected
+                              ? Colors.white
+                              : AppColors.textSecondary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -896,7 +895,12 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
     );
   }
 
-  Widget _buildSwitchOption(String title, String subtitle, bool value, Function(bool) onChanged) {
+  Widget _buildSwitchOption(
+    String title,
+    String subtitle,
+    bool value,
+    Function(bool) onChanged,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -934,14 +938,17 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
 
   Widget _buildProgressPreview() {
     final targetAmount = int.tryParse(_targetAmountController.text) ?? 0;
-    final monthlyContribution = int.tryParse(_monthlyContributionController.text) ?? 0;
-    
+    final monthlyContribution =
+        int.tryParse(_monthlyContributionController.text) ?? 0;
+
     if (targetAmount == 0 || monthlyContribution == 0) {
       return const SizedBox.shrink();
     }
 
     final monthsToTarget = _calculateMonthsToTarget();
-    final progressPercentage = monthsToTarget > 0 ? (1.0 / monthsToTarget) * 100 : 0.0;
+    final progressPercentage = monthsToTarget > 0
+        ? (1.0 / monthsToTarget) * 100
+        : 0.0;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -973,7 +980,7 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
             ],
           ),
           const SizedBox(height: 16),
-          
+
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1015,9 +1022,9 @@ class _CreateSavingsGoalScreenState extends State<CreateSavingsGoalScreen>
               ),
             ],
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           Text(
             'Tiến độ dự kiến (tháng đầu)',
             style: AppTypography.caption.copyWith(

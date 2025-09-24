@@ -82,7 +82,7 @@ class ExpenseService extends ChangeNotifier {
         ),
       ],
     );
-    
+
     _budgets[sampleBudget.id] = sampleBudget;
   }
 
@@ -116,7 +116,11 @@ class ExpenseService extends ChangeNotifier {
   }
 
   // Cập nhật số tiền đã chi trong ngân sách
-  Future<void> _updateBudgetSpentAmount(String budgetId, ExpenseCategory category, int amount) async {
+  Future<void> _updateBudgetSpentAmount(
+    String budgetId,
+    ExpenseCategory category,
+    int amount,
+  ) async {
     final budget = _budgets[budgetId];
     if (budget == null) return;
 
@@ -135,7 +139,7 @@ class ExpenseService extends ChangeNotifier {
 
     // Tính tổng số tiền đã chi
     final totalSpent = updatedCategories.fold<int>(
-      0, 
+      0,
       (sum, cat) => sum + cat.spentAmount,
     );
 
@@ -164,10 +168,13 @@ class ExpenseService extends ChangeNotifier {
 
   // Lấy chi tiêu trong khoảng thời gian
   List<Expense> getExpensesByDateRange(DateTime start, DateTime end) {
-    return _expenses.where((expense) => 
-      expense.date.isAfter(start.subtract(const Duration(days: 1))) &&
-      expense.date.isBefore(end.add(const Duration(days: 1)))
-    ).toList();
+    return _expenses
+        .where(
+          (expense) =>
+              expense.date.isAfter(start.subtract(const Duration(days: 1))) &&
+              expense.date.isBefore(end.add(const Duration(days: 1))),
+        )
+        .toList();
   }
 
   // Lấy ngân sách theo ID
@@ -185,7 +192,11 @@ class ExpenseService extends ChangeNotifier {
 
     // Cập nhật lại ngân sách nếu có
     if (expense.budgetId != null && _budgets.containsKey(expense.budgetId!)) {
-      await _updateBudgetSpentAmount(expense.budgetId!, expense.category, -expense.amount);
+      await _updateBudgetSpentAmount(
+        expense.budgetId!,
+        expense.category,
+        -expense.amount,
+      );
     }
 
     notifyListeners();
@@ -203,7 +214,7 @@ class ExpenseService extends ChangeNotifier {
     if (expenseIndex == -1) return;
 
     final oldExpense = _expenses[expenseIndex];
-    
+
     // Tạo chi tiêu mới với thông tin cập nhật
     final updatedExpense = Expense(
       id: oldExpense.id,
@@ -218,11 +229,20 @@ class ExpenseService extends ChangeNotifier {
     _expenses[expenseIndex] = updatedExpense;
 
     // Cập nhật ngân sách nếu có thay đổi
-    if (oldExpense.budgetId != null && _budgets.containsKey(oldExpense.budgetId!)) {
+    if (oldExpense.budgetId != null &&
+        _budgets.containsKey(oldExpense.budgetId!)) {
       // Trừ số tiền cũ
-      await _updateBudgetSpentAmount(oldExpense.budgetId!, oldExpense.category, -oldExpense.amount);
+      await _updateBudgetSpentAmount(
+        oldExpense.budgetId!,
+        oldExpense.category,
+        -oldExpense.amount,
+      );
       // Cộng số tiền mới
-      await _updateBudgetSpentAmount(oldExpense.budgetId!, updatedExpense.category, updatedExpense.amount);
+      await _updateBudgetSpentAmount(
+        oldExpense.budgetId!,
+        updatedExpense.category,
+        updatedExpense.amount,
+      );
     }
 
     notifyListeners();

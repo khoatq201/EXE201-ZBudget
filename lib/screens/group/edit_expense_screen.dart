@@ -9,11 +9,11 @@ import '../../constants/colors.dart';
 class EditExpenseScreen extends StatefulWidget {
   final Group group;
   final GroupTransaction transaction;
-  
+
   const EditExpenseScreen({
-    super.key, 
-    required this.group, 
-    required this.transaction
+    super.key,
+    required this.group,
+    required this.transaction,
   });
 
   @override
@@ -25,7 +25,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
   late final TextEditingController _descriptionController;
   late final TextEditingController _amountController;
   late final TextEditingController _notesController;
-  
+
   late String selectedCategory;
   late String selectedCategoryIcon;
   late GroupMember? paidBy;
@@ -33,7 +33,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
   late List<String> selectedParticipants;
   late Map<String, double> customAmounts;
   late DateTime selectedDate;
-  
+
   final List<Map<String, dynamic>> expenseCategories = [
     {'id': 'food', 'name': 'Ăn uống', 'icon': '🍽️'},
     {'id': 'transport', 'name': 'Di chuyển', 'icon': '🚗'},
@@ -49,15 +49,23 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize with existing transaction data
-    _descriptionController = TextEditingController(text: widget.transaction.description);
-    _amountController = TextEditingController(text: widget.transaction.amount.toStringAsFixed(0));
-    _notesController = TextEditingController(text: widget.transaction.notes ?? '');
-    
+    _descriptionController = TextEditingController(
+      text: widget.transaction.description,
+    );
+    _amountController = TextEditingController(
+      text: widget.transaction.amount.toStringAsFixed(0),
+    );
+    _notesController = TextEditingController(
+      text: widget.transaction.notes ?? '',
+    );
+
     selectedCategory = widget.transaction.category;
     selectedCategoryIcon = widget.transaction.categoryIcon;
-    paidBy = widget.group.members.firstWhere((m) => m.id == widget.transaction.paidBy);
+    paidBy = widget.group.members.firstWhere(
+      (m) => m.id == widget.transaction.paidBy,
+    );
     splitMethod = widget.transaction.splitMethod;
     selectedParticipants = List<String>.from(widget.transaction.participants);
     customAmounts = Map<String, double>.from(widget.transaction.splitDetails);
@@ -99,10 +107,10 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
   void _updateCustomAmounts() {
     if (splitMethod == SplitMethod.equal) {
       final amount = double.tryParse(_amountController.text) ?? 0;
-      final perPerson = selectedParticipants.isNotEmpty 
-          ? amount / selectedParticipants.length 
+      final perPerson = selectedParticipants.isNotEmpty
+          ? amount / selectedParticipants.length
           : 0;
-      
+
       customAmounts.clear();
       for (String memberId in selectedParticipants) {
         customAmounts[memberId] = perPerson.toDouble();
@@ -124,10 +132,12 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
 
   Future<void> _updateExpense() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     if (selectedParticipants.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn ít nhất một người tham gia')),
+        const SnackBar(
+          content: Text('Vui lòng chọn ít nhất một người tham gia'),
+        ),
       );
       return;
     }
@@ -142,7 +152,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     try {
       final groupService = Provider.of<GroupService>(context, listen: false);
       final amount = double.parse(_amountController.text.replaceAll(',', ''));
-      
+
       // Tạo split details
       final splitDetails = <String, double>{};
       if (splitMethod == SplitMethod.equal) {
@@ -171,7 +181,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
       );
 
       await groupService.updateExpense(widget.group.id, updatedTransaction);
-      
+
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -179,9 +189,9 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi cập nhật chi tiêu: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Lỗi cập nhật chi tiêu: $e')));
     }
   }
 
@@ -208,8 +218,11 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     if (confirmed == true) {
       try {
         final groupService = Provider.of<GroupService>(context, listen: false);
-        await groupService.deleteExpense(widget.group.id, widget.transaction.id);
-        
+        await groupService.deleteExpense(
+          widget.group.id,
+          widget.transaction.id,
+        );
+
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -217,9 +230,9 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
           );
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi xóa chi tiêu: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi xóa chi tiêu: $e')));
       }
     }
   }
@@ -241,7 +254,10 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
             onPressed: _updateExpense,
             child: const Text(
               'Lưu',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -347,12 +363,17 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
             return GestureDetector(
               onTap: () => _selectCategory(category),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? AppColors.primary500 : Colors.grey[200],
                   borderRadius: BorderRadius.circular(25),
                   border: Border.all(
-                    color: isSelected ? AppColors.primary500 : Colors.grey[300]!,
+                    color: isSelected
+                        ? AppColors.primary500
+                        : Colors.grey[300]!,
                   ),
                 ),
                 child: Row(
@@ -409,7 +430,10 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                       backgroundColor: AppColors.primary500,
                       child: Text(
                         member.avatar,
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -499,7 +523,9 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
         ),
         const SizedBox(height: 16),
         ...selectedParticipants.map((memberId) {
-          final member = widget.group.members.firstWhere((m) => m.id == memberId);
+          final member = widget.group.members.firstWhere(
+            (m) => m.id == memberId,
+          );
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Row(
@@ -524,7 +550,8 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                     ),
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    initialValue: customAmounts[memberId]?.toStringAsFixed(0) ?? '0',
+                    initialValue:
+                        customAmounts[memberId]?.toStringAsFixed(0) ?? '0',
                     onChanged: (value) {
                       final amount = double.tryParse(value) ?? 0;
                       setState(() => customAmounts[memberId] = amount);

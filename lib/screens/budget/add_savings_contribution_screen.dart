@@ -9,16 +9,15 @@ import '../../constants/typography.dart';
 class AddSavingsContributionScreen extends StatefulWidget {
   final SavingsGoal goal;
 
-  const AddSavingsContributionScreen({
-    super.key,
-    required this.goal,
-  });
+  const AddSavingsContributionScreen({super.key, required this.goal});
 
   @override
-  State<AddSavingsContributionScreen> createState() => _AddSavingsContributionScreenState();
+  State<AddSavingsContributionScreen> createState() =>
+      _AddSavingsContributionScreenState();
 }
 
-class _AddSavingsContributionScreenState extends State<AddSavingsContributionScreen> {
+class _AddSavingsContributionScreenState
+    extends State<AddSavingsContributionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
@@ -62,11 +61,11 @@ class _AddSavingsContributionScreenState extends State<AddSavingsContributionScr
 
   String _formatAmount(String value) {
     if (value.isEmpty) return '';
-    
+
     // Remove all non-digits
     String numStr = value.replaceAll(RegExp(r'[^\d]'), '');
     if (numStr.isEmpty) return '';
-    
+
     // Convert to integer and format with commas
     int amount = int.parse(numStr);
     return amount.toString().replaceAllMapped(
@@ -88,7 +87,7 @@ class _AddSavingsContributionScreenState extends State<AddSavingsContributionScr
 
     try {
       final amount = _parseAmount(_amountController.text);
-      
+
       final contribution = SavingsContribution(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         goalId: widget.goal.id,
@@ -98,13 +97,18 @@ class _AddSavingsContributionScreenState extends State<AddSavingsContributionScr
         type: _selectedType,
       );
 
-      final savingsService = Provider.of<SavingsService>(context, listen: false);
+      final savingsService = Provider.of<SavingsService>(
+        context,
+        listen: false,
+      );
       savingsService.addContribution(contribution);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Đã thêm ${_formatAmount(amount.toString())} VND vào mục tiêu'),
+            content: Text(
+              'Đã thêm ${_formatAmount(amount.toString())} VND vào mục tiêu',
+            ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
@@ -133,7 +137,7 @@ class _AddSavingsContributionScreenState extends State<AddSavingsContributionScr
   @override
   Widget build(BuildContext context) {
     final remainingAmount = widget.goal.remainingAmount;
-    
+
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
@@ -172,8 +176,10 @@ class _AddSavingsContributionScreenState extends State<AddSavingsContributionScr
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
-                        Provider.of<SavingsService>(context, listen: false)
-                            .getCategoryIcon(widget.goal.category),
+                        Provider.of<SavingsService>(
+                          context,
+                          listen: false,
+                        ).getCategoryIcon(widget.goal.category),
                         color: widget.goal.color,
                         size: 24,
                       ),
@@ -219,7 +225,7 @@ class _AddSavingsContributionScreenState extends State<AddSavingsContributionScr
               ],
             ),
           ),
-          
+
           // Form
           Expanded(
             child: SingleChildScrollView(
@@ -262,14 +268,16 @@ class _AddSavingsContributionScreenState extends State<AddSavingsContributionScr
                         if (formatted != value) {
                           _amountController.value = TextEditingValue(
                             text: formatted,
-                            selection: TextSelection.collapsed(offset: formatted.length),
+                            selection: TextSelection.collapsed(
+                              offset: formatted.length,
+                            ),
                           );
                         }
                       },
                     ),
-                    
+
                     const SizedBox(height: AppSpacing.lg),
-                    
+
                     // Date Selection
                     Text(
                       'Ngày',
@@ -311,9 +319,9 @@ class _AddSavingsContributionScreenState extends State<AddSavingsContributionScr
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: AppSpacing.lg),
-                    
+
                     // Type Selection
                     Text(
                       'Loại contribution',
@@ -402,9 +410,9 @@ class _AddSavingsContributionScreenState extends State<AddSavingsContributionScr
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: AppSpacing.lg),
-                    
+
                     // Note Input
                     Text(
                       'Ghi chú (tùy chọn)',
@@ -433,14 +441,14 @@ class _AddSavingsContributionScreenState extends State<AddSavingsContributionScr
                       ),
                       maxLines: 3,
                     ),
-                    
+
                     const SizedBox(height: AppSpacing.xl),
                   ],
                 ),
               ),
             ),
           ),
-          
+
           // Bottom Action
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),

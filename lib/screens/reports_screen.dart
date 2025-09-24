@@ -50,35 +50,40 @@ class _ReportsScreenState extends State<ReportsScreen>
   // Vietnamese category data
   final List<CategoryData> categoryData = [
     CategoryData(
-        category: 'Ăn uống',
-        amount: 1200000,
-        percentage: 35,
-        color: const Color(0xFFFF6B6B),
-        icon: '🍜'),
+      category: 'Ăn uống',
+      amount: 1200000,
+      percentage: 35,
+      color: const Color(0xFFFF6B6B),
+      icon: '🍜',
+    ),
     CategoryData(
-        category: 'Di chuyển',
-        amount: 800000,
-        percentage: 23,
-        color: const Color(0xFF4ECDC4),
-        icon: '🚗'),
+      category: 'Di chuyển',
+      amount: 800000,
+      percentage: 23,
+      color: const Color(0xFF4ECDC4),
+      icon: '🚗',
+    ),
     CategoryData(
-        category: 'Mua sắm',
-        amount: 600000,
-        percentage: 18,
-        color: const Color(0xFF45B7D1),
-        icon: '🛍️'),
+      category: 'Mua sắm',
+      amount: 600000,
+      percentage: 18,
+      color: const Color(0xFF45B7D1),
+      icon: '🛍️',
+    ),
     CategoryData(
-        category: 'Giải trí',
-        amount: 400000,
-        percentage: 12,
-        color: const Color(0xFF96CEB4),
-        icon: '🎮'),
+      category: 'Giải trí',
+      amount: 400000,
+      percentage: 12,
+      color: const Color(0xFF96CEB4),
+      icon: '🎮',
+    ),
     CategoryData(
-        category: 'Khác',
-        amount: 400000,
-        percentage: 12,
-        color: const Color(0xFFFFEAA7),
-        icon: '📝'),
+      category: 'Khác',
+      amount: 400000,
+      percentage: 12,
+      color: const Color(0xFFFFEAA7),
+      icon: '📝',
+    ),
   ];
 
   // Monthly data for charts
@@ -98,13 +103,9 @@ class _ReportsScreenState extends State<ReportsScreen>
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
     _animationController.forward();
   }
 
@@ -150,16 +151,13 @@ class _ReportsScreenState extends State<ReportsScreen>
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.primary500,
-                      AppColors.primary600,
-                    ],
+                    colors: [AppColors.primary500, AppColors.primary600],
                   ),
                 ),
               ),
             ),
           ),
-          
+
           SliverToBoxAdapter(
             child: FadeTransition(
               opacity: _fadeAnimation,
@@ -171,18 +169,18 @@ class _ReportsScreenState extends State<ReportsScreen>
                     // Period selector
                     _buildPeriodSelector(),
                     const SizedBox(height: 20),
-                    
+
                     // Tab selector
                     _buildTabSelector(),
                     const SizedBox(height: 20),
-                    
+
                     // Content based on selected tab
                     if (selectedTab == 'overview') _buildOverviewTab(),
                     if (selectedTab == 'categories') _buildCategoriesTab(),
                     if (selectedTab == 'trends') _buildTrendsTab(),
-                    
+
                     const SizedBox(height: 20),
-                    
+
                     // Vietnamese cultural insights
                     _buildVietnameseCulturalInsights(),
                   ],
@@ -197,7 +195,7 @@ class _ReportsScreenState extends State<ReportsScreen>
 
   Widget _buildPeriodSelector() {
     final periods = ['T5/2025', 'T6/2025', 'T7/2025'];
-    
+
     return SizedBox(
       height: 50,
       child: ListView.builder(
@@ -206,7 +204,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         itemBuilder: (context, index) {
           final period = periods[index];
           final isSelected = period == selectedPeriod;
-          
+
           return Container(
             margin: const EdgeInsets.only(right: 12),
             child: ChoiceChip(
@@ -241,11 +239,11 @@ class _ReportsScreenState extends State<ReportsScreen>
       {'id': 'categories', 'title': 'Danh mục', 'icon': Icons.pie_chart},
       {'id': 'trends', 'title': 'Xu hướng', 'icon': Icons.trending_up},
     ];
-    
+
     return Row(
       children: tabs.map((tab) {
         final isSelected = tab['id'] == selectedTab;
-        
+
         return Expanded(
           child: GestureDetector(
             onTap: () {
@@ -260,7 +258,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                 color: isSelected ? AppColors.primary500 : Colors.transparent,
                 borderRadius: BorderRadius.circular(25),
                 border: Border.all(
-                  color: isSelected ? AppColors.primary500 : Colors.grey.shade300,
+                  color: isSelected
+                      ? AppColors.primary500
+                      : Colors.grey.shade300,
                 ),
               ),
               child: Column(
@@ -273,7 +273,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                   Text(
                     tab['title'] as String,
                     style: TextStyle(
-                      color: isSelected ? Colors.white : AppColors.textSecondary,
+                      color: isSelected
+                          ? Colors.white
+                          : AppColors.textSecondary,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
@@ -317,7 +319,7 @@ class _ReportsScreenState extends State<ReportsScreen>
           ],
         ),
         const SizedBox(height: 16),
-        
+
         Row(
           children: [
             Expanded(
@@ -430,8 +432,12 @@ class _ReportsScreenState extends State<ReportsScreen>
                     },
                   ),
                 ),
-                topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
               ),
               borderData: FlBorderData(show: false),
               lineBarsData: [
@@ -504,7 +510,7 @@ class _ReportsScreenState extends State<ReportsScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            isPercentage 
+            isPercentage
                 ? '${amount.toStringAsFixed(1)}%'
                 : formatCurrency(amount),
             style: AppTypography.h5.copyWith(
@@ -535,7 +541,9 @@ class _ReportsScreenState extends State<ReportsScreen>
       child: BarChart(
         BarChartData(
           alignment: BarChartAlignment.spaceAround,
-          maxY: monthlyData.map((e) => e.income).reduce((a, b) => a > b ? a : b) + 500000,
+          maxY:
+              monthlyData.map((e) => e.income).reduce((a, b) => a > b ? a : b) +
+              500000,
           titlesData: FlTitlesData(
             leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
             topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -604,10 +612,7 @@ class _ReportsScreenState extends State<ReportsScreen>
               borderRadius: BorderRadius.circular(20),
             ),
             child: Center(
-              child: Text(
-                data.icon,
-                style: const TextStyle(fontSize: 20),
-              ),
+              child: Text(data.icon, style: const TextStyle(fontSize: 20)),
             ),
           ),
           const SizedBox(width: 16),
@@ -617,9 +622,7 @@ class _ReportsScreenState extends State<ReportsScreen>
               children: [
                 Text(
                   data.category,
-                  style: AppTypography.h6.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: AppTypography.h6.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -670,9 +673,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         children: [
           Text(
             'Phân tích xu hướng',
-            style: AppTypography.h6.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: AppTypography.h6.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           _buildInsightItem(
@@ -736,7 +737,8 @@ class _ReportsScreenState extends State<ReportsScreen>
 
   Widget _buildVietnameseCulturalInsights() {
     String title = 'Phân tích mùa mưa';
-    String insight = 'Chi tiêu đi lại tăng 25% vào mùa mưa. Nên dùng Grab/xe ôm công nghệ thay vì xe cá nhân.';
+    String insight =
+        'Chi tiêu đi lại tăng 25% vào mùa mưa. Nên dùng Grab/xe ôm công nghệ thay vì xe cá nhân.';
     String icon = '☔';
     Color color = AppColors.accent500;
 
@@ -746,10 +748,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            color.withOpacity(0.1),
-            color.withOpacity(0.05),
-          ],
+          colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withOpacity(0.3)),
@@ -759,10 +758,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         children: [
           Row(
             children: [
-              Text(
-                icon,
-                style: const TextStyle(fontSize: 24),
-              ),
+              Text(icon, style: const TextStyle(fontSize: 24)),
               const SizedBox(width: 12),
               Text(
                 title,

@@ -17,7 +17,8 @@ class AddExpenseFromBudgetScreen extends StatefulWidget {
   });
 
   @override
-  State<AddExpenseFromBudgetScreen> createState() => _AddExpenseFromBudgetScreenState();
+  State<AddExpenseFromBudgetScreen> createState() =>
+      _AddExpenseFromBudgetScreenState();
 }
 
 class _AddExpenseFromBudgetScreenState extends State<AddExpenseFromBudgetScreen>
@@ -37,7 +38,7 @@ class _AddExpenseFromBudgetScreenState extends State<AddExpenseFromBudgetScreen>
   void initState() {
     super.initState();
     _selectedCategory = widget.preselectedCategory;
-    
+
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -46,10 +47,7 @@ class _AddExpenseFromBudgetScreenState extends State<AddExpenseFromBudgetScreen>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.1),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOut,
-    ));
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
 
     _slideController.forward();
   }
@@ -105,10 +103,7 @@ class _AddExpenseFromBudgetScreenState extends State<AddExpenseFromBudgetScreen>
   }
 
   String formatCurrency(int amount) {
-    return '${amount.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]},',
-    )} VND';
+    return '${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} VND';
   }
 
   Future<void> _selectDate() async {
@@ -365,15 +360,15 @@ class _AddExpenseFromBudgetScreenState extends State<AddExpenseFromBudgetScreen>
             TextInputFormatter.withFunction((oldValue, newValue) {
               final text = newValue.text.replaceAll(',', '');
               if (text.isEmpty) return newValue;
-              
+
               final number = int.tryParse(text);
               if (number == null) return oldValue;
-              
+
               final formatted = number.toString().replaceAllMapped(
                 RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
                 (Match m) => '${m[1]},',
               );
-              
+
               return TextEditingValue(
                 text: formatted,
                 selection: TextSelection.collapsed(offset: formatted.length),
@@ -406,7 +401,8 @@ class _AddExpenseFromBudgetScreenState extends State<AddExpenseFromBudgetScreen>
             if (amount == null || amount <= 0) {
               return 'Số tiền không hợp lệ';
             }
-            if (amount > 100000000) { // 100 triệu VND
+            if (amount > 100000000) {
+              // 100 triệu VND
               return 'Số tiền quá lớn';
             }
             return null;
@@ -434,8 +430,9 @@ class _AddExpenseFromBudgetScreenState extends State<AddExpenseFromBudgetScreen>
             runSpacing: 12,
             children: budget.categories.map((category) {
               final isSelected = _selectedCategory == category.category;
-              final remainingAmount = category.allocatedAmount - category.spentAmount;
-              
+              final remainingAmount =
+                  category.allocatedAmount - category.spentAmount;
+
               return GestureDetector(
                 onTap: () {
                   setState(() {
@@ -445,19 +442,23 @@ class _AddExpenseFromBudgetScreenState extends State<AddExpenseFromBudgetScreen>
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isSelected ? category.color.withOpacity(0.2) : Colors.white,
+                    color: isSelected
+                        ? category.color.withOpacity(0.2)
+                        : Colors.white,
                     border: Border.all(
                       color: isSelected ? category.color : AppColors.primary200,
                       width: isSelected ? 2 : 1,
                     ),
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: isSelected ? [
-                      BoxShadow(
-                        color: category.color.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ] : null,
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: category.color.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
                   ),
                   child: Column(
                     children: [
@@ -478,7 +479,9 @@ class _AddExpenseFromBudgetScreenState extends State<AddExpenseFromBudgetScreen>
                       Text(
                         formatCurrency(remainingAmount),
                         style: AppTypography.caption.copyWith(
-                          color: remainingAmount > 0 ? AppColors.success : Colors.red,
+                          color: remainingAmount > 0
+                              ? AppColors.success
+                              : Colors.red,
                           fontSize: 10,
                         ),
                       ),
@@ -562,9 +565,7 @@ class _AddExpenseFromBudgetScreenState extends State<AddExpenseFromBudgetScreen>
             filled: true,
             fillColor: Colors.white,
           ),
-          style: AppTypography.body.copyWith(
-            color: AppColors.textPrimary,
-          ),
+          style: AppTypography.body.copyWith(color: AppColors.textPrimary),
         ),
       ],
     );

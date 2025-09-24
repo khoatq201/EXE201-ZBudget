@@ -18,7 +18,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _budgetController = TextEditingController();
-  
+
   String selectedEmoji = '🎯';
   String? selectedTemplate;
   SplitMethod splitMethod = SplitMethod.equal;
@@ -29,8 +29,22 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   bool expenseApproval = false;
 
   final List<String> emojiOptions = [
-    '🎯', '🏔️', '🏖️', '🎉', '🏠', '🚗', '✈️', '🍽️',
-    '🎵', '📚', '💼', '🎮', '💒', '🎓', '🏪', '🍜',
+    '🎯',
+    '🏔️',
+    '🏖️',
+    '🎉',
+    '🏠',
+    '🚗',
+    '✈️',
+    '🍽️',
+    '🎵',
+    '📚',
+    '💼',
+    '🎮',
+    '💒',
+    '🎓',
+    '🏪',
+    '🍜',
   ];
 
   final List<Map<String, dynamic>> vietnameseTemplates = [
@@ -124,17 +138,19 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
 
   Future<void> createGroup() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     if (selectedCategories.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn ít nhất một danh mục chi tiêu')),
+        const SnackBar(
+          content: Text('Vui lòng chọn ít nhất một danh mục chi tiêu'),
+        ),
       );
       return;
     }
 
     try {
       final groupService = Provider.of<GroupService>(context, listen: false);
-      
+
       // Tạo group mới
       final newGroup = Group(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -166,7 +182,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       );
 
       await groupService.createGroup(newGroup);
-      
+
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -174,9 +190,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi tạo nhóm: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Lỗi tạo nhóm: $e')));
     }
   }
 
@@ -192,7 +208,10 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             onPressed: createGroup,
             child: const Text(
               'Tạo',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -226,18 +245,12 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       children: [
         const Text(
           'Mẫu nhóm phổ biến',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
         const Text(
           'Chọn mẫu có sẵn để tạo nhóm nhanh chóng',
-          style: TextStyle(
-            color: Colors.grey,
-            fontSize: 14,
-          ),
+          style: TextStyle(color: Colors.grey, fontSize: 14),
         ),
         const SizedBox(height: 16),
         SizedBox(
@@ -248,7 +261,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             itemBuilder: (context, index) {
               final template = vietnameseTemplates[index];
               final isSelected = selectedTemplate == template['id'];
-              
+
               return Container(
                 width: 140,
                 margin: const EdgeInsets.only(right: 12),
@@ -257,10 +270,14 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primary100 : Colors.grey[100],
+                      color: isSelected
+                          ? AppColors.primary100
+                          : Colors.grey[100],
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? AppColors.primary500 : Colors.grey[300]!,
+                        color: isSelected
+                            ? AppColors.primary500
+                            : Colors.grey[300]!,
                       ),
                     ),
                     child: Column(
@@ -306,10 +323,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       children: [
         const Text(
           'Biểu tượng nhóm',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 16),
         Wrap(
@@ -326,14 +340,13 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                   color: isSelected ? AppColors.primary100 : Colors.grey[100],
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isSelected ? AppColors.primary500 : Colors.grey[300]!,
+                    color: isSelected
+                        ? AppColors.primary500
+                        : Colors.grey[300]!,
                   ),
                 ),
                 child: Center(
-                  child: Text(
-                    emoji,
-                    style: const TextStyle(fontSize: 24),
-                  ),
+                  child: Text(emoji, style: const TextStyle(fontSize: 24)),
                 ),
               ),
             );
@@ -349,10 +362,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       children: [
         const Text(
           'Thông tin cơ bản',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 16),
         TextFormField(
@@ -407,10 +417,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       children: [
         const Text(
           'Danh mục chi tiêu',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 16),
         Wrap(
@@ -421,7 +428,10 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             return GestureDetector(
               onTap: () => toggleCategory(category['id']),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? AppColors.primary500 : Colors.grey[200],
                   borderRadius: BorderRadius.circular(20),
@@ -457,10 +467,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       children: [
         const Text(
           'Cài đặt nâng cao',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 16),
         _buildSplitMethodSection(),
@@ -499,10 +506,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       children: [
         const Text(
           'Phương thức chia tiền',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 16,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
         ),
         const SizedBox(height: 12),
         ...SplitMethod.values.map((method) {
@@ -519,7 +523,12 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     );
   }
 
-  Widget _buildSettingRow(String title, String subtitle, bool value, Function(bool) onChanged) {
+  Widget _buildSettingRow(
+    String title,
+    String subtitle,
+    bool value,
+    Function(bool) onChanged,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -537,10 +546,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 ),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(color: Colors.grey, fontSize: 14),
                 ),
               ],
             ),

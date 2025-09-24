@@ -7,10 +7,7 @@ import '../../models/budget_models.dart';
 class BudgetEditScreen extends StatefulWidget {
   final BudgetData budget;
 
-  const BudgetEditScreen({
-    super.key,
-    required this.budget,
-  });
+  const BudgetEditScreen({super.key, required this.budget});
 
   @override
   State<BudgetEditScreen> createState() => _BudgetEditScreenState();
@@ -75,7 +72,7 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
   void _updateCategoryAmount(int index, double percentage) {
     final totalAmount = int.tryParse(_totalAmountController.text) ?? 0;
     final newAmount = (totalAmount * percentage / 100).round();
-    
+
     setState(() {
       _categories[index] = BudgetCategoryData(
         category: _categories[index].category,
@@ -98,7 +95,8 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
     // Calculate current total of other categories
     for (int i = 0; i < _categories.length; i++) {
       if (i != changedIndex) {
-        currentOthersTotal += (_categories[i].allocatedAmount / totalAmount) * 100;
+        currentOthersTotal +=
+            (_categories[i].allocatedAmount / totalAmount) * 100;
       }
     }
 
@@ -107,10 +105,12 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
     // Redistribute remaining percentage proportionally
     for (int i = 0; i < _categories.length; i++) {
       if (i != changedIndex) {
-        final currentPercentage = (_categories[i].allocatedAmount / totalAmount) * 100;
-        final newCategoryPercentage = (currentPercentage / currentOthersTotal) * remainingPercentage;
+        final currentPercentage =
+            (_categories[i].allocatedAmount / totalAmount) * 100;
+        final newCategoryPercentage =
+            (currentPercentage / currentOthersTotal) * remainingPercentage;
         final newAmount = (totalAmount * newCategoryPercentage / 100).round();
-        
+
         _categories[i] = BudgetCategoryData(
           category: _categories[i].category,
           allocatedAmount: newAmount,
@@ -127,12 +127,14 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
       builder: (context) => _AddCategoryDialog(
         onAdd: (category, amount, color) {
           setState(() {
-            _categories.add(BudgetCategoryData(
-              category: category,
-              allocatedAmount: amount,
-              spentAmount: 0,
-              color: color,
-            ));
+            _categories.add(
+              BudgetCategoryData(
+                category: category,
+                allocatedAmount: amount,
+                spentAmount: 0,
+                color: color,
+              ),
+            );
           });
         },
       ),
@@ -171,11 +173,13 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
     final controller = TextEditingController(
       text: _categories[index].allocatedAmount.toString(),
     );
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Chỉnh sửa ${_getCategoryName(_categories[index].category)}'),
+        title: Text(
+          'Chỉnh sửa ${_getCategoryName(_categories[index].category)}',
+        ),
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
@@ -253,10 +257,7 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
   }
 
   String _formatCurrency(int amount) {
-    return '${amount.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]},',
-    )} VND';
+    return '${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} VND';
   }
 
   String _getPeriodText(BudgetPeriod period) {
@@ -337,12 +338,9 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
                               border: OutlineInputBorder(),
                             ),
                           )
-                        : Text(
-                            _nameController.text,
-                            style: AppTypography.h3,
-                          ),
+                        : Text(_nameController.text, style: AppTypography.h3),
                     const SizedBox(height: 16),
-                    
+
                     // Period Selector
                     if (_isEditing) ...[
                       Text(
@@ -356,7 +354,9 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
                         children: BudgetPeriod.values.map((period) {
                           return Expanded(
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 2,
+                              ),
                               child: ChoiceChip(
                                 label: Text(
                                   _getPeriodText(period),
@@ -424,7 +424,7 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
                       ],
                     ),
                     const SizedBox(height: 8),
-                    
+
                     // Progress Overview
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -468,30 +468,29 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
                       ],
                     ),
                     const SizedBox(height: 12),
-                    
+
                     // Progress Bar
                     LinearProgressIndicator(
                       value: totalAmount > 0 ? totalSpent / totalAmount : 0,
                       backgroundColor: AppColors.backgroundSecondary,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        totalSpent > totalAmount ? Colors.red : AppColors.primary500,
+                        totalSpent > totalAmount
+                            ? Colors.red
+                            : AppColors.primary500,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // Categories Section
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Danh mục chi tiêu',
-                  style: AppTypography.h4,
-                ),
+                Text('Danh mục chi tiêu', style: AppTypography.h4),
                 if (_isEditing)
                   IconButton(
                     icon: Icon(Icons.add, color: AppColors.primary500),
@@ -499,14 +498,14 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
                   ),
               ],
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             // Categories List
             ...List.generate(_categories.length, (index) {
               final category = _categories[index];
-              final percentage = totalAmount > 0 
-                  ? (category.allocatedAmount / totalAmount) * 100 
+              final percentage = totalAmount > 0
+                  ? (category.allocatedAmount / totalAmount) * 100
                   : 0.0;
               final spentPercentage = category.allocatedAmount > 0
                   ? (category.spentAmount / category.allocatedAmount) * 100
@@ -578,9 +577,9 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
                           ),
                         ],
                       ),
-                      
+
                       const SizedBox(height: 12),
-                      
+
                       // Allocation Slider (only in edit mode)
                       if (_isEditing) ...[
                         Text(
@@ -607,7 +606,7 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
                         ),
                         const SizedBox(height: 8),
                       ],
-                      
+
                       // Spending Progress
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -639,9 +638,9 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
                 ),
               );
             }),
-            
+
             const SizedBox(height: 20),
-            
+
             // Summary Card
             if (totalAllocated != totalAmount)
               Card(
@@ -756,9 +755,9 @@ class _AddCategoryDialogState extends State<_AddCategoryDialog> {
               });
             },
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Amount Input
           TextField(
             controller: _amountController,
@@ -769,9 +768,9 @@ class _AddCategoryDialogState extends State<_AddCategoryDialog> {
               border: OutlineInputBorder(),
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Color Selection
           const Text('Chọn màu:'),
           const SizedBox(height: 8),
@@ -807,7 +806,8 @@ class _AddCategoryDialogState extends State<_AddCategoryDialog> {
         ),
         TextButton(
           onPressed: () {
-            if (_selectedCategory != null && _amountController.text.isNotEmpty) {
+            if (_selectedCategory != null &&
+                _amountController.text.isNotEmpty) {
               final amount = int.tryParse(_amountController.text) ?? 0;
               widget.onAdd(_selectedCategory!, amount, _selectedColor);
               Navigator.pop(context);

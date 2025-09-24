@@ -114,13 +114,9 @@ class _BudgetListScreenState extends State<BudgetListScreen>
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
     _animationController.forward();
   }
 
@@ -201,7 +197,9 @@ class _BudgetListScreenState extends State<BudgetListScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  selectedTab == 'budgets' ? 'Quản lý ngân sách' : 'Mục tiêu tiết kiệm',
+                  selectedTab == 'budgets'
+                      ? 'Quản lý ngân sách'
+                      : 'Mục tiêu tiết kiệm',
                   style: AppTypography.h2.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -225,7 +223,9 @@ class _BudgetListScreenState extends State<BudgetListScreen>
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
-              selectedTab == 'budgets' ? Icons.account_balance_wallet : Icons.savings,
+              selectedTab == 'budgets'
+                  ? Icons.account_balance_wallet
+                  : Icons.savings,
               color: Colors.white,
               size: 28,
             ),
@@ -255,7 +255,9 @@ class _BudgetListScreenState extends State<BudgetListScreen>
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: selectedTab == 'budgets' ? Colors.white : Colors.transparent,
+                  color: selectedTab == 'budgets'
+                      ? Colors.white
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: selectedTab == 'budgets'
                       ? [
@@ -271,8 +273,12 @@ class _BudgetListScreenState extends State<BudgetListScreen>
                   'Ngân sách',
                   textAlign: TextAlign.center,
                   style: AppTypography.body.copyWith(
-                    color: selectedTab == 'budgets' ? AppColors.primary500 : AppColors.textSecondary,
-                    fontWeight: selectedTab == 'budgets' ? FontWeight.w600 : FontWeight.normal,
+                    color: selectedTab == 'budgets'
+                        ? AppColors.primary500
+                        : AppColors.textSecondary,
+                    fontWeight: selectedTab == 'budgets'
+                        ? FontWeight.w600
+                        : FontWeight.normal,
                   ),
                 ),
               ),
@@ -288,7 +294,9 @@ class _BudgetListScreenState extends State<BudgetListScreen>
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: selectedTab == 'goals' ? Colors.white : Colors.transparent,
+                  color: selectedTab == 'goals'
+                      ? Colors.white
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: selectedTab == 'goals'
                       ? [
@@ -304,8 +312,12 @@ class _BudgetListScreenState extends State<BudgetListScreen>
                   'Mục tiêu',
                   textAlign: TextAlign.center,
                   style: AppTypography.body.copyWith(
-                    color: selectedTab == 'goals' ? AppColors.primary500 : AppColors.textSecondary,
-                    fontWeight: selectedTab == 'goals' ? FontWeight.w600 : FontWeight.normal,
+                    color: selectedTab == 'goals'
+                        ? AppColors.primary500
+                        : AppColors.textSecondary,
+                    fontWeight: selectedTab == 'goals'
+                        ? FontWeight.w600
+                        : FontWeight.normal,
                   ),
                 ),
               ),
@@ -329,16 +341,14 @@ class _BudgetListScreenState extends State<BudgetListScreen>
 
   Widget _buildBudgetCard(BudgetItem budget) {
     final progressPercentage = (budget.spentAmount / budget.totalAmount) * 100;
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       child: GestureDetector(
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => BudgetOverviewScreen(),
-            ),
+            MaterialPageRoute(builder: (context) => BudgetOverviewScreen()),
           );
         },
         child: Container(
@@ -388,9 +398,14 @@ class _BudgetListScreenState extends State<BudgetListScreen>
                             ),
                             if (budget.isActive)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.success.withValues(alpha: 0.1),
+                                  color: AppColors.success.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
@@ -497,16 +512,13 @@ class _BudgetListScreenState extends State<BudgetListScreen>
     return Consumer<SavingsService>(
       builder: (context, savingsService, child) {
         final savingsGoals = savingsService.activeSavingsGoals;
-        
+
         if (savingsGoals.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  '💰',
-                  style: const TextStyle(fontSize: 64),
-                ),
+                Text('💰', style: const TextStyle(fontSize: 64)),
                 const SizedBox(height: 16),
                 Text(
                   'Chưa có mục tiêu tiết kiệm',
@@ -525,7 +537,7 @@ class _BudgetListScreenState extends State<BudgetListScreen>
             ),
           );
         }
-        
+
         return ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           itemCount: savingsGoals.length,
@@ -541,7 +553,7 @@ class _BudgetListScreenState extends State<BudgetListScreen>
   Widget _buildSavingsGoalCard(SavingsGoal goal) {
     final progressPercentage = goal.progressPercentage;
     final savingsService = Provider.of<SavingsService>(context, listen: false);
-    
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -566,117 +578,117 @@ class _BudgetListScreenState extends State<BudgetListScreen>
           ],
         ),
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: goal.color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: goal.color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    savingsService.getCategoryIcon(goal.category),
+                    color: goal.color,
+                    size: 24,
+                  ),
                 ),
-                child: Icon(
-                  savingsService.getCategoryIcon(goal.category),
-                  color: goal.color,
-                  size: 24,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        goal.name,
+                        style: AppTypography.h5.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${savingsService.getCategoryDisplayName(goal.category)} • Đến ${goal.targetDate.day}/${goal.targetDate.month}/${goal.targetDate.year}',
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Progress bar
+            Container(
+              height: 8,
+              decoration: BoxDecoration(
+                color: AppColors.dark200,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: (progressPercentage / 100).clamp(0.0, 1.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: goal.color,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      goal.name,
-                      style: AppTypography.h5.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${savingsService.getCategoryDisplayName(goal.category)} • Đến ${goal.targetDate.day}/${goal.targetDate.month}/${goal.targetDate.year}',
+                      'Đã tiết kiệm',
                       style: AppTypography.caption.copyWith(
                         color: AppColors.textSecondary,
                       ),
                     ),
+                    Text(
+                      formatCurrency(goal.currentAmount),
+                      style: AppTypography.body.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Progress bar
-          Container(
-            height: 8,
-            decoration: BoxDecoration(
-              color: AppColors.dark200,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: (progressPercentage / 100).clamp(0.0, 1.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: goal.color,
-                  borderRadius: BorderRadius.circular(4),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Mục tiêu',
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      formatCurrency(goal.targetAmount),
+                      style: AppTypography.body.copyWith(
+                        color: goal.color,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${progressPercentage.toInt()}% hoàn thành',
+              style: AppTypography.caption.copyWith(
+                color: goal.color,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Đã tiết kiệm',
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    formatCurrency(goal.currentAmount),
-                    style: AppTypography.body.copyWith(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'Mục tiêu',
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    formatCurrency(goal.targetAmount),
-                    style: AppTypography.body.copyWith(
-                      color: goal.color,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${progressPercentage.toInt()}% hoàn thành',
-            style: AppTypography.caption.copyWith(
-              color: goal.color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -715,7 +727,7 @@ class _BudgetListScreenState extends State<BudgetListScreen>
                 ),
               ),
               const SizedBox(height: 20),
-              
+
               // Create Budget Option
               ListTile(
                 leading: Container(
@@ -752,9 +764,9 @@ class _BudgetListScreenState extends State<BudgetListScreen>
                   );
                 },
               ),
-              
+
               const SizedBox(height: 8),
-              
+
               // Create Savings Goal Option
               ListTile(
                 leading: Container(
@@ -763,10 +775,7 @@ class _BudgetListScreenState extends State<BudgetListScreen>
                     color: AppColors.success.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(
-                    Icons.savings,
-                    color: AppColors.success,
-                  ),
+                  child: Icon(Icons.savings, color: AppColors.success),
                 ),
                 title: Text(
                   'Tạo mục tiêu tiết kiệm',
@@ -791,7 +800,7 @@ class _BudgetListScreenState extends State<BudgetListScreen>
                   );
                 },
               ),
-              
+
               const SizedBox(height: 20),
             ],
           ),

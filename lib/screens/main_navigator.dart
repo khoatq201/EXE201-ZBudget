@@ -3,7 +3,7 @@ import '../constants/colors.dart';
 import 'home/new_dashboard_screen.dart';
 import './budget/budget_list_screen.dart';
 import './group/group_list_screen.dart';
-import './challenge_screen.dart';
+import 'challenge_screen.dart';
 import './reports_screen.dart';
 import './settings_screen.dart';
 

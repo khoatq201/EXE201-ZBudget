@@ -69,7 +69,8 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
     with TickerProviderStateMixin {
   final TextEditingController _budgetNameController = TextEditingController();
   final TextEditingController _totalBudgetController = TextEditingController();
-  final TextEditingController _monthlyIncomeController = TextEditingController();
+  final TextEditingController _monthlyIncomeController =
+      TextEditingController();
 
   BudgetPeriod _selectedPeriod = BudgetPeriod.monthly;
   String? _selectedTemplateId;
@@ -402,21 +403,15 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
       vsync: this,
     );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
+    _slideAnimation = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+        .animate(
+          CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+        );
 
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeIn,
-    ));
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeIn));
 
     _slideController.forward();
     _fadeController.forward();
@@ -464,14 +459,16 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
     if (totalBudget > 0) {
       setState(() {
         for (var category in _categories.where((c) => c.isSelected)) {
-          category.allocatedAmount = (totalBudget * category.percentage / 100).round();
+          category.allocatedAmount = (totalBudget * category.percentage / 100)
+              .round();
         }
       });
     }
   }
 
   Future<void> _saveBudget() async {
-    if (_budgetNameController.text.isEmpty || _totalBudgetController.text.isEmpty) {
+    if (_budgetNameController.text.isEmpty ||
+        _totalBudgetController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin')),
       );
@@ -497,9 +494,9 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
 
       Navigator.pop(context);
     } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Lỗi: $error')));
     } finally {
       setState(() {
         _isLoading = false;
@@ -632,7 +629,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Budget Name
           Text(
             'Tên ngân sách',
@@ -714,17 +711,23 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                     margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primary500 : AppColors.backgroundSecondary,
+                      color: isSelected
+                          ? AppColors.primary500
+                          : AppColors.backgroundSecondary,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: isSelected ? AppColors.primary500 : AppColors.dark300,
+                        color: isSelected
+                            ? AppColors.primary500
+                            : AppColors.dark300,
                       ),
                     ),
                     child: Text(
                       getPeriodText(period),
                       textAlign: TextAlign.center,
                       style: AppTypography.caption.copyWith(
-                        color: isSelected ? Colors.white : AppColors.textSecondary,
+                        color: isSelected
+                            ? Colors.white
+                            : AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -771,9 +774,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
           const SizedBox(height: 8),
           Text(
             'Chọn mẫu phù hợp với hoàn cảnh của bạn',
-            style: AppTypography.body.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: AppTypography.body.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 16),
           Column(
@@ -786,10 +787,14 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primary500.withValues(alpha: 0.1) : AppColors.backgroundSecondary,
+                      color: isSelected
+                          ? AppColors.primary500.withValues(alpha: 0.1)
+                          : AppColors.backgroundSecondary,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? AppColors.primary500 : AppColors.dark300,
+                        color: isSelected
+                            ? AppColors.primary500
+                            : AppColors.dark300,
                         width: isSelected ? 2 : 1,
                       ),
                     ),
@@ -798,7 +803,9 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isSelected ? AppColors.primary500 : AppColors.dark300,
+                            color: isSelected
+                                ? AppColors.primary500
+                                : AppColors.dark300,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -887,9 +894,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
           const SizedBox(height: 8),
           Text(
             'Chọn và phân bổ ngân sách cho từng danh mục',
-            style: AppTypography.body.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: AppTypography.body.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 16),
           GridView.builder(
@@ -914,12 +919,14 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: category.isSelected 
-                        ? category.color.withValues(alpha: 0.1) 
+                    color: category.isSelected
+                        ? category.color.withValues(alpha: 0.1)
                         : AppColors.backgroundSecondary,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: category.isSelected ? category.color : AppColors.dark300,
+                      color: category.isSelected
+                          ? category.color
+                          : AppColors.dark300,
                       width: category.isSelected ? 2 : 1,
                     ),
                   ),
@@ -949,7 +956,8 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      if (category.isSelected && category.allocatedAmount > 0) ...[
+                      if (category.isSelected &&
+                          category.allocatedAmount > 0) ...[
                         const SizedBox(height: 4),
                         Text(
                           formatCurrency(category.allocatedAmount),
@@ -1001,28 +1009,28 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
             ],
           ),
           const SizedBox(height: 16),
-          
+
           _buildSwitchOption(
             'Tự động tiết kiệm',
             'Tự động chuyển tiền dư vào tiết kiệm',
             _autoSaving,
             (value) => setState(() => _autoSaving = value),
           ),
-          
+
           _buildSwitchOption(
             'Quỹ khẩn cấp',
             'Dành riêng 10% cho tình huống khẩn cấp',
             _emergencyFund,
             (value) => setState(() => _emergencyFund = value),
           ),
-          
+
           _buildSwitchOption(
             'Thông báo thông minh',
             'Nhận cảnh báo khi chi tiêu vượt mức',
             _smartAlerts,
             (value) => setState(() => _smartAlerts = value),
           ),
-          
+
           _buildSwitchOption(
             'Báo cáo hàng tuần',
             'Nhận báo cáo chi tiêu mỗi tuần',
@@ -1034,7 +1042,12 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
     );
   }
 
-  Widget _buildSwitchOption(String title, String subtitle, bool value, Function(bool) onChanged) {
+  Widget _buildSwitchOption(
+    String title,
+    String subtitle,
+    bool value,
+    Function(bool) onChanged,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(

@@ -13,12 +13,7 @@ enum SavingsCategory {
   other,
 }
 
-enum SavingsPriority {
-  low,
-  medium,
-  high,
-  urgent,
-}
+enum SavingsPriority { low, medium, high, urgent }
 
 class SavingsGoal {
   final String id;
@@ -54,7 +49,7 @@ class SavingsGoal {
   double get progressPercentage => (currentAmount / targetAmount) * 100;
   int get remainingAmount => targetAmount - currentAmount;
   bool get isCompleted => currentAmount >= targetAmount;
-  
+
   int get remainingDays {
     final now = DateTime.now();
     final difference = targetDate.difference(now);

@@ -5,11 +5,12 @@ import 'providers/app_provider.dart';
 import 'services/expense_service.dart';
 import 'services/savings_service.dart';
 import 'services/group_service.dart';
+import 'services/challenge_service.dart';
+import 'services/profile_service.dart';
+import 'services/currency_service.dart';
 import 'constants/colors.dart';
 import 'constants/typography.dart';
-import 'screens/onboarding_screen.dart';
-import 'screens/main_navigator.dart';
-import 'screens/auth/login_screen.dart';
+import 'screens/initialization_wrapper.dart';
 
 void main() {
   runApp(const ZBudgetApp());
@@ -26,6 +27,9 @@ class ZBudgetApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ExpenseService()),
         ChangeNotifierProvider(create: (_) => SavingsService()),
         ChangeNotifierProvider(create: (_) => GroupService()),
+        ChangeNotifierProvider(create: (_) => ChallengeService()),
+        ChangeNotifierProvider(create: (_) => ProfileService()),
+        ChangeNotifierProvider(create: (_) => CurrencyService()),
       ],
       child: Consumer<AppProvider>(
         builder: (context, appProvider, child) {
@@ -55,11 +59,7 @@ class ZBudgetApp extends StatelessWidget {
               ),
             ),
             themeMode: appProvider.themeMode,
-            home: appProvider.isFirstLaunch
-                ? const OnboardingScreen()
-                : (appProvider.isAuthenticated
-                      ? const MainNavigator()
-                      : const LoginScreen()),
+            home: const InitializationWrapper(),
           );
         },
       ),

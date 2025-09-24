@@ -5,6 +5,15 @@ import '../providers/app_provider.dart';
 import '../constants/colors.dart';
 import '../constants/typography.dart';
 import '../constants/spacing.dart';
+import 'settings/profile/profile_screen_simple.dart';
+import 'settings/security/security_screen_simple.dart';
+import 'settings/notifications/notifications_screen.dart';
+import 'settings/theme/theme_screen.dart';
+import 'settings/language/language_screen.dart';
+import 'settings/currency/currency_screen.dart';
+import 'settings/help/help_screen.dart';
+import 'settings/feedback/feedback_screen.dart';
+import 'settings/about/about_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -27,19 +36,37 @@ class SettingsScreen extends StatelessWidget {
             icon: Icons.person,
             title: 'Thông tin cá nhân',
             subtitle: 'Cập nhật thông tin cá nhân',
-            onTap: () {},
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+              );
+            },
           ),
           _buildSettingItem(
             icon: Icons.notifications,
             title: 'Thông báo',
             subtitle: 'Quản lý thông báo',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationsScreen(),
+                ),
+              );
+            },
           ),
           _buildSettingItem(
             icon: Icons.security,
             title: 'Bảo mật',
             subtitle: 'Mật khẩu và xác thực',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SecurityScreenSimple(),
+                ),
+              );
+            },
           ),
 
           const SizedBox(height: AppSpacing.sectionSpacing),
@@ -49,19 +76,34 @@ class SettingsScreen extends StatelessWidget {
             icon: Icons.palette,
             title: 'Giao diện',
             subtitle: 'Thay đổi theme và màu sắc',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ThemeScreen()),
+              );
+            },
           ),
           _buildSettingItem(
             icon: Icons.language,
             title: 'Ngôn ngữ',
             subtitle: 'Tiếng Việt',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const LanguageScreen()),
+              );
+            },
           ),
           _buildSettingItem(
             icon: Icons.currency_exchange,
             title: 'Tiền tệ',
             subtitle: 'VND',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CurrencyScreen()),
+              );
+            },
           ),
 
           const SizedBox(height: AppSpacing.sectionSpacing),
@@ -71,19 +113,34 @@ class SettingsScreen extends StatelessWidget {
             icon: Icons.help,
             title: 'Trợ giúp',
             subtitle: 'Hướng dẫn sử dụng',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HelpScreen()),
+              );
+            },
           ),
           _buildSettingItem(
             icon: Icons.feedback,
             title: 'Gửi phản hồi',
             subtitle: 'Đóng góp ý kiến',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const FeedbackScreen()),
+              );
+            },
           ),
           _buildSettingItem(
             icon: Icons.info,
             title: 'Về ứng dụng',
             subtitle: 'Phiên bản 1.0.0',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AboutScreen()),
+              );
+            },
           ),
 
           const SizedBox(height: AppSpacing.sectionSpacing),

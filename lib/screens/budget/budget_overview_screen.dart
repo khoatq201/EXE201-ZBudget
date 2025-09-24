@@ -42,18 +42,11 @@ class _BudgetOverviewScreenState extends State<BudgetOverviewScreen>
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    ));
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
 
-    _progressAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _progressController,
-      curve: Curves.easeOutCubic,
-    ));
+    _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _progressController, curve: Curves.easeOutCubic),
+    );
 
     _fadeController.forward();
     _progressController.forward();
@@ -62,7 +55,7 @@ class _BudgetOverviewScreenState extends State<BudgetOverviewScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final expenseService = context.read<ExpenseService>();
       expenseService.initializeSampleBudget();
-      
+
       setState(() {
         currentBudget = expenseService.getBudgetById('1');
       });
@@ -77,10 +70,7 @@ class _BudgetOverviewScreenState extends State<BudgetOverviewScreen>
   }
 
   String formatCurrency(int amount) {
-    return '${amount.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]},',
-    )} VND';
+    return '${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} VND';
   }
 
   String _getCategoryName(ExpenseCategory category) {
@@ -109,17 +99,16 @@ class _BudgetOverviewScreenState extends State<BudgetOverviewScreen>
     // Lắng nghe thay đổi từ ExpenseService
     final expenseService = context.watch<ExpenseService>();
     currentBudget = expenseService.getBudgetById('1');
-    
+
     if (currentBudget == null) {
       return Scaffold(
         backgroundColor: AppColors.backgroundPrimary,
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
-    final progressPercentage = (currentBudget!.spentAmount / currentBudget!.totalAmount) * 100;
+    final progressPercentage =
+        (currentBudget!.spentAmount / currentBudget!.totalAmount) * 100;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -148,10 +137,7 @@ class _BudgetOverviewScreenState extends State<BudgetOverviewScreen>
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppColors.primary500,
-            AppColors.primary400,
-          ],
+          colors: [AppColors.primary500, AppColors.primary400],
         ),
       ),
       child: Padding(
@@ -239,7 +225,10 @@ class _BudgetOverviewScreenState extends State<BudgetOverviewScreen>
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primary500.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -267,12 +256,16 @@ class _BudgetOverviewScreenState extends State<BudgetOverviewScreen>
                 builder: (context, child) {
                   return FractionallySizedBox(
                     alignment: Alignment.centerLeft,
-                    widthFactor: (progressPercentage / 100) * _progressAnimation.value,
+                    widthFactor:
+                        (progressPercentage / 100) * _progressAnimation.value,
                     child: Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: progressPercentage > 80
-                              ? [const Color(0xFFFF6B6B), const Color(0xFFFF8E8E)]
+                              ? [
+                                  const Color(0xFFFF6B6B),
+                                  const Color(0xFFFF8E8E),
+                                ]
                               : [AppColors.primary500, AppColors.primary400],
                         ),
                         borderRadius: BorderRadius.circular(4),
@@ -308,7 +301,9 @@ class _BudgetOverviewScreenState extends State<BudgetOverviewScreen>
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      formatCurrency(currentBudget!.totalAmount - currentBudget!.spentAmount),
+                      formatCurrency(
+                        currentBudget!.totalAmount - currentBudget!.spentAmount,
+                      ),
                       style: AppTypography.h4.copyWith(
                         color: AppColors.primary500,
                         fontWeight: FontWeight.bold,
@@ -432,9 +427,7 @@ class _BudgetOverviewScreenState extends State<BudgetOverviewScreen>
               padding: const EdgeInsets.only(top: 4),
               child: Text(
                 'Vượt ngân sách ${((progress - 1) * 100).toInt()}%',
-                style: AppTypography.caption.copyWith(
-                  color: Colors.red,
-                ),
+                style: AppTypography.caption.copyWith(color: Colors.red),
               ),
             ),
         ],
@@ -461,7 +454,7 @@ class _BudgetOverviewScreenState extends State<BudgetOverviewScreen>
                           ),
                         ),
                       );
-                      
+
                       // Refresh dữ liệu nếu có thay đổi
                       if (result == true && mounted) {
                         setState(() {

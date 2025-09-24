@@ -10,7 +10,7 @@ import 'edit_expense_screen.dart';
 
 class GroupDetailScreen extends StatefulWidget {
   final Group group;
-  
+
   const GroupDetailScreen({super.key, required this.group});
 
   @override
@@ -30,9 +30,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeIn),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeIn));
     _fadeController.forward();
   }
 
@@ -55,10 +56,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         backgroundColor: widget.group.primaryColor,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: _shareGroup,
-          ),
+          IconButton(icon: const Icon(Icons.share), onPressed: _shareGroup),
           IconButton(
             icon: const Icon(Icons.more_vert),
             onPressed: _showGroupSettings,
@@ -69,11 +67,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         opacity: _fadeAnimation,
         child: SingleChildScrollView(
           child: Column(
-            children: [
-              _buildGroupHeader(),
-              _buildTabBar(),
-              _buildTabContent(),
-            ],
+            children: [_buildGroupHeader(), _buildTabBar(), _buildTabContent()],
           ),
         ),
       ),
@@ -88,7 +82,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   Widget _buildGroupHeader() {
     final progressPercentage = widget.group.spentPercentage / 100;
     final remaining = widget.group.totalBudget - widget.group.spent;
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -118,18 +112,12 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                   children: [
                     Text(
                       widget.group.description,
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 16,
-                      ),
+                      style: const TextStyle(color: Colors.grey, fontSize: 16),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       '${widget.group.members.length} thành viên',
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 14,
-                      ),
+                      style: const TextStyle(color: Colors.grey, fontSize: 14),
                     ),
                   ],
                 ),
@@ -137,7 +125,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             ],
           ),
           const SizedBox(height: 24),
-          
+
           // Thống kê ngân sách
           Row(
             children: [
@@ -165,7 +153,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             ],
           ),
           const SizedBox(height: 16),
-          
+
           // Progress bar
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,10 +163,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                 children: [
                   const Text(
                     'Tiến độ chi tiêu',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.grey, fontSize: 14),
                   ),
                   Text(
                     '${(progressPercentage * 100).toStringAsFixed(1)}%',
@@ -199,8 +184,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                     progressPercentage > 0.8
                         ? AppColors.error
                         : progressPercentage > 0.6
-                            ? AppColors.warning
-                            : AppColors.success,
+                        ? AppColors.warning
+                        : AppColors.success,
                   ),
                   minHeight: 8,
                 ),
@@ -216,13 +201,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 12,
-          ),
-        ),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
         const SizedBox(height: 4),
         Text(
           value,
@@ -303,20 +282,16 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   }
 
   Widget _buildBalancesSection() {
-    final membersWithBalance = widget.group.members
-        .where((m) => m.balance != 0)
-        .toList()
-      ..sort((a, b) => b.balance.compareTo(a.balance));
+    final membersWithBalance =
+        widget.group.members.where((m) => m.balance != 0).toList()
+          ..sort((a, b) => b.balance.compareTo(a.balance));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'Cân bằng thanh toán',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
         ),
         const SizedBox(height: 16),
         if (membersWithBalance.isEmpty)
@@ -329,11 +304,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             ),
             child: Column(
               children: [
-                Icon(
-                  Icons.check_circle,
-                  color: AppColors.success,
-                  size: 48,
-                ),
+                Icon(Icons.check_circle, color: AppColors.success, size: 48),
                 const SizedBox(height: 12),
                 Text(
                   'Tất cả đã thanh toán!',
@@ -345,10 +316,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                 ),
                 Text(
                   'Không ai nợ ai cả',
-                  style: TextStyle(
-                    color: AppColors.success,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: AppColors.success, fontSize: 14),
                 ),
               ],
             ),
@@ -375,10 +343,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         children: [
           CircleAvatar(
             backgroundColor: isPositive ? AppColors.success : AppColors.error,
-            child: Text(
-              member.avatar,
-              style: const TextStyle(fontSize: 16),
-            ),
+            child: Text(member.avatar, style: const TextStyle(fontSize: 16)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -394,10 +359,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                 ),
                 Text(
                   isPositive ? 'Được nợ' : 'Đang nợ',
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],
             ),
@@ -416,9 +378,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   }
 
   Widget _buildRecentTransactions() {
-    final recentTransactions = widget.group.transactions
-        .take(5)
-        .toList();
+    final recentTransactions = widget.group.transactions.take(5).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -428,19 +388,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
           children: [
             const Text(
               'Giao dịch gần đây',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 18,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
             ),
             TextButton(
               onPressed: () => setState(() => activeTab = 'transactions'),
               child: Text(
                 'Xem tất cả',
-                style: TextStyle(
-                  color: AppColors.primary500,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: AppColors.primary500, fontSize: 14),
               ),
             ),
           ],
@@ -454,7 +408,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             ),
           )
         else
-          ...recentTransactions.map((transaction) => _buildTransactionItem(transaction)),
+          ...recentTransactions.map(
+            (transaction) => _buildTransactionItem(transaction),
+          ),
       ],
     );
   }
@@ -467,10 +423,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         children: [
           const Text(
             'Tất cả giao dịch',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 18,
-            ),
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
           ),
           const SizedBox(height: 16),
           if (widget.group.transactions.isEmpty)
@@ -481,7 +434,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
               ),
             )
           else
-            ...widget.group.transactions.map((transaction) => _buildTransactionItem(transaction)),
+            ...widget.group.transactions.map(
+              (transaction) => _buildTransactionItem(transaction),
+            ),
         ],
       ),
     );
@@ -490,9 +445,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   Widget _buildTransactionItem(GroupTransaction transaction) {
     final isExpense = transaction.type == TransactionType.expense;
     final isPayment = transaction.type == TransactionType.payment;
-    final currentUserId = Provider.of<GroupService>(context, listen: false).currentUserId;
-    final canEdit = transaction.paidBy == currentUserId; // Only who paid can edit
-    
+    final currentUserId = Provider.of<GroupService>(
+      context,
+      listen: false,
+    ).currentUserId;
+    final canEdit =
+        transaction.paidBy == currentUserId; // Only who paid can edit
+
     return Dismissible(
       key: Key(transaction.id),
       background: Container(
@@ -509,7 +468,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             SizedBox(width: 8),
             Text(
               'Chỉnh sửa',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -527,7 +489,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
           children: [
             Text(
               'Xóa',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             SizedBox(width: 8),
             Icon(Icons.delete, color: Colors.white),
@@ -537,7 +502,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       confirmDismiss: (direction) async {
         if (!canEdit) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Chỉ người trả tiền mới có thể chỉnh sửa/xóa giao dịch này')),
+            const SnackBar(
+              content: Text(
+                'Chỉ người trả tiền mới có thể chỉnh sửa/xóa giao dịch này',
+              ),
+            ),
           );
           return false;
         }
@@ -548,7 +517,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             context,
             MaterialPageRoute(
               builder: (context) => EditExpenseScreen(
-                group: widget.group, 
+                group: widget.group,
                 transaction: transaction,
               ),
             ),
@@ -557,63 +526,75 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         } else {
           // Delete
           return await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Xóa giao dịch'),
-              content: const Text('Bạn có chắc chắn muốn xóa giao dịch này không?'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Hủy'),
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Xóa giao dịch'),
+                  content: const Text(
+                    'Bạn có chắc chắn muốn xóa giao dịch này không?',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Hủy'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.error,
+                      ),
+                      child: const Text('Xóa'),
+                    ),
+                  ],
                 ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  style: TextButton.styleFrom(foregroundColor: AppColors.error),
-                  child: const Text('Xóa'),
-                ),
-              ],
-            ),
-          ) ?? false;
+              ) ??
+              false;
         }
       },
       onDismissed: (direction) async {
         if (direction == DismissDirection.endToStart) {
           // Delete transaction
           try {
-            final groupService = Provider.of<GroupService>(context, listen: false);
+            final groupService = Provider.of<GroupService>(
+              context,
+              listen: false,
+            );
             await groupService.deleteExpense(widget.group.id, transaction.id);
-            
+
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Giao dịch đã được xóa!')),
               );
             }
           } catch (e) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Lỗi xóa giao dịch: $e')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Lỗi xóa giao dịch: $e')));
           }
         }
       },
       child: InkWell(
-        onTap: canEdit ? () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => EditExpenseScreen(
-                group: widget.group, 
-                transaction: transaction,
-              ),
-            ),
-          );
-        } : null,
+        onTap: canEdit
+            ? () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EditExpenseScreen(
+                      group: widget.group,
+                      transaction: transaction,
+                    ),
+                  ),
+                );
+              }
+            : null,
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.grey[100],
             borderRadius: BorderRadius.circular(12),
-            border: canEdit ? Border.all(color: AppColors.primary200, width: 1) : null,
+            border: canEdit
+                ? Border.all(color: AppColors.primary200, width: 1)
+                : null,
           ),
           child: Row(
             children: [
@@ -647,7 +628,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                             ),
                           ),
                         ),
-                        if (canEdit) 
+                        if (canEdit)
                           Icon(
                             Icons.edit,
                             size: 16,
@@ -658,12 +639,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                     const SizedBox(height: 4),
                     Text(
                       '${transaction.paidByName} • ${transaction.formattedDate}',
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 12,
-                      ),
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
-                    if (transaction.notes != null && transaction.notes!.isNotEmpty) ...[
+                    if (transaction.notes != null &&
+                        transaction.notes!.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
                         transaction.notes!,
@@ -681,7 +660,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    isExpense ? '-${formatCurrency(transaction.amount)}' : '+${formatCurrency(transaction.amount)}',
+                    isExpense
+                        ? '-${formatCurrency(transaction.amount)}'
+                        : '+${formatCurrency(transaction.amount)}',
                     style: TextStyle(
                       color: isExpense ? AppColors.error : AppColors.success,
                       fontWeight: FontWeight.w700,
@@ -690,10 +671,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                   ),
                   Text(
                     transaction.category,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12,
-                    ),
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                 ],
               ),
@@ -722,10 +700,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
               ),
               IconButton(
                 onPressed: _inviteMembers,
-                icon: Icon(
-                  Icons.person_add,
-                  color: AppColors.primary500,
-                ),
+                icon: Icon(Icons.person_add, color: AppColors.primary500),
               ),
             ],
           ),
@@ -768,11 +743,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
                     ),
-                    child: const Icon(
-                      Icons.star,
-                      size: 8,
-                      color: Colors.white,
-                    ),
+                    child: const Icon(Icons.star, size: 8, color: Colors.white),
                   ),
                 ),
             ],
@@ -792,10 +763,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                 const SizedBox(height: 4),
                 Text(
                   'Đã trả: ${formatCurrency(member.totalPaid)}',
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],
             ),
@@ -804,19 +772,20 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                member.balance >= 0 ? '+${formatCurrency(member.balance)}' : formatCurrency(member.balance),
+                member.balance >= 0
+                    ? '+${formatCurrency(member.balance)}'
+                    : formatCurrency(member.balance),
                 style: TextStyle(
-                  color: member.balance >= 0 ? AppColors.success : AppColors.error,
+                  color: member.balance >= 0
+                      ? AppColors.success
+                      : AppColors.error,
                   fontWeight: FontWeight.w700,
                   fontSize: 14,
                 ),
               ),
               Text(
                 member.balance >= 0 ? 'Được nợ' : 'Đang nợ',
-                style: const TextStyle(
-                  color: Colors.grey,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ],
           ),
@@ -923,9 +892,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             onPressed: () {
               Navigator.pop(context);
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã rời khỏi nhóm')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Đã rời khỏi nhóm')));
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('Rời nhóm'),

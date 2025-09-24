@@ -30,7 +30,8 @@ class GroupMember {
   });
 
   bool get isOwner => role == GroupMemberRole.owner;
-  bool get isAdmin => role == GroupMemberRole.admin || role == GroupMemberRole.owner;
+  bool get isAdmin =>
+      role == GroupMemberRole.admin || role == GroupMemberRole.owner;
 
   GroupMember copyWith({
     String? id,
@@ -130,7 +131,7 @@ class GroupTransaction {
   String get formattedDate {
     final now = DateTime.now();
     final difference = now.difference(date);
-    
+
     if (difference.inDays == 0) {
       return 'Hôm nay';
     } else if (difference.inDays == 1) {
@@ -281,15 +282,16 @@ class Group {
   });
 
   double get balance => totalBudget - spent;
-  double get spentPercentage => totalBudget > 0 ? (spent / totalBudget) * 100 : 0;
+  double get spentPercentage =>
+      totalBudget > 0 ? (spent / totalBudget) * 100 : 0;
   int get memberCount => members.where((m) => m.isActive).length;
-  
+
   String get lastActivity {
     if (transactions.isEmpty) return 'Chưa có hoạt động';
-    
+
     final lastTransaction = transactions.last;
     final difference = DateTime.now().difference(lastTransaction.date);
-    
+
     if (difference.inMinutes < 60) {
       return '${difference.inMinutes} phút trước';
     } else if (difference.inHours < 24) {
@@ -311,11 +313,14 @@ class Group {
     return HSVColor.fromAHSV(1.0, hue, 0.7, 0.8).toColor();
   }
 
-  List<GroupMember> get membersWithBalance => members.where((m) => m.balance != 0).toList();
-  
-  List<GroupMember> get membersOwing => members.where((m) => m.balance < 0).toList();
-  
-  List<GroupMember> get membersOwed => members.where((m) => m.balance > 0).toList();
+  List<GroupMember> get membersWithBalance =>
+      members.where((m) => m.balance != 0).toList();
+
+  List<GroupMember> get membersOwing =>
+      members.where((m) => m.balance < 0).toList();
+
+  List<GroupMember> get membersOwed =>
+      members.where((m) => m.balance > 0).toList();
 
   Group copyWith({
     String? id,

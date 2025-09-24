@@ -12,13 +12,11 @@ import 'add_savings_contribution_screen.dart';
 class SavingsGoalDetailScreen extends StatefulWidget {
   final String goalId;
 
-  const SavingsGoalDetailScreen({
-    super.key,
-    required this.goalId,
-  });
+  const SavingsGoalDetailScreen({super.key, required this.goalId});
 
   @override
-  State<SavingsGoalDetailScreen> createState() => _SavingsGoalDetailScreenState();
+  State<SavingsGoalDetailScreen> createState() =>
+      _SavingsGoalDetailScreenState();
 }
 
 class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
@@ -43,18 +41,11 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    ));
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
 
-    _progressAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _progressController,
-      curve: Curves.easeOutCubic,
-    ));
+    _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _progressController, curve: Curves.easeOutCubic),
+    );
 
     _fadeController.forward();
     _progressController.forward();
@@ -68,10 +59,7 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
   }
 
   String formatCurrency(int amount) {
-    return '${amount.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]},',
-    )} VND';
+    return '${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} VND';
   }
 
   String _getSavingsCategoryName(SavingsCategory category) {
@@ -104,14 +92,18 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
     final remainingAmount = goal.targetAmount - goal.currentAmount;
     final remainingDays = _calculateRemainingDays(goal.targetDate);
     if (remainingDays <= 0) return 0;
-    
+
     final remainingMonths = (remainingDays / 30).ceil();
-    return remainingMonths > 0 ? (remainingAmount / remainingMonths).ceil() : remainingAmount;
+    return remainingMonths > 0
+        ? (remainingAmount / remainingMonths).ceil()
+        : remainingAmount;
   }
 
   void _showEditGoalDialog(SavingsGoal goal) {
     final nameController = TextEditingController(text: goal.name);
-    final targetController = TextEditingController(text: goal.targetAmount.toString());
+    final targetController = TextEditingController(
+      text: goal.targetAmount.toString(),
+    );
     final descController = TextEditingController(text: goal.description);
 
     showDialog(
@@ -119,9 +111,7 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
       builder: (context) => AlertDialog(
         title: Text(
           'Chỉnh sửa mục tiêu',
-          style: AppTypography.h4.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: AppTypography.h4.copyWith(fontWeight: FontWeight.bold),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -164,7 +154,8 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
               final savingsService = context.read<SavingsService>();
               final updatedGoal = goal.copyWith(
                 name: nameController.text,
-                targetAmount: int.tryParse(targetController.text) ?? goal.targetAmount,
+                targetAmount:
+                    int.tryParse(targetController.text) ?? goal.targetAmount,
                 description: descController.text,
               );
               savingsService.updateSavingsGoal(updatedGoal);
@@ -186,9 +177,7 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
       builder: (context) => AlertDialog(
         title: Text(
           'Xóa mục tiêu',
-          style: AppTypography.h4.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: AppTypography.h4.copyWith(fontWeight: FontWeight.bold),
         ),
         content: Text(
           'Bạn có chắc chắn muốn xóa mục tiêu "${goal.name}"? Hành động này không thể hoàn tác.',
@@ -227,12 +216,8 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
     if (goal == null) {
       return Scaffold(
         backgroundColor: AppColors.backgroundPrimary,
-        appBar: AppBar(
-          title: const Text('Mục tiêu không tồn tại'),
-        ),
-        body: const Center(
-          child: Text('Mục tiêu tiết kiệm không tìm thấy'),
-        ),
+        appBar: AppBar(title: const Text('Mục tiêu không tồn tại')),
+        body: const Center(child: Text('Mục tiêu tiết kiệm không tìm thấy')),
       );
     }
 
@@ -376,7 +361,10 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: _getPriorityColor(goal.priority).withOpacity(0.2),
                   border: Border.all(
@@ -422,9 +410,12 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
                   ),
                   const SizedBox(height: 8),
                   LinearProgressIndicator(
-                    value: (progressPercentage / 100) * _progressAnimation.value,
+                    value:
+                        (progressPercentage / 100) * _progressAnimation.value,
                     backgroundColor: Colors.white.withOpacity(0.3),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Colors.white,
+                    ),
                     minHeight: 8,
                   ),
                   const SizedBox(height: 8),
@@ -438,9 +429,11 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
                         ),
                       ),
                       Text(
-                        goal.targetDate.day.toString().padLeft(2, '0') + '/' +
-                        goal.targetDate.month.toString().padLeft(2, '0') + '/' +
-                        goal.targetDate.year.toString(),
+                        goal.targetDate.day.toString().padLeft(2, '0') +
+                            '/' +
+                            goal.targetDate.month.toString().padLeft(2, '0') +
+                            '/' +
+                            goal.targetDate.year.toString(),
                         style: AppTypography.caption.copyWith(
                           color: Colors.white.withOpacity(0.8),
                         ),
@@ -456,7 +449,11 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
     );
   }
 
-  Widget _buildGoalStats(SavingsGoal goal, int remainingDays, int monthlyNeeded) {
+  Widget _buildGoalStats(
+    SavingsGoal goal,
+    int remainingDays,
+    int monthlyNeeded,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -475,9 +472,7 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
         children: [
           Text(
             'Thống kê',
-            style: AppTypography.h4.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: AppTypography.h4.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Row(
@@ -528,7 +523,12 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -586,9 +586,7 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
         children: [
           Text(
             'Chi tiết tiến độ',
-            style: AppTypography.h4.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: AppTypography.h4.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           if (goal.description.isNotEmpty) ...[
@@ -600,10 +598,7 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
               ),
             ),
             const SizedBox(height: 4),
-            Text(
-              goal.description,
-              style: AppTypography.body,
-            ),
+            Text(goal.description, style: AppTypography.body),
             const SizedBox(height: 16),
           ],
           Row(
@@ -674,9 +669,7 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
             children: [
               Text(
                 'Lịch sử đóng góp',
-                style: AppTypography.h4.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: AppTypography.h4.copyWith(fontWeight: FontWeight.bold),
               ),
               Text(
                 '${contributions.length} lần',
@@ -730,11 +723,7 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
                         color: Colors.green.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(
-                        Icons.add,
-                        color: Colors.green,
-                        size: 20,
-                      ),
+                      child: Icon(Icons.add, color: Colors.green, size: 20),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -801,12 +790,11 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen>
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => AddSavingsContributionScreen(
-                        goal: goal,
-                      ),
+                      builder: (context) =>
+                          AddSavingsContributionScreen(goal: goal),
                     ),
                   );
-                  
+
                   if (result == true && mounted) {
                     setState(() {});
                   }

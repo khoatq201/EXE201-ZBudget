@@ -8,7 +8,7 @@ import '../../constants/colors.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   final Group group;
-  
+
   const AddExpenseScreen({super.key, required this.group});
 
   @override
@@ -20,7 +20,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _descriptionController = TextEditingController();
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
-  
+
   String selectedCategory = 'food';
   String selectedCategoryIcon = '🍽️';
   GroupMember? paidBy;
@@ -28,7 +28,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   List<String> selectedParticipants = [];
   Map<String, double> customAmounts = {};
   DateTime selectedDate = DateTime.now();
-  
+
   final List<Map<String, dynamic>> expenseCategories = [
     {'id': 'food', 'name': 'Ăn uống', 'icon': '🍽️'},
     {'id': 'transport', 'name': 'Di chuyển', 'icon': '🚗'},
@@ -83,10 +83,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   void _updateCustomAmounts() {
     if (splitMethod == SplitMethod.equal) {
       final amount = double.tryParse(_amountController.text) ?? 0;
-      final perPerson = selectedParticipants.isNotEmpty 
-          ? amount / selectedParticipants.length 
+      final perPerson = selectedParticipants.isNotEmpty
+          ? amount / selectedParticipants.length
           : 0;
-      
+
       customAmounts.clear();
       for (String memberId in selectedParticipants) {
         customAmounts[memberId] = perPerson.toDouble();
@@ -108,10 +108,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   Future<void> _addExpense() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     if (selectedParticipants.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn ít nhất một người tham gia')),
+        const SnackBar(
+          content: Text('Vui lòng chọn ít nhất một người tham gia'),
+        ),
       );
       return;
     }
@@ -126,7 +128,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     try {
       final groupService = Provider.of<GroupService>(context, listen: false);
       final amount = double.parse(_amountController.text.replaceAll(',', ''));
-      
+
       // Tạo split details
       final splitDetails = <String, double>{};
       if (splitMethod == SplitMethod.equal) {
@@ -157,7 +159,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       );
 
       await groupService.addExpenseToGroup(widget.group.id, transaction);
-      
+
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -165,9 +167,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi thêm chi tiêu: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Lỗi thêm chi tiêu: $e')));
     }
   }
 
@@ -183,7 +185,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             onPressed: _addExpense,
             child: const Text(
               'Lưu',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -288,12 +293,17 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             return GestureDetector(
               onTap: () => _selectCategory(category),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? AppColors.primary500 : Colors.grey[200],
                   borderRadius: BorderRadius.circular(25),
                   border: Border.all(
-                    color: isSelected ? AppColors.primary500 : Colors.grey[300]!,
+                    color: isSelected
+                        ? AppColors.primary500
+                        : Colors.grey[300]!,
                   ),
                 ),
                 child: Row(
@@ -350,7 +360,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       backgroundColor: AppColors.primary500,
                       child: Text(
                         member.avatar,
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -440,7 +453,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         ),
         const SizedBox(height: 16),
         ...selectedParticipants.map((memberId) {
-          final member = widget.group.members.firstWhere((m) => m.id == memberId);
+          final member = widget.group.members.firstWhere(
+            (m) => m.id == memberId,
+          );
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Row(
@@ -465,7 +480,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                     ),
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    initialValue: customAmounts[memberId]?.toStringAsFixed(0) ?? '0',
+                    initialValue:
+                        customAmounts[memberId]?.toStringAsFixed(0) ?? '0',
                     onChanged: (value) {
                       final amount = double.tryParse(value) ?? 0;
                       setState(() => customAmounts[memberId] = amount);
