@@ -374,8 +374,6 @@ class CurrencyService extends ChangeNotifier {
     final popular = <Currency>[
       Currency.usd,
       Currency.eur,
-      Currency.jpy,
-      Currency.gbp,
       Currency.vnd,
     ];
 

@@ -1,12 +1,6 @@
 enum AppLanguage {
   vietnamese('vi', 'VI', 'Tiếng Việt', 'Vietnamese', '🇻🇳'),
-  english('en', 'EN', 'English', 'English', '🇺🇸'),
-  japanese('ja', 'JP', '日本語', 'Japanese', '🇯🇵'),
-  korean('ko', 'KR', '한국어', 'Korean', '🇰🇷'),
-  chinese('zh', 'CN', '中文', 'Chinese (Simplified)', '🇨🇳'),
-  french('fr', 'FR', 'Français', 'French', '🇫🇷'),
-  german('de', 'DE', 'Deutsch', 'German', '🇩🇪'),
-  spanish('es', 'ES', 'Español', 'Spanish', '🇪🇸');
+  english('en', 'EN', 'English', 'English', '🇺🇸');
 
   const AppLanguage(
     this.code,

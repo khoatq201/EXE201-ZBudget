@@ -5,24 +5,7 @@
 enum Currency {
   vnd('VND', 'đ', 'Vietnamese Dong', '🇻🇳', 'vi'),
   usd('USD', '\$', 'US Dollar', '🇺🇸', 'en'),
-  eur('EUR', '€', 'Euro', '🇪🇺', 'en'),
-  jpy('JPY', '¥', 'Japanese Yen', '🇯🇵', 'ja'),
-  krw('KRW', '₩', 'South Korean Won', '🇰🇷', 'ko'),
-  cny('CNY', '¥', 'Chinese Yuan', '🇨🇳', 'zh'),
-  gbp('GBP', '£', 'British Pound', '🇬🇧', 'en'),
-  aud('AUD', 'A\$', 'Australian Dollar', '🇦🇺', 'en'),
-  cad('CAD', 'C\$', 'Canadian Dollar', '🇨🇦', 'en'),
-  chf('CHF', 'CHF', 'Swiss Franc', '🇨🇭', 'de'),
-  sgd('SGD', 'S\$', 'Singapore Dollar', '🇸🇬', 'en'),
-  hkd('HKD', 'HK\$', 'Hong Kong Dollar', '🇭🇰', 'en'),
-  nzd('NZD', 'NZ\$', 'New Zealand Dollar', '🇳🇿', 'en'),
-  sek('SEK', 'kr', 'Swedish Krona', '🇸🇪', 'sv'),
-  nok('NOK', 'kr', 'Norwegian Krone', '🇳🇴', 'no'),
-  dkk('DKK', 'kr', 'Danish Krone', '🇩🇰', 'da'),
-  inr('INR', '₹', 'Indian Rupee', '🇮🇳', 'hi'),
-  thb('THB', '฿', 'Thai Baht', '🇹🇭', 'th'),
-  myr('MYR', 'RM', 'Malaysian Ringgit', '🇲🇾', 'ms'),
-  php('PHP', '₱', 'Philippine Peso', '🇵🇭', 'fil');
+  eur('EUR', '€', 'Euro', '🇪🇺', 'en');
 
   const Currency(this.code, this.symbol, this.name, this.flag, this.locale);
 
@@ -45,35 +28,16 @@ enum Currency {
   static List<Currency> get majorCurrencies => [
     Currency.usd,
     Currency.eur,
-    Currency.jpy,
-    Currency.gbp,
-    Currency.aud,
-    Currency.cad,
-    Currency.chf,
   ];
 
   /// Get Asian currencies
   static List<Currency> get asianCurrencies => [
     Currency.vnd,
-    Currency.jpy,
-    Currency.krw,
-    Currency.cny,
-    Currency.sgd,
-    Currency.hkd,
-    Currency.inr,
-    Currency.thb,
-    Currency.myr,
-    Currency.php,
   ];
 
   /// Get European currencies
   static List<Currency> get europeanCurrencies => [
     Currency.eur,
-    Currency.gbp,
-    Currency.chf,
-    Currency.sek,
-    Currency.nok,
-    Currency.dkk,
   ];
 
   /// Get all currencies grouped by region
@@ -81,7 +45,6 @@ enum Currency {
     'Major': majorCurrencies,
     'Asian': asianCurrencies,
     'European': europeanCurrencies,
-    'Others': [Currency.nzd],
   };
 }
 

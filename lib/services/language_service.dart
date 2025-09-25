@@ -259,18 +259,12 @@ class LanguageService extends ChangeNotifier {
   List<AppLanguage> getAsianLanguages() {
     return [
       AppLanguage.vietnamese,
-      AppLanguage.japanese,
-      AppLanguage.korean,
-      AppLanguage.chinese,
     ];
   }
 
   List<AppLanguage> getEuropeanLanguages() {
     return [
       AppLanguage.english,
-      AppLanguage.french,
-      AppLanguage.german,
-      AppLanguage.spanish,
     ];
   }
 
@@ -297,16 +291,10 @@ class LanguageService extends ChangeNotifier {
     final language = _languageSettings.language;
     if ([
       AppLanguage.vietnamese,
-      AppLanguage.japanese,
-      AppLanguage.korean,
-      AppLanguage.chinese,
     ].contains(language)) {
       return 'Châu Á';
     } else if ([
       AppLanguage.english,
-      AppLanguage.french,
-      AppLanguage.german,
-      AppLanguage.spanish,
     ].contains(language)) {
       return 'Châu Âu/Mỹ';
     }
