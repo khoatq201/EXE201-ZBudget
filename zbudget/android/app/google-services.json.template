@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "996746380802",
+    "project_id": "your-project-id",
+    "storage_bucket": "your-project-id.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:996746380802:android:YOUR_APP_ID",
+        "android_client_info": {
+          "package_name": "com.example.zbudget"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "996746380802-c7hh05j9jqtr2jpbidajq4g8hel30p0f.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.zbudget",
+            "certificate_hash": "23f68b905179"
+          }
+        },
+        {
+          "client_id": "996746380802-ANDROID_CLIENT_ID.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "YOUR_API_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "996746380802-c7hh05j9jqtr2jpbidajq4g8hel30p0f.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

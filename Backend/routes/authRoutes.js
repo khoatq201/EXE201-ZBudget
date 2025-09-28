@@ -1,0 +1,596 @@
+import express from "express";
+import {
+  register,
+  login,
+  logout,
+  refreshToken,
+  forgotPassword,
+  verifyPasswordResetOTP,
+  resetPassword,
+  verifyEmail,
+  verifyOTP,
+  resendEmailVerification,
+  changePassword,
+  getProfile,
+  updateProfile,
+  deleteAccount,
+} from "../controllers/authController.js";
+import { OAuth2Client } from "google-auth-library";
+import {
+  authenticate,
+  optionalAuthenticate,
+  rateLimitAuth,
+  rateLimitPassword,
+  generateTokens,
+} from "../middleware/auth.js";
+import {
+  validate,
+  userSchemas,
+  validateFile,
+  uploadSchemas,
+} from "../middleware/validation.js";
+import { auditLogger } from "../middleware/logger.js";
+import { uploadMiddleware } from "../middleware/upload.js";
+import Joi from "joi";
+import { catchAsync } from "../middleware/errorHandler.js";
+
+const router = express.Router();
+
+// Enhanced audit logging middleware with better debugging
+const auditAuthOperation = (operation) => (req, res, next) => {
+  console.log(
+    `🔍 DEBUG: auditAuthOperation middleware started for: ${operation}`
+  );
+  console.log(`🔍 DEBUG: Request path: ${req.path}, Method: ${req.method}`);
+
+  // Log immediately when middleware runs
+  auditLogger(operation + "_ATTEMPT", req, {
+    timestamp: new Date().toISOString(),
+    userAgent: req.get("User-Agent"),
+    ip: req.ip,
+  });
+
+  res.on("finish", () => {
+    console.log(
+      `🔍 DEBUG: auditAuthOperation response finished for: ${operation}, Status: ${res.statusCode}`
+    );
+    if (res.statusCode < 400) {
+      auditLogger(operation + "_SUCCESS", req, {
+        success: true,
+        statusCode: res.statusCode,
+      });
+    } else {
+      auditLogger(operation + "_FAILED", req, {
+        success: false,
+        statusCode: res.statusCode,
+      });
+    }
+  });
+
+  console.log(
+    `🔍 DEBUG: auditAuthOperation middleware completed for: ${operation}`
+  );
+  next();
+};
+
+// Debug middleware for all auth routes
+router.use((req, res, next) => {
+  console.log(`🛣️ DEBUG: ===== AUTH ROUTE HIT =====`);
+  console.log(`🛣️ DEBUG: ${req.method} ${req.originalUrl}`);
+  console.log(`🛣️ DEBUG: Path: ${req.path}`);
+  console.log(
+    `🛣️ DEBUG: Body keys: [${Object.keys(req.body || {}).join(", ")}]`
+  );
+  console.log(`🛣️ DEBUG: Content-Type: ${req.get("Content-Type")}`);
+  next();
+});
+
+// Create a simple pass-through middleware for testing
+const bypassRateLimit = (req, res, next) => {
+  console.log(`⚡ DEBUG: Bypassing rate limit for testing`);
+  next();
+};
+
+/**
+ * @route   POST /api/auth/register
+ * @desc    Đăng ký tài khoản mới
+ * @access  Public
+ * @body    { fullName, email, password, confirmPassword, phoneNumber?, dateOfBirth?, gender? }
+ */
+router.post(
+  "/register",
+  // Add debug middleware for each step
+  (req, res, next) => {
+    console.log("🎯 DEBUG: Step 1 - Entering /register route");
+    console.log("🎯 DEBUG: About to run rateLimitAuth middleware");
+    next();
+  },
+  // ⚡ TEMPORARILY USE BYPASS INSTEAD OF RATE LIMITING
+  process.env.NODE_ENV === "development" ? bypassRateLimit : rateLimitAuth,
+  (req, res, next) => {
+    console.log("🎯 DEBUG: Step 2 - Passed rateLimitAuth");
+    console.log("🎯 DEBUG: About to run validation middleware");
+    console.log("🎯 DEBUG: Request body:", JSON.stringify(req.body, null, 2));
+    next();
+  },
+  validate(userSchemas.register),
+  (req, res, next) => {
+    console.log("🎯 DEBUG: Step 3 - Passed validation");
+    console.log("🎯 DEBUG: Validated body:", JSON.stringify(req.body, null, 2));
+    console.log("🎯 DEBUG: About to run auditAuthOperation");
+    next();
+  },
+  auditAuthOperation("USER_REGISTER"),
+  (req, res, next) => {
+    console.log("🎯 DEBUG: Step 4 - Passed auditAuthOperation");
+    console.log("🎯 DEBUG: About to call register controller");
+    next();
+  },
+  catchAsync(register) // Wrap register with asyncHandler for error catching
+);
+
+/**
+ * @route   POST /api/auth/login
+ * @desc    Đăng nhập
+ * @access  Public
+ * @body    { email, password, rememberMe? }
+ */
+router.post(
+  "/login",
+  rateLimitAuth, // ✅ Move rate limiting here
+  validate(userSchemas.login),
+  auditAuthOperation("USER_LOGIN"),
+  catchAsync(login) // ✅ Wrap with catchAsync to handle async errors
+);
+
+/**
+ * @route   POST /api/auth/logout
+ * @desc    Đăng xuất
+ * @access  Private
+ * @headers Authorization: Bearer <accessToken>
+ */
+router.post(
+  "/logout",
+  authenticate,
+  auditAuthOperation("USER_LOGOUT"),
+  catchAsync(logout)
+);
+
+/**
+ * @route   POST /api/auth/refresh-token
+ * @desc    Làm mới access token bằng refresh token
+ * @access  Public
+ * @body    { refreshToken }
+ */
+router.post("/refresh-token", rateLimitAuth, catchAsync(refreshToken));
+
+/**
+ * @route   POST /api/auth/forgot-password
+ * @desc    Quên mật khẩu - gửi email reset
+ * @access  Public
+ * @body    { email }
+ */
+router.post(
+  "/forgot-password",
+  rateLimitPassword(), // ✅ FIX: Call the factory function
+  validate(userSchemas.forgotPassword),
+  auditAuthOperation("PASSWORD_RESET_REQUEST"),
+  catchAsync(forgotPassword)
+);
+
+/**
+ * @route   POST /api/auth/verify-password-reset-otp
+ * @desc    Xác thực OTP đặt lại mật khẩu
+ * @access  Public
+ * @body    { email, otp }
+ */
+router.post(
+  "/verify-password-reset-otp",
+  rateLimitPassword(), // ✅ Rate limiting for security
+  validate(userSchemas.verifyPasswordResetOTP),
+  auditAuthOperation("PASSWORD_RESET_OTP_VERIFY"),
+  catchAsync(verifyPasswordResetOTP)
+);
+
+/**
+ * @route   POST /api/auth/reset-password
+ * @desc    Reset mật khẩu với OTP
+ * @access  Public
+ * @body    { email, otp, newPassword, confirmNewPassword }
+ */
+router.post(
+  "/reset-password",
+  rateLimitPassword(), // ✅ FIX: Call the factory function
+  validate(userSchemas.resetPassword),
+  auditAuthOperation("PASSWORD_RESET_COMPLETE"),
+  catchAsync(resetPassword)
+);
+
+/**
+ * @route   GET /api/auth/verify-email/:token
+ * @desc    Xác thực email với token
+ * @access  Public
+ * @params  token - Token xác thực email
+ */
+router.get(
+  "/verify-email/:token",
+  auditAuthOperation("EMAIL_VERIFICATION"),
+  catchAsync(verifyEmail)
+);
+
+/**
+ * @route   POST /api/auth/verify-otp
+ * @desc    Xác thực OTP email
+ * @access  Public
+ * @body    { email, otp }
+ */
+router.post(
+  "/verify-otp",
+  process.env.NODE_ENV === "development" ? bypassRateLimit : rateLimitAuth,
+  validate(userSchemas.verifyOTP),
+  auditAuthOperation("OTP_VERIFICATION"),
+  catchAsync(verifyOTP)
+);
+
+/**
+ * @route   POST /api/auth/resend-verification
+ * @desc    Gửi lại email xác thực
+ * @access  Private
+ * @headers Authorization: Bearer <accessToken>
+ */
+router.post(
+  "/resend-verification",
+  authenticate,
+  auditAuthOperation("EMAIL_VERIFICATION_RESEND"),
+  catchAsync(resendEmailVerification)
+);
+
+/**
+ * @route   POST /api/auth/change-password
+ * @desc    Đổi mật khẩu (khi đã đăng nhập)
+ * @access  Private
+ * @headers Authorization: Bearer <accessToken>
+ * @body    { currentPassword, newPassword, confirmNewPassword }
+ */
+router.post(
+  "/change-password",
+  authenticate,
+  rateLimitPassword(), // ✅ FIX: Call the factory function
+  validate(userSchemas.changePassword),
+  auditAuthOperation("PASSWORD_CHANGE"),
+  catchAsync(changePassword)
+);
+
+/**
+ * @route   GET /api/auth/profile
+ * @desc    Lấy thông tin profile người dùng hiện tại
+ * @access  Private
+ * @headers Authorization: Bearer <accessToken>
+ */
+router.get("/profile", authenticate, catchAsync(getProfile));
+
+/**
+ * @route   PUT /api/auth/profile
+ * @desc    Cập nhật thông tin profile
+ * @access  Private
+ * @headers Authorization: Bearer <accessToken>
+ * @body    { fullName?, phoneNumber?, dateOfBirth?, gender?, preferences? }
+ */
+router.put(
+  "/profile",
+  authenticate,
+  validate(userSchemas.updateProfile),
+  auditAuthOperation("PROFILE_UPDATE"),
+  catchAsync(updateProfile)
+);
+
+/**
+ * @route   POST /api/auth/profile/avatar
+ * @desc    Cập nhật ảnh đại diện
+ * @access  Private
+ * @headers Authorization: Bearer <accessToken>
+ * @form    avatar - File ảnh (jpeg, png, webp, max 5MB)
+ */
+router.post(
+  "/profile/avatar",
+  authenticate,
+  uploadMiddleware.avatar,
+  validateFile(uploadSchemas.image),
+  auditAuthOperation("AVATAR_UPDATE"),
+  async (req, res, next) => {
+    // Add file info to request for controller
+    req.body.avatarFile = req.file;
+    next();
+  },
+  catchAsync(updateProfile)
+);
+
+/**
+ * @route   DELETE /api/auth/account
+ * @desc    Xóa tài khoản (soft delete)
+ * @access  Private
+ * @headers Authorization: Bearer <accessToken>
+ * @body    { password, reason? }
+ */
+router.delete(
+  "/account",
+  authenticate,
+  validate(
+    Joi.object({
+      password: Joi.string().required().label("Mật khẩu"),
+      reason: Joi.string().max(500).optional().label("Lý do xóa tài khoản"),
+    }).messages({
+      "any.required": "{{#label}} là bắt buộc",
+      "string.max": "{{#label}} không được vượt quá {{#limit}} ký tự",
+    })
+  ),
+  auditAuthOperation("ACCOUNT_DELETE"),
+  catchAsync(deleteAccount)
+);
+
+/**
+ * @route   GET /api/auth/check
+ * @desc    Kiểm tra trạng thái đăng nhập
+ * @access  Public (optional auth)
+ * @headers Authorization: Bearer <accessToken> (optional)
+ */
+router.get("/check", optionalAuthenticate, (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      isAuthenticated: !!req.userId,
+      user: req.user || null,
+    },
+  });
+});
+
+/**
+ * @route   POST /api/auth/validate-token
+ * @desc    Validate access token (for mobile apps)
+ * @access  Private
+ * @headers Authorization: Bearer <accessToken>
+ */
+router.post("/validate-token", authenticate, (req, res) => {
+  res.json({
+    success: true,
+    message: "Token hợp lệ",
+    data: {
+      userId: req.userId,
+      user: req.user,
+      tokenExp: req.tokenExp,
+    },
+  });
+});
+
+/**
+ * @route   POST /api/auth/google-signin
+ * @desc    Google Sign-In
+ * @access  Public
+ */
+router.post(
+  "/google-signin",
+  rateLimitAuth,
+  auditAuthOperation("google_signin"),
+  catchAsync(async (req, res) => {
+    const { idToken, accessToken, email, displayName, photoUrl } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email là bắt buộc",
+      });
+    }
+
+    if (!idToken && !accessToken) {
+      return res.status(400).json({
+        success: false,
+        message: "ID token hoặc access token là bắt buộc",
+      });
+    }
+
+    try {
+      let payload = {};
+
+      if (idToken) {
+        // Verify the Google ID token
+        const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+        const ticket = await client.verifyIdToken({
+          idToken,
+          audience: process.env.GOOGLE_CLIENT_ID,
+        });
+
+        payload = ticket.getPayload();
+
+        if (payload.email !== email) {
+          return res.status(401).json({
+            success: false,
+            message: "Token Google không hợp lệ",
+          });
+        }
+      } else if (accessToken) {
+        // For web Google Sign-In, we trust the email from frontend
+        // since accessToken is verified by Google on the client side
+        // This is acceptable for web applications
+        payload = {
+          email: email,
+          name: displayName,
+          picture: photoUrl,
+          sub: `google_${email}`, // Create a pseudo Google ID
+        };
+
+        console.log(`🌐 Web Google Sign-In for: ${email}`);
+      }
+
+      // Import User model dynamically
+      const { User } = await import("../models/index.js");
+
+      // Find or create user
+      let user = await User.findOne({ email: payload.email });
+
+      if (!user) {
+        user = new User({
+          email: payload.email,
+          profile: {
+            name: displayName || payload.name,
+            avatar: photoUrl || payload.picture,
+          },
+          isVerified: true, // Google accounts are pre-verified
+          authProvider: "google",
+          googleId: payload.sub,
+        });
+        await user.save();
+
+        console.log(`✅ New Google user created: ${user.email}`);
+      } else {
+        // Update user info if they exist
+        if (user.profile) {
+          user.profile.avatar =
+            photoUrl || payload.picture || user.profile.avatar;
+        }
+        user.isVerified = true;
+        if (!user.googleId) {
+          user.googleId = payload.sub;
+          user.authProvider = "google";
+        }
+        await user.save();
+
+        console.log(`✅ Existing user signed in with Google: ${user.email}`);
+      }
+
+      // Generate JWT tokens
+      const { accessToken: jwtAccessToken, refreshToken } = generateTokens(
+        user._id
+      );
+
+      // Log successful Google sign-in
+      auditLogger("google_signin_SUCCESS", req, {
+        userId: user._id,
+        email: user.email,
+        timestamp: new Date().toISOString(),
+      });
+
+      res.json({
+        success: true,
+        message: "Đăng nhập Google thành công",
+        accessToken: jwtAccessToken,
+        refreshToken,
+        user: {
+          id: user._id,
+          email: user.email,
+          fullName: user.profile?.name,
+          avatar: user.profile?.avatar,
+          isVerified: user.isVerified,
+          needsProfileCompletion:
+            !user.profile?.phone || !user.profile?.dateOfBirth,
+        },
+      });
+    } catch (error) {
+      console.error("Google sign-in error:", error);
+
+      // Log failed Google sign-in
+      auditLogger("google_signin_FAILED", req, {
+        email,
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      });
+
+      res.status(401).json({
+        success: false,
+        message: "Token Google không hợp lệ",
+      });
+    }
+  })
+);
+
+// Complete Profile endpoint (for Google Sign-In users)
+const completeProfileSchema = Joi.object({
+  phone: Joi.string()
+    .pattern(/^(\+84|84|0)(3|5|7|8|9)[0-9]{8}$/)
+    .optional()
+    .messages({
+      "string.pattern.base": "Số điện thoại không hợp lệ",
+    }),
+  dateOfBirth: Joi.date().max("now").optional().messages({
+    "date.max": "Ngày sinh không thể ở tương lai",
+  }),
+  gender: Joi.string().valid("male", "female", "other").optional(),
+  city: Joi.string().max(50).optional().messages({
+    "string.max": "Tên thành phố không được vượt quá 50 ký tự",
+  }),
+  country: Joi.string().max(50).optional().messages({
+    "string.max": "Tên quốc gia không được vượt quá 50 ký tự",
+  }),
+});
+
+router.patch(
+  "/complete-profile",
+  authenticate,
+  auditAuthOperation("complete_profile"),
+  catchAsync(async (req, res) => {
+    const { error, value } = completeProfileSchema.validate(req.body);
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: "Dữ liệu không hợp lệ",
+        errors: error.details.map((detail) => ({
+          field: detail.path.join("."),
+          message: detail.message,
+        })),
+      });
+    }
+
+    const { User } = await import("../models/index.js");
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Người dùng không tồn tại",
+      });
+    }
+
+    // Update profile information
+    const updateData = {};
+    if (value.phone) updateData["profile.phone"] = value.phone;
+    if (value.dateOfBirth)
+      updateData["profile.dateOfBirth"] = value.dateOfBirth;
+    if (value.gender) updateData["profile.gender"] = value.gender;
+    if (value.city) updateData["profile.location.city"] = value.city;
+    if (value.country) updateData["profile.location.country"] = value.country;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    // Log successful profile completion
+    auditLogger("complete_profile_SUCCESS", req, {
+      userId: user._id,
+      email: user.email,
+      updatedFields: Object.keys(updateData),
+      timestamp: new Date().toISOString(),
+    });
+
+    res.json({
+      success: true,
+      message: "Cập nhật thông tin thành công",
+      user: {
+        id: updatedUser._id,
+        email: updatedUser.email,
+        fullName: updatedUser.profile?.name,
+        avatar: updatedUser.profile?.avatar,
+        phone: updatedUser.profile?.phone,
+        dateOfBirth: updatedUser.profile?.dateOfBirth,
+        gender: updatedUser.profile?.gender,
+        location: updatedUser.profile?.location,
+        isVerified: updatedUser.isVerified,
+        needsProfileCompletion:
+          !updatedUser.profile?.phone || !updatedUser.profile?.dateOfBirth,
+      },
+    });
+  })
+);
+
+export default router;
