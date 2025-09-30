@@ -278,22 +278,20 @@ class SettingsScreen extends StatelessWidget {
       debugPrint('🔧 AppProvider.logout() completed');
 
       if (context.mounted) {
-        // Success message
+        debugPrint('🏠 IMMEDIATE navigation to login...');
+
+        // Direct navigation to login - no delays, no root navigation
+        context.go('/login');
+        debugPrint('🏠 Navigation to login completed');
+
+        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Đăng xuất thành công!'),
             backgroundColor: AppColors.success,
-            duration: Duration(seconds: 1),
+            duration: Duration(seconds: 2),
           ),
         );
-
-        debugPrint('🏠 Navigating to login...');
-        // Navigate to login screen using go_router
-        await Future.delayed(Duration(milliseconds: 500));
-        if (context.mounted) {
-          context.go('/login');
-          debugPrint('🏠 Navigation completed');
-        }
       }
     } catch (error) {
       debugPrint('❌ Logout error in Settings: $error');

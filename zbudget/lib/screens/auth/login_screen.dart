@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/auth_service.dart';
@@ -6,6 +7,8 @@ import '../../constants/colors.dart';
 import '../../constants/typography.dart';
 import '../../constants/spacing.dart';
 import 'package:go_router/go_router.dart';
+import '../debug/network_test_screen.dart';
+import '../debug/google_signin_test_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,28 +21,26 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _rememberMeKey = GlobalKey(); // ✅ Add key for Remember Me
+  final _googleSignInKey = GlobalKey(); // ✅ Add key for Google Sign-In button
   bool _isLoading = false;
-  bool _obscurePassword = true;
-  bool _rememberMe = false;
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
+  bool _isGoogleLoading = false;
 
   Future<void> _handleGoogleSignIn() async {
     setState(() {
-      _isLoading = true;
+      _isGoogleLoading = true;
     });
 
     try {
       final authService = context.read<AuthService>();
       final result = await authService.signInWithGoogle();
 
-      if (result['success']) {
-        if (mounted) {
+      debugPrint('� Google Sign-In result: $result');
+
+      if (mounted) {
+        if (result['success']) {
+          debugPrint('✅ Google Sign-In successful');
+
           // Check if user needs to complete profile
           final user = result['user'] as Map<String, dynamic>?;
           final needsProfileCompletion =
@@ -57,9 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
               backgroundColor: Colors.green,
             ),
           );
-        }
-      } else {
-        if (mounted) {
+        } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message'] ?? 'Đăng nhập Google thất bại'),
@@ -69,6 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (e) {
+      debugPrint('❌ Google Sign-In error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -80,10 +80,27 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _isGoogleLoading = false;
         });
       }
     }
+  }
+
+  bool _obscurePassword = true;
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    print('🔥 LoginScreen: initState called');
+  }
+
+  @override
+  void dispose() {
+    print('🔥 LoginScreen: dispose called');
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   Future<void> _login() async {
@@ -167,9 +184,12 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
+      resizeToAvoidBottomInset: true, // ✅ Ensure layout adjusts for keyboard
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.pagePadding),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior
+              .onDrag, // ✅ Dismiss keyboard on scroll
           child: Form(
             key: _formKey,
             child: Column(
@@ -298,10 +318,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Checkbox(
+                          key: _rememberMeKey, // ✅ Use key for stability
                           value: _rememberMe,
                           onChanged: (bool? value) {
                             setState(() {
                               _rememberMe = value ?? false;
+                              print('🔥 Remember Me changed: $_rememberMe');
                             });
                           },
                           activeColor: AppColors.primary500,
@@ -312,6 +334,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           onTap: () {
                             setState(() {
                               _rememberMe = !_rememberMe;
+                              print('🔥 Remember Me tapped: $_rememberMe');
                             });
                           },
                           child: Text(
@@ -399,9 +422,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Google Sign-In Button
                 SizedBox(
+                  key: _googleSignInKey, // ✅ Use key for stability
                   height: 50,
                   child: OutlinedButton.icon(
-                    onPressed: _isLoading ? null : _handleGoogleSignIn,
+                    onPressed: _isLoading
+                        ? null
+                        : () {
+                            print(
+                              '🔥 Google Sign-In button pressed, isLoading: $_isLoading',
+                            );
+                            _handleGoogleSignIn();
+                          },
                     icon: Container(
                       width: 24,
                       height: 24,
@@ -460,6 +491,50 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
+
+                // Debug button - only in debug mode
+                if (kDebugMode) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  Container(
+                    alignment: Alignment.center,
+                    child: TextButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NetworkTestScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.bug_report, size: 16),
+                      label: const Text(
+                        'Network Debug',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      style: TextButton.styleFrom(foregroundColor: Colors.grey),
+                    ),
+                  ),
+                  Container(
+                    alignment: Alignment.center,
+                    child: TextButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const GoogleSignInTestScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.account_circle, size: 16),
+                      label: const Text(
+                        'Google Sign-In Test',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      style: TextButton.styleFrom(foregroundColor: Colors.blue),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

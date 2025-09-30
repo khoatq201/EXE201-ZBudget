@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../providers/app_provider.dart';
 import '../../constants/colors.dart';
@@ -841,11 +842,29 @@ class _NewDashboardScreenState extends State<NewDashboardScreen>
             child: const Text('Hủy'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(context).pop();
+
+              debugPrint('🎯 Dashboard._showLogoutDialog() logout triggered');
+
               // Perform logout
               final appProvider = context.read<AppProvider>();
-              appProvider.logout(context);
+              await appProvider.logout(context);
+
+              if (context.mounted) {
+                debugPrint('🏠 Dashboard: IMMEDIATE navigation to login...');
+                context.go('/login');
+                debugPrint('🏠 Dashboard: Navigation to login completed');
+
+                // Show success message
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Đăng xuất thành công!'),
+                    backgroundColor: AppColors.success,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
             },
             child: Text('Đăng xuất', style: TextStyle(color: AppColors.error)),
           ),

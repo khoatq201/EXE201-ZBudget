@@ -91,20 +91,23 @@ class AppProvider extends ChangeNotifier {
 
       // Use the provided AuthService instance from Provider (has tokens!)
       final authService = Provider.of<AuthService>(context, listen: false);
-      debugPrint('🔧 Calling AuthService.logout()...');
+      debugPrint('🔧 Calling AuthService.forceLogoutWithNavigation()...');
 
-      final result = await authService.logout();
-      debugPrint('🔧 AuthService.logout() result: $result');
+      final result = await authService.forceLogoutWithNavigation();
+      debugPrint('🔧 AuthService.forceLogoutWithNavigation() result: $result');
 
       if (result['success']) {
         debugPrint('✅ AuthService logout successful');
 
-        // Clear AppProvider state
+        // Clear AppProvider state immediately
         _user = null;
         _isAuthenticated = false;
 
+        // Force immediate UI update
         notifyListeners();
-        debugPrint('✅ AppProvider logout completed');
+        debugPrint(
+          '✅ AppProvider logout completed, isAuthenticated: $_isAuthenticated',
+        );
       } else {
         throw Exception(result['message']);
       }

@@ -1,4 +1,5 @@
 import express from "express";
+import User from "../models/User.js";
 import {
   register,
   login,
@@ -422,19 +423,20 @@ router.post(
       }
 
       // Import User model dynamically
-      const { User } = await import("../models/index.js");
+      // const { User } = await import("../models/index.js");
 
       // Find or create user
       let user = await User.findOne({ email: payload.email });
 
       if (!user) {
+        // Create new user for Google sign-in
         user = new User({
           email: payload.email,
           profile: {
             name: displayName || payload.name,
             avatar: photoUrl || payload.picture,
           },
-          isVerified: true, // Google accounts are pre-verified
+          emailVerified: true, // Google accounts are pre-verified
           authProvider: "google",
           googleId: payload.sub,
         });
@@ -442,16 +444,25 @@ router.post(
 
         console.log(`✅ New Google user created: ${user.email}`);
       } else {
+        // Check if user was created with different auth provider
+        if (user.authProvider === "local" && !user.googleId) {
+          // Link Google account to existing local account
+          user.googleId = payload.sub;
+          user.authProvider = "google"; // Switch to Google provider
+          user.emailVerified = true;
+        }
+
         // Update user info if they exist
         if (user.profile) {
           user.profile.avatar =
             photoUrl || payload.picture || user.profile.avatar;
+          if (!user.profile.name && (displayName || payload.name)) {
+            user.profile.name = displayName || payload.name;
+          }
         }
-        user.isVerified = true;
-        if (!user.googleId) {
-          user.googleId = payload.sub;
-          user.authProvider = "google";
-        }
+
+        user.emailVerified = true;
+        user.lastLogin = new Date();
         await user.save();
 
         console.log(`✅ Existing user signed in with Google: ${user.email}`);
@@ -479,7 +490,7 @@ router.post(
           email: user.email,
           fullName: user.profile?.name,
           avatar: user.profile?.avatar,
-          isVerified: user.isVerified,
+          emailVerified: user.emailVerified,
           needsProfileCompletion:
             !user.profile?.phone || !user.profile?.dateOfBirth,
         },
