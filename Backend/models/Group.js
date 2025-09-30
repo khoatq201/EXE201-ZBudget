@@ -154,6 +154,7 @@ const GroupSchema = new mongoose.Schema(
     },
     inviteExpiresAt: {
       type: Date,
+      index: true,
     },
 
     // Status
@@ -194,7 +195,7 @@ const GroupSchema = new mongoose.Schema(
 
 // Indexes
 GroupSchema.index({ "members.userId": 1 });
-GroupSchema.index({ inviteCode: 1 }, { sparse: true });
+// GroupSchema.index({ inviteCode: 1 }, { sparse: true }); // Removed duplicate - already has unique: true
 GroupSchema.index({ isActive: 1, createdAt: -1 });
 
 // Instance Methods

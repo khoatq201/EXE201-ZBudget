@@ -240,7 +240,7 @@ const NotificationSchema = new mongoose.Schema(
     // Expiry
     expiresAt: {
       type: Date,
-      index: true,
+      // index: true, // Removed - using compound index below
     },
 
     version: {
