@@ -11,6 +11,7 @@ import '../screens/main_navigator.dart';
 import '../screens/home/dashboard_screen_api.dart';
 import '../screens/home/add_expense_screen.dart';
 import '../screens/home/add_income_screen.dart';
+import '../screens/home/all_transactions_screen.dart';
 import '../screens/budget/budget_list_screen.dart';
 import '../screens/budget/create_budget_screen.dart';
 import '../screens/group/group_list_screen.dart';
@@ -142,6 +143,11 @@ final router = GoRouter(
         GoRoute(
           path: '/add-income',
           builder: (context, state) => const AddIncomeScreen(),
+        ),
+        GoRoute(
+          path: '/transactions/all',
+          builder: (context, state) => const AllTransactionsScreen(),
+          redirect: AuthGuard.checkAuthentication,
         ),
         GoRoute(
           path: '/create-budget',

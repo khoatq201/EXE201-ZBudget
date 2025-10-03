@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/expense.dart';
 import '../models/budget_models.dart';
+import '../utils/date_formatter.dart';
 
 class ExpenseService extends ChangeNotifier {
   // Base URL - different for web and mobile
@@ -183,8 +184,8 @@ class ExpenseService extends ChangeNotifier {
       if (description != null) body['description'] = description;
       if (subcategory != null) body['subcategory'] = subcategory;
       if (date != null) {
-        // Format date as YYYY-MM-DD for backend API
-        body['date'] = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+        // Use standardized date formatter to avoid timezone issues
+        body['date'] = DateFormatter.toApiFormat(date);
       }
       if (location != null) body['location'] = location;
       if (tags != null && tags.isNotEmpty) body['tags'] = tags;
@@ -249,8 +250,8 @@ class ExpenseService extends ChangeNotifier {
       if (category != null) body['category'] = category;
       if (subcategory != null) body['subcategory'] = subcategory;
       if (date != null) {
-        // Format date as YYYY-MM-DD for backend API
-        body['date'] = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+        // Use standardized date formatter to avoid timezone issues
+        body['date'] = DateFormatter.toApiFormat(date);
       }
       if (paymentMethod != null) body['paymentMethod'] = paymentMethod;
       if (location != null) body['location'] = location;

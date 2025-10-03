@@ -2,6 +2,7 @@ import express from "express";
 import {
   getDashboardSummary,
   getQuickStats,
+  getAllTransactions,
 } from "../controllers/dashboardController.js";
 import { getDashboardSummarySimple } from "../controllers/dashboardController_simple.js";
 import { authenticate } from "../middleware/auth.js";
@@ -25,6 +26,18 @@ router.get("/test", getDashboardSummarySimple);
  * @query   period - month|week|year (default: month)
  */
 router.get("/summary", getDashboardSummary);
+
+/**
+ * @route   GET /api/dashboard/transactions
+ * @desc    Get all transactions with filtering
+ * @access  Private
+ * @query   type - all|income|expense (default: all)
+ * @query   startDate - ISO date string (optional)
+ * @query   endDate - ISO date string (optional)
+ * @query   limit - number of transactions to return (optional)
+ * @query   skip - number of transactions to skip for pagination (optional)
+ */
+router.get("/transactions", getAllTransactions);
 
 /**
  * @route   GET /api/dashboard/quick-stats

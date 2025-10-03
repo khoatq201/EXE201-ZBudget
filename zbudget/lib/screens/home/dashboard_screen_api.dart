@@ -8,6 +8,7 @@ import '../../services/auth_service.dart';
 import '../../models/dashboard.dart';
 import '../../constants/colors.dart';
 import '../../constants/typography.dart';
+import '../../utils/formatters.dart';
 
 class DashboardScreenApi extends StatefulWidget {
   const DashboardScreenApi({super.key});
@@ -41,23 +42,6 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> {
 
   Future<void> _refreshDashboard() async {
     return _loadDashboardData();
-  }
-
-  String formatCurrency(double amount) {
-    // Format số với dấu phẩy phân cách hàng nghìn
-    final parts = amount.toStringAsFixed(0).split('');
-    final buffer = StringBuffer();
-    var count = 0;
-
-    for (var i = parts.length - 1; i >= 0; i--) {
-      if (count > 0 && count % 3 == 0) {
-        buffer.write(',');
-      }
-      buffer.write(parts[i]);
-      count++;
-    }
-
-    return buffer.toString().split('').reversed.join('');
   }
 
   @override
@@ -193,7 +177,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> {
           ),
           const SizedBox(height: 8),
           Text(
-            '${formatCurrency(data.currentBalance)} ₫',
+            data.currentBalance.toVND(),
             style: AppTypography.h1.copyWith(
               color: Colors.white,
               fontSize: 32,
@@ -228,7 +212,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> {
                         Text('Thu nhập', style: AppTypography.bodySmall.copyWith(color: Colors.white70)),
                         const SizedBox(height: 4),
                         Text(
-                          '${formatCurrency(data.period.income)} ₫',
+                          data.period.income.toVND(),
                           style: AppTypography.bodyMedium.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -242,7 +226,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> {
                         Text('Chi tiêu', style: AppTypography.bodySmall.copyWith(color: Colors.white70)),
                         const SizedBox(height: 4),
                         Text(
-                          '${formatCurrency(data.period.expense)} ₫',
+                          data.period.expense.toVND(),
                           style: AppTypography.bodyMedium.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -263,7 +247,9 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '${periodBalance >= 0 ? '+' : ''}${formatCurrency(periodBalance)} ₫',
+                      periodBalance >= 0
+                        ? CurrencyFormatter.formatIncome(periodBalance)
+                        : CurrencyFormatter.formatExpense(periodBalance.abs()),
                       style: AppTypography.bodyLarge.copyWith(
                         color: periodBalance >= 0 ? Colors.greenAccent : Colors.redAccent,
                         fontWeight: FontWeight.bold,
@@ -313,7 +299,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> {
         ),
         const SizedBox(height: 4),
         Text(
-          '${formatCurrency(amount)} ₫',
+          amount.toVND(),
           style: AppTypography.bodyLarge.copyWith(
             color: Colors.white,
             fontWeight: FontWeight.w600,
@@ -483,11 +469,11 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Đã chi: ${formatCurrency(budget.spent)} ₫',
+                'Đã chi: ${budget.spent.toVND()}',
                 style: AppTypography.bodySmall,
               ),
               Text(
-                'Còn lại: ${formatCurrency(budget.remaining)} ₫',
+                'Còn lại: ${budget.remaining.toVND()}',
                 style: AppTypography.bodySmall.copyWith(
                   color: AppColors.primary500,
                   fontWeight: FontWeight.w600,
@@ -497,7 +483,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Ngân sách hàng ngày: ${formatCurrency(budget.dailyBudget)} ₫',
+            'Ngân sách hàng ngày: ${budget.dailyBudget.toVND()}',
             style: AppTypography.bodySmall.copyWith(color: Colors.grey),
           ),
         ],
@@ -705,7 +691,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${formatCurrency(category.total)} ₫',
+                category.total.toVND(),
                 style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600),
               ),
               Text(
@@ -733,8 +719,8 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> {
               Text('Giao dịch gần đây', style: AppTypography.h3),
               TextButton(
                 onPressed: () {
-                  // Navigate to expenses list page
-                  context.go('/home'); // Change to expenses list route when available
+                  // Navigate to all transactions page
+                  context.go('/transactions/all');
                 },
                 child: Text(
                   'Xem tất cả',
@@ -791,7 +777,9 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> {
             ),
           ),
           Text(
-            '${transaction.isIncome ? '+' : '-'}${formatCurrency(transaction.amount)} ₫',
+            transaction.isIncome
+              ? CurrencyFormatter.formatIncome(transaction.amount)
+              : CurrencyFormatter.formatExpense(transaction.amount),
             style: AppTypography.bodyMedium.copyWith(
               color: transaction.isIncome ? Colors.green : Colors.red,
               fontWeight: FontWeight.w600,

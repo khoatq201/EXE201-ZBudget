@@ -6,6 +6,7 @@ import '../../constants/typography.dart';
 import '../../widgets/scan_receipt_modal.dart';
 import '../../models/expense.dart';
 import '../../services/expense_service.dart';
+import '../../utils/formatters.dart';
 
 class CategoryOption {
   final String id;
@@ -435,7 +436,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
           child: TextField(
             controller: _amountController,
             keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              CurrencyInputFormatter(),
+            ],
             style: AppTypography.h3.copyWith(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.bold,
@@ -866,8 +870,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
           .firstWhere((opt) => opt.category == _selectedCategory)
           .name;
 
-      // Convert amount to double
-      final amount = double.parse(_amountController.text);
+      // Convert amount to double (parse formatted currency string)
+      final amount = CurrencyFormatter.parse(_amountController.text);
 
       // Convert category enum to string (lowercase)
       final categoryStr = _selectedCategory.toString().split('.').last;

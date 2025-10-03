@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../constants/colors.dart';
 import '../../constants/typography.dart';
 import '../../services/income_service.dart';
+import '../../utils/formatters.dart';
 
 enum IncomeCategory {
   salary,
@@ -343,7 +344,10 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
           child: TextField(
             controller: _amountController,
             keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              CurrencyInputFormatter(),
+            ],
             style: AppTypography.h3.copyWith(
               color: AppColors.success,
               fontWeight: FontWeight.bold,
@@ -702,8 +706,8 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
     try {
       final incomeService = Provider.of<IncomeService>(context, listen: false);
 
-      // Parse amount
-      final amount = double.parse(_amountController.text);
+      // Parse amount (handle formatted currency string)
+      final amount = CurrencyFormatter.parse(_amountController.text);
 
       // Get category name from enum
       final categoryName = _selectedCategory.toString().split('.').last;

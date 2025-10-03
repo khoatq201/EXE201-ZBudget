@@ -273,6 +273,95 @@ function getDateRange(period) {
 }
 
 /**
+ * @desc    Get all transactions with filtering
+ * @route   GET /api/dashboard/transactions
+ * @access  Private
+ */
+export const getAllTransactions = async (req, res) => {
+  const userId = req.userId;
+  const { type, startDate, endDate, limit, skip } = req.query;
+
+  try {
+    console.log("📋 getAllTransactions called:", { userId, type, startDate, endDate, limit, skip });
+
+    // Build date filter
+    const dateFilter = {};
+    if (startDate || endDate) {
+      dateFilter.date = {};
+      if (startDate) dateFilter.date.$gte = new Date(startDate);
+      if (endDate) dateFilter.date.$lte = new Date(endDate);
+    }
+
+    // Fetch based on type filter
+    let incomes = [];
+    let expenses = [];
+
+    if (type === "income" || !type || type === "all") {
+      incomes = await Income.find({
+        userId: new mongoose.Types.ObjectId(userId),
+        isConfirmed: true,
+        ...dateFilter,
+      })
+        .select("title description amount category date paymentMethod createdAt")
+        .sort({ date: -1 })
+        .lean();
+    }
+
+    if (type === "expense" || !type || type === "all") {
+      expenses = await Expense.find({
+        userId: new mongoose.Types.ObjectId(userId),
+        ...dateFilter,
+      })
+        .select("title description amount category date paymentMethod createdAt")
+        .sort({ date: -1 })
+        .lean();
+    }
+
+    // Combine and format transactions
+    const transactions = [
+      ...incomes.map((inc) => ({
+        ...inc,
+        type: "income",
+        isIncome: true,
+        amount: parseFloat(inc.amount.toString()),
+      })),
+      ...expenses.map((exp) => ({
+        ...exp,
+        type: "expense",
+        isIncome: false,
+        amount: parseFloat(exp.amount.toString()),
+      })),
+    ];
+
+    // Sort by date descending
+    transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Apply pagination if provided
+    const skipNum = parseInt(skip) || 0;
+    const limitNum = parseInt(limit) || transactions.length;
+    const paginatedTransactions = transactions.slice(skipNum, skipNum + limitNum);
+
+    console.log(`✅ Found ${transactions.length} transactions, returning ${paginatedTransactions.length}`);
+
+    res.status(200).json({
+      success: true,
+      message: "Transactions retrieved successfully",
+      data: {
+        transactions: paginatedTransactions,
+        total: transactions.length,
+        hasMore: skipNum + limitNum < transactions.length,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Get all transactions error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to retrieve transactions",
+    });
+  }
+};
+
+/**
  * Get recent transactions (combined income + expense)
  */
 async function getRecentTransactions(userId, limit = 10) {

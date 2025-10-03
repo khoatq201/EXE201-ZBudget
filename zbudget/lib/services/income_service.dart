@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/income.dart';
+import '../utils/date_formatter.dart';
 
 class IncomeService extends ChangeNotifier {
   // Base URL - different for web and mobile
@@ -156,7 +157,10 @@ class IncomeService extends ChangeNotifier {
       };
 
       if (description != null) body['description'] = description;
-      if (date != null) body['date'] = date.toIso8601String();
+      if (date != null) {
+        // Use standardized date formatter to avoid timezone issues
+        body['date'] = DateFormatter.toApiFormat(date);
+      }
       if (paymentMethod != null) body['paymentMethod'] = paymentMethod;
       if (source != null) body['source'] = source;
       if (isRecurring != null) body['isRecurring'] = isRecurring;
@@ -216,7 +220,10 @@ class IncomeService extends ChangeNotifier {
       if (description != null) body['description'] = description;
       if (amount != null) body['amount'] = amount;
       if (category != null) body['category'] = category;
-      if (date != null) body['date'] = date.toIso8601String();
+      if (date != null) {
+        // Use standardized date formatter to avoid timezone issues
+        body['date'] = DateFormatter.toApiFormat(date);
+      }
       if (paymentMethod != null) body['paymentMethod'] = paymentMethod;
       if (source != null) body['source'] = source;
 

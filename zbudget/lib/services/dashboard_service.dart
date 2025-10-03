@@ -117,6 +117,88 @@ class DashboardService extends ChangeNotifier {
     }
   }
 
+  /// Get all transactions with filtering
+  /// [type] can be 'all', 'income', or 'expense'
+  /// [startDate] and [endDate] are optional date filters
+  /// [limit] and [skip] are for pagination
+  Future<Map<String, dynamic>> getAllTransactions({
+    String type = 'all',
+    DateTime? startDate,
+    DateTime? endDate,
+    int? limit,
+    int? skip,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
+
+      if (token == null) {
+        throw Exception('No access token found. Please login again.');
+      }
+
+      // Build query parameters
+      final queryParams = <String, String>{
+        'type': type,
+      };
+
+      if (startDate != null) {
+        queryParams['startDate'] = startDate.toIso8601String();
+      }
+      if (endDate != null) {
+        queryParams['endDate'] = endDate.toIso8601String();
+      }
+      if (limit != null) {
+        queryParams['limit'] = limit.toString();
+      }
+      if (skip != null) {
+        queryParams['skip'] = skip.toString();
+      }
+
+      final uri = Uri.parse('$baseUrl/transactions').replace(queryParameters: queryParams);
+      debugPrint('📋 Fetching all transactions: $uri');
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      debugPrint('📡 Transactions API Response Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
+
+        if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
+          final data = jsonResponse['data'];
+          final transactionsList = (data['transactions'] as List)
+              .map((txn) => Transaction.fromJson(txn))
+              .toList();
+
+          debugPrint('✅ Loaded ${transactionsList.length} transactions');
+
+          return {
+            'transactions': transactionsList,
+            'total': data['total'] ?? transactionsList.length,
+            'hasMore': data['hasMore'] ?? false,
+          };
+        } else {
+          throw Exception(jsonResponse['message'] ?? 'Failed to load transactions');
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized. Please login again.');
+      } else {
+        final errorBody = jsonDecode(response.body);
+        throw Exception(errorBody['error'] ?? 'Failed to load transactions');
+      }
+    } catch (e) {
+      debugPrint('❌ Get all transactions error: $e');
+      rethrow;
+    }
+  }
+
   /// Refresh dashboard data
   Future<void> refresh({String period = 'month'}) async {
     return getDashboardSummary(period: period);

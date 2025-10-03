@@ -215,7 +215,11 @@ export const expenseSchemas = {
     amount: commonSchemas.vndAmount.required(),
     category: Joi.string().required().label("Danh mục"),
     subcategory: Joi.string().optional().label("Danh mục phụ"),
-    date: Joi.date().iso().max("now").required().label("Ngày"),
+    date: Joi.date()
+      .iso()
+      .max(new Date(Date.now() + 24 * 60 * 60 * 1000)) // Allow up to 24 hours in future for timezone differences
+      .required()
+      .label("Ngày"),
     paymentMethod: Joi.string()
       .valid("cash", "card", "banking", "momo", "other")
       .required()
@@ -240,7 +244,11 @@ export const expenseSchemas = {
     amount: commonSchemas.vndAmount.optional(),
     category: Joi.string().optional().label("Danh mục"),
     subcategory: Joi.string().optional().label("Danh mục phụ"),
-    date: Joi.date().iso().max("now").optional().label("Ngày"),
+    date: Joi.date()
+      .iso()
+      .max(new Date(Date.now() + 24 * 60 * 60 * 1000)) // Allow up to 24 hours in future for timezone differences
+      .optional()
+      .label("Ngày"),
     paymentMethod: Joi.string()
       .valid("cash", "card", "banking", "momo", "other")
       .optional()
@@ -816,10 +824,14 @@ export const validateFile = (schema) => {
 
 // Custom validation for business rules
 export const businessRuleValidation = {
-  // Validate expense date is not in the future
+  // Validate expense date is not in the future (allow 24h for timezone differences)
   expenseDate: (req, res, next) => {
-    if (req.body.date && new Date(req.body.date) > new Date()) {
-      throw new BadRequestError("Ngày chi tiêu không được ở tương lai");
+    if (req.body.date) {
+      const expenseDate = new Date(req.body.date);
+      const maxAllowedDate = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours in future
+      if (expenseDate > maxAllowedDate) {
+        throw new BadRequestError("Ngày chi tiêu không được ở tương lai");
+      }
     }
     next();
   },
