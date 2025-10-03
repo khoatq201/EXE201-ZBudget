@@ -55,9 +55,11 @@ export const verifyRefreshToken = (token) => {
 
 // Authentication middleware
 export const authenticate = async (req, res, next) => {
+  console.log('🔐 DEBUG: ===== AUTH MIDDLEWARE STARTED =====');
   try {
     // Get token from header
     const authHeader = req.headers.authorization;
+    console.log('🔐 DEBUG: Auth header present:', !!authHeader);
 
     if (!authHeader) {
       return res.status(401).json({
@@ -79,6 +81,7 @@ export const authenticate = async (req, res, next) => {
     }
 
     const token = tokenParts[1];
+    console.log('🔐 DEBUG: Token extracted, length:', token.length);
 
     // Check if token is blacklisted
     if (isTokenBlacklisted(token)) {
@@ -88,12 +91,15 @@ export const authenticate = async (req, res, next) => {
         code: "TOKEN_BLACKLISTED",
       });
     }
+    console.log('🔐 DEBUG: Token not blacklisted');
 
     // Verify token
     let decoded;
     try {
       decoded = verifyToken(token);
+      console.log('🔐 DEBUG: Token verified, userId:', decoded.userId);
     } catch (error) {
+      console.log('🔐 DEBUG: Token verification failed:', error.message);
       return res.status(401).json({
         success: false,
         error: error.message,
@@ -109,9 +115,12 @@ export const authenticate = async (req, res, next) => {
         code: "INVALID_TOKEN_TYPE",
       });
     }
+    console.log('🔐 DEBUG: Token type is access');
 
     // Get user from database
+    console.log('🔐 DEBUG: Querying database for user...');
     const user = await User.findById(decoded.userId).select("-passwordHash");
+    console.log('🔐 DEBUG: User query completed, found:', !!user);
 
     if (!user) {
       return res.status(401).json({
@@ -128,14 +137,17 @@ export const authenticate = async (req, res, next) => {
         code: "ACCOUNT_DISABLED",
       });
     }
+    console.log('🔐 DEBUG: User is active');
 
     // Add user to request
     req.user = user;
     req.userId = user._id.toString();
 
+    console.log('🔐 DEBUG: Auth middleware completed successfully');
+    console.log('🔐 DEBUG: ===== AUTH MIDDLEWARE ENDED =====');
     next();
   } catch (error) {
-    console.error("Authentication error:", error);
+    console.error("❌ Authentication error:", error);
     return res.status(500).json({
       success: false,
       error: "Lỗi server trong quá trình xác thực",
@@ -316,7 +328,7 @@ export const isTokenBlacklisted = (token) => {
 // Rate limiting for authentication routes
 export const rateLimitAuth = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 5, // 5 requests per windowMs
+  max: parseInt(process.env.RATE_LIMIT_AUTH_MAX_REQUESTS) || 5, // Use separate limit for auth routes
   message: {
     success: false,
     error: "Quá nhiều yêu cầu đăng nhập. Vui lòng thử lại sau.",
@@ -351,7 +363,7 @@ export const rateLimitAuth = rateLimit({
       `🔄 DEBUG: Window: ${parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000}ms`
     );
     console.log(
-      `🔄 DEBUG: Max requests: ${parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 5}`
+      `🔄 DEBUG: Max requests: ${parseInt(process.env.RATE_LIMIT_AUTH_MAX_REQUESTS) || 5}`
     );
     console.log(`🔄 DEBUG: Rate limit check completed, continuing...`);
     return false; // Don't skip, apply rate limiting
@@ -451,8 +463,13 @@ export const rateLimitPassword = (windowMs = 5 * 60 * 1000, max = 3) => {
 // General rate limiting for API routes
 export const rateLimitGeneral = (windowMs = 15 * 60 * 1000, max = 100) => {
   const attempts = new Map();
+  console.log('🔧 DEBUG: rateLimitGeneral middleware factory called');
 
   return (req, res, next) => {
+    console.log('⚡ DEBUG: ===== RATE LIMIT GENERAL STARTED =====');
+    console.log('⚡ DEBUG: IP:', req.ip);
+    console.log('⚡ DEBUG: Path:', req.path);
+
     const key = req.ip || req.connection.remoteAddress;
     const now = Date.now();
 
@@ -467,16 +484,23 @@ export const rateLimitGeneral = (windowMs = 15 * 60 * 1000, max = 100) => {
     const userAttempts = attempts.get(key);
 
     if (!userAttempts) {
+      console.log('⚡ DEBUG: First request from this IP');
       attempts.set(key, { count: 1, resetTime: now });
+      console.log('⚡ DEBUG: Rate limit passed, calling next()');
+      console.log('⚡ DEBUG: ===== RATE LIMIT GENERAL ENDED =====');
       return next();
     }
 
     if (now - userAttempts.resetTime > windowMs) {
+      console.log('⚡ DEBUG: Rate limit window expired, resetting');
       attempts.set(key, { count: 1, resetTime: now });
+      console.log('⚡ DEBUG: Rate limit passed, calling next()');
+      console.log('⚡ DEBUG: ===== RATE LIMIT GENERAL ENDED =====');
       return next();
     }
 
     if (userAttempts.count >= max) {
+      console.log('⚡ DEBUG: Rate limit exceeded!');
       const resetIn = Math.ceil(
         (windowMs - (now - userAttempts.resetTime)) / 1000
       );
@@ -488,7 +512,10 @@ export const rateLimitGeneral = (windowMs = 15 * 60 * 1000, max = 100) => {
       });
     }
 
+    console.log('⚡ DEBUG: Rate limit check passed, count:', userAttempts.count + 1);
     userAttempts.count++;
+    console.log('⚡ DEBUG: Rate limit passed, calling next()');
+    console.log('⚡ DEBUG: ===== RATE LIMIT GENERAL ENDED =====');
     next();
   };
 };

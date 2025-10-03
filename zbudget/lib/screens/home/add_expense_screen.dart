@@ -1,19 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../constants/colors.dart';
 import '../../constants/typography.dart';
 import '../../widgets/scan_receipt_modal.dart';
-
-enum ExpenseCategory {
-  food,
-  transport,
-  shopping,
-  entertainment,
-  healthcare,
-  education,
-  utilities,
-  other,
-}
+import '../../models/expense.dart';
+import '../../services/expense_service.dart';
 
 class CategoryOption {
   final String id;
@@ -31,13 +23,13 @@ class CategoryOption {
   });
 }
 
-class PaymentMethod {
+class PaymentMethodOption {
   final String id;
   final String name;
   final String icon;
   final Color color;
 
-  PaymentMethod({
+  PaymentMethodOption({
     required this.id,
     required this.name,
     required this.icon,
@@ -58,7 +50,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
   final TextEditingController _noteController = TextEditingController();
 
   ExpenseCategory? _selectedCategory;
-  PaymentMethod? _selectedPaymentMethod;
+  PaymentMethodOption? _selectedPaymentMethod;
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
 
@@ -126,39 +118,39 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
     ),
   ];
 
-  final List<PaymentMethod> paymentMethods = [
-    PaymentMethod(
+  final List<PaymentMethodOption> paymentMethods = [
+    PaymentMethodOption(
       id: 'momo',
       name: 'MoMo',
       icon: '🎯',
       color: const Color(0xFFD82D8B),
     ),
-    PaymentMethod(
-      id: 'zalopay',
+    PaymentMethodOption(
+      id: 'other', // zalopay -> other (not in API enum)
       name: 'ZaloPay',
       icon: '💙',
       color: const Color(0xFF0068FF),
     ),
-    PaymentMethod(
+    PaymentMethodOption(
       id: 'cash',
       name: 'Tiền mặt',
       icon: '💰',
       color: const Color(0xFF4CAF50),
     ),
-    PaymentMethod(
+    PaymentMethodOption(
       id: 'banking',
       name: 'Chuyển khoản',
       icon: '🏦',
       color: const Color(0xFFFF9800),
     ),
-    PaymentMethod(
+    PaymentMethodOption(
       id: 'card',
       name: 'Thẻ',
       icon: '💳',
       color: const Color(0xFF9C27B0),
     ),
-    PaymentMethod(
-      id: 'viettelpay',
+    PaymentMethodOption(
+      id: 'other', // viettelpay -> other (not in API enum)
       name: 'ViettelPay',
       icon: '📱',
       color: const Color(0xFFFF5722),
@@ -860,20 +852,55 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
   Future<void> _handleSaveExpense() async {
     if (!mounted) return;
 
+    debugPrint('🚀 [ADD_EXPENSE] Starting save expense...');
+
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 1));
+      final expenseService = Provider.of<ExpenseService>(context, listen: false);
+
+      // Get category name for title
+      final categoryName = categoryOptions
+          .firstWhere((opt) => opt.category == _selectedCategory)
+          .name;
+
+      // Convert amount to double
+      final amount = double.parse(_amountController.text);
+
+      // Convert category enum to string (lowercase)
+      final categoryStr = _selectedCategory.toString().split('.').last;
+
+      // Get payment method id (already mapped to valid API values)
+      final paymentMethodStr = _selectedPaymentMethod!.id;
+
+      debugPrint('📝 [ADD_EXPENSE] Preparing data:');
+      debugPrint('   - Title: $categoryName');
+      debugPrint('   - Amount: $amount');
+      debugPrint('   - Category: $categoryStr');
+      debugPrint('   - Payment: $paymentMethodStr');
+      debugPrint('   - Date: $_selectedDate');
+
+      // Create expense via API
+      debugPrint('🌐 [ADD_EXPENSE] Calling API...');
+      await expenseService.createExpense(
+        title: categoryName,
+        description: _noteController.text.isNotEmpty ? _noteController.text : null,
+        amount: amount,
+        category: categoryStr,
+        paymentMethod: paymentMethodStr,
+        date: _selectedDate,
+      );
+
+      debugPrint('✅ [ADD_EXPENSE] API call successful!');
 
       if (!mounted) return;
 
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Chi tiêu đã được lưu thành công!'),
+          content: Text('✅ Chi tiêu đã được lưu thành công!'),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -883,19 +910,38 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
       );
 
       // Navigate back
-      Navigator.pop(context);
-    } catch (e) {
+      Navigator.pop(context, true); // Return true to indicate success
+    } catch (e, stackTrace) {
+      debugPrint('❌ [ADD_EXPENSE] Error occurred: $e');
+      debugPrint('📍 [ADD_EXPENSE] Stack trace: $stackTrace');
+
+      if (!mounted) return;
+
+      // Extract error message
+      String errorMessage = 'Đã có lỗi xảy ra';
+      if (e.toString().contains('Exception:')) {
+        errorMessage = e.toString().replaceFirst('Exception:', '').trim();
+      } else if (e.toString().contains('No access token')) {
+        errorMessage = 'Vui lòng đăng nhập lại';
+      } else if (e.toString().contains('TimeoutException')) {
+        errorMessage = 'Kết nối quá chậm, vui lòng thử lại';
+      }
+
+      debugPrint('💬 [ADD_EXPENSE] Showing error to user: $errorMessage');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Đã có lỗi xảy ra: $e'),
+          content: Text('❌ $errorMessage'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
+          duration: const Duration(seconds: 4),
         ),
       );
     } finally {
+      debugPrint('🏁 [ADD_EXPENSE] Finished (loading = false)');
       if (mounted) {
         setState(() {
           _isLoading = false;

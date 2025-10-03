@@ -1,0 +1,916 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:fl_chart/fl_chart.dart';
+
+import '../../services/dashboard_service.dart';
+import '../../services/auth_service.dart';
+import '../../models/dashboard.dart';
+import '../../constants/colors.dart';
+import '../../constants/typography.dart';
+
+class DashboardScreenApi extends StatefulWidget {
+  const DashboardScreenApi({super.key});
+
+  @override
+  State<DashboardScreenApi> createState() => _DashboardScreenApiState();
+}
+
+class _DashboardScreenApiState extends State<DashboardScreenApi> {
+  @override
+  void initState() {
+    super.initState();
+    // Load dashboard data when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadDashboardData();
+    });
+  }
+
+  Future<void> _loadDashboardData() async {
+    final dashboardService = Provider.of<DashboardService>(context, listen: false);
+    try {
+      await dashboardService.getDashboardSummary(period: 'month');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi tải dữ liệu: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _refreshDashboard() async {
+    return _loadDashboardData();
+  }
+
+  String formatCurrency(double amount) {
+    // Format số với dấu phẩy phân cách hàng nghìn
+    final parts = amount.toStringAsFixed(0).split('');
+    final buffer = StringBuffer();
+    var count = 0;
+
+    for (var i = parts.length - 1; i >= 0; i--) {
+      if (count > 0 && count % 3 == 0) {
+        buffer.write(',');
+      }
+      buffer.write(parts[i]);
+      count++;
+    }
+
+    return buffer.toString().split('').reversed.join('');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authService = Provider.of<AuthService>(context);
+    final dashboardService = Provider.of<DashboardService>(context);
+
+    return Container(
+      color: AppColors.backgroundPrimary,
+      child: dashboardService.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : dashboardService.error != null
+              ? _buildErrorView(dashboardService.error!)
+              : dashboardService.dashboardData == null
+                  ? const Center(child: Text('Không có dữ liệu'))
+                  : RefreshIndicator(
+                      onRefresh: _refreshDashboard,
+                      child: _buildDashboardContent(dashboardService.dashboardData!, authService),
+                    ),
+    );
+  }
+
+  Widget _buildErrorView(String error) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          const SizedBox(height: 16),
+          Text('Có lỗi xảy ra', style: AppTypography.h2),
+          const SizedBox(height: 8),
+          Text(error, textAlign: TextAlign.center),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: _loadDashboardData,
+            child: const Text('Thử lại'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDashboardContent(DashboardData data, AuthService authService) {
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(authService),
+          _buildBalanceCard(data),
+          _buildInsights(data.insights),
+          _buildBudgetCard(data.budget),
+          _buildQuickStats(data),
+          const SizedBox(height: 20),
+          _buildQuickActions(),
+          const SizedBox(height: 20),
+          _buildSpendingChart(data.categoryBreakdown, data.period.expense),
+          _buildCategoryBreakdown(data.categoryBreakdown),
+          _buildRecentTransactions(data.recentTransactions),
+          const SizedBox(height: 80),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(AuthService authService) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary500, AppColors.primary600],
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Xin chào! 👋',
+                style: AppTypography.h3.copyWith(color: Colors.white),
+              ),
+              Text(
+                authService.currentUser?.email ?? '',
+                style: AppTypography.bodySmall.copyWith(color: Colors.white70),
+              ),
+            ],
+          ),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.notifications_outlined, color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBalanceCard(DashboardData data) {
+    final periodLabel = _getPeriodLabel(data.period.type);
+    final periodBalance = data.period.balance;
+
+    return Container(
+      margin: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.blue.shade400, Colors.blue.shade600],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.withAlpha(76),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Số dư hiện tại',
+            style: AppTypography.bodyMedium.copyWith(color: Colors.white70),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${formatCurrency(data.currentBalance)} ₫',
+            style: AppTypography.h1.copyWith(
+              color: Colors.white,
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Period Stats Box
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(51),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  'Thống kê $periodLabel',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Thu nhập', style: AppTypography.bodySmall.copyWith(color: Colors.white70)),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${formatCurrency(data.period.income)} ₫',
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text('Chi tiêu', style: AppTypography.bodySmall.copyWith(color: Colors.white70)),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${formatCurrency(data.period.expense)} ₫',
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      periodBalance >= 0 ? Icons.trending_up : Icons.trending_down,
+                      color: periodBalance >= 0 ? Colors.greenAccent : Colors.redAccent,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${periodBalance >= 0 ? '+' : ''}${formatCurrency(periodBalance)} ₫',
+                      style: AppTypography.bodyLarge.copyWith(
+                        color: periodBalance >= 0 ? Colors.greenAccent : Colors.redAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildBalanceItem('Tổng thu', data.totalIncome, Icons.arrow_downward, Colors.green),
+              _buildBalanceItem('Tổng chi', data.totalExpenses, Icons.arrow_upward, Colors.red),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getPeriodLabel(String period) {
+    switch (period) {
+      case 'week':
+        return 'tuần này';
+      case 'year':
+        return 'năm nay';
+      case 'month':
+      default:
+        return 'tháng này';
+    }
+  }
+
+  Widget _buildBalanceItem(String label, double amount, IconData icon, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16, color: Colors.white70),
+            const SizedBox(width: 4),
+            Text(label, style: AppTypography.bodySmall.copyWith(color: Colors.white70)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${formatCurrency(amount)} ₫',
+          style: AppTypography.bodyLarge.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInsights(List<Insight> insights) {
+    if (insights.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Thông tin chi tiêu', style: AppTypography.h3),
+          const SizedBox(height: 12),
+          ...insights.map((insight) => _buildInsightCard(insight)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInsightCard(Insight insight) {
+    Color bgColor;
+    Color textColor;
+
+    switch (insight.type) {
+      case 'success':
+        bgColor = Colors.green.shade50;
+        textColor = Colors.green.shade700;
+        break;
+      case 'warning':
+        bgColor = Colors.orange.shade50;
+        textColor = Colors.orange.shade700;
+        break;
+      case 'alert':
+        bgColor = Colors.red.shade50;
+        textColor = Colors.red.shade700;
+        break;
+      default:
+        bgColor = Colors.blue.shade50;
+        textColor = Colors.blue.shade700;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Text(insight.icon, style: const TextStyle(fontSize: 24)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      insight.title,
+                      style: AppTypography.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
+                    ),
+                    Text(insight.message, style: AppTypography.bodySmall),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (insight.action != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => _handleInsightAction(insight.action!),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: textColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(
+                  insight.action!,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _handleInsightAction(String action) {
+    switch (action) {
+      case 'Giảm chi tiêu':
+      case 'Xem chi tiết':
+      case 'Điều chỉnh':
+        context.go('/budget');
+        break;
+      case 'Xem gợi ý':
+        context.go('/reports');
+        break;
+      default:
+        // Default action - go to budget page
+        context.go('/budget');
+    }
+  }
+
+  Widget _buildBudgetCard(BudgetInfo? budget) {
+    if (budget == null) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(13),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(budget.name, style: AppTypography.h3),
+              Text(
+                '${budget.spentPercentage}%',
+                style: AppTypography.h3.copyWith(
+                  color: budget.isOverBudget ? Colors.red : AppColors.primary500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          LinearProgressIndicator(
+            value: budget.spentPercentage / 100,
+            backgroundColor: Colors.grey.shade200,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              budget.isOverBudget ? Colors.red : AppColors.primary500,
+            ),
+            minHeight: 8,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Đã chi: ${formatCurrency(budget.spent)} ₫',
+                style: AppTypography.bodySmall,
+              ),
+              Text(
+                'Còn lại: ${formatCurrency(budget.remaining)} ₫',
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.primary500,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Ngân sách hàng ngày: ${formatCurrency(budget.dailyBudget)} ₫',
+            style: AppTypography.bodySmall.copyWith(color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickStats(DashboardData data) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildStatCard(
+              'Level',
+              data.userStats.level.toString(),
+              Icons.star,
+              Colors.amber,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildStatCard(
+              'Streak',
+              '${data.userStats.currentStreak} ngày',
+              Icons.local_fire_department,
+              Colors.orange,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(13),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 32),
+          const SizedBox(height: 8),
+          Text(value, style: AppTypography.h3),
+          Text(label, style: AppTypography.bodySmall.copyWith(color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpendingChart(List<CategoryBreakdown> categories, double totalExpense) {
+    if (categories.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(13),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Biểu đồ chi tiêu', style: AppTypography.h3),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 200,
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: PieChart(
+                    PieChartData(
+                      sections: categories.take(5).map((cat) {
+                        return PieChartSectionData(
+                          value: cat.total,
+                          title: '${cat.percentage}%',
+                          color: _getCategoryColor(cat.category),
+                          radius: 60,
+                          titleStyle: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        );
+                      }).toList(),
+                      sectionsSpace: 2,
+                      centerSpaceRadius: 40,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: categories.take(5).map((cat) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: _getCategoryColor(cat.category),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _getCategoryName(cat.category),
+                                style: AppTypography.bodySmall,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getCategoryColor(String category) {
+    const categoryColors = {
+      'food': Color(0xFFFF6B6B),
+      'transport': Color(0xFF4ECDC4),
+      'shopping': Color(0xFFFFBE0B),
+      'entertainment': Color(0xFFFF006E),
+      'healthcare': Color(0xFF8338EC),
+      'education': Color(0xFF3A86FF),
+      'utilities': Color(0xFFFB5607),
+      'other': Color(0xFF6C757D),
+    };
+    return categoryColors[category] ?? Colors.grey;
+  }
+
+  Widget _buildCategoryBreakdown(List<CategoryBreakdown> categories) {
+    if (categories.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Chi tiêu theo danh mục', style: AppTypography.h3),
+          const SizedBox(height: 12),
+          ...categories.map((cat) => _buildCategoryItem(cat)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryItem(CategoryBreakdown category) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _getCategoryName(category.category),
+                  style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  '${category.count} giao dịch',
+                  style: AppTypography.bodySmall.copyWith(color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${formatCurrency(category.total)} ₫',
+                style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+              ),
+              Text(
+                '${category.percentage}%',
+                style: AppTypography.bodySmall.copyWith(color: AppColors.primary500),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentTransactions(List<Transaction> transactions) {
+    if (transactions.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Giao dịch gần đây', style: AppTypography.h3),
+              TextButton(
+                onPressed: () {
+                  // Navigate to expenses list page
+                  context.go('/home'); // Change to expenses list route when available
+                },
+                child: Text(
+                  'Xem tất cả',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.primary500,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...transactions.map((txn) => _buildTransactionItem(txn)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransactionItem(Transaction transaction) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: transaction.isIncome ? Colors.green.shade50 : Colors.red.shade50,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              transaction.isIncome ? Icons.arrow_downward : Icons.arrow_upward,
+              color: transaction.isIncome ? Colors.green : Colors.red,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  transaction.title,
+                  style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  '${transaction.date.day.toString().padLeft(2, '0')}/${transaction.date.month.toString().padLeft(2, '0')}/${transaction.date.year}',
+                  style: AppTypography.bodySmall.copyWith(color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '${transaction.isIncome ? '+' : '-'}${formatCurrency(transaction.amount)} ₫',
+            style: AppTypography.bodyMedium.copyWith(
+              color: transaction.isIncome ? Colors.green : Colors.red,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActions() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Thao tác nhanh', style: AppTypography.h3),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildQuickActionButton(
+                  'Thêm chi tiêu',
+                  Icons.add,
+                  AppColors.primary500,
+                  () async {
+                    final result = await context.push('/add-expense');
+                    // Refresh dashboard if expense was created successfully
+                    if (result == true) {
+                      _loadDashboardData();
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildQuickActionButton(
+                  'Thu nhập',
+                  Icons.trending_up,
+                  Colors.green,
+                  () => context.push('/add-income'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildQuickActionButton(
+                  'Ngân sách',
+                  Icons.pie_chart,
+                  Colors.blue,
+                  () => context.go('/budget'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionButton(
+    String title,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: color.withAlpha(25),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color.withAlpha(25),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: AppTypography.bodySmall.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getCategoryName(String category) {
+    const categoryNames = {
+      'food': 'Ăn uống',
+      'transport': 'Di chuyển',
+      'shopping': 'Mua sắm',
+      'entertainment': 'Giải trí',
+      'healthcare': 'Sức khỏe',
+      'education': 'Giáo dục',
+      'utilities': 'Hóa đơn',
+      'other': 'Khác',
+    };
+    return categoryNames[category] ?? category;
+  }
+}

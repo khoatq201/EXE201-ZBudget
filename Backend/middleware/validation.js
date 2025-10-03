@@ -217,7 +217,7 @@ export const expenseSchemas = {
     subcategory: Joi.string().optional().label("Danh mục phụ"),
     date: Joi.date().iso().max("now").required().label("Ngày"),
     paymentMethod: Joi.string()
-      .valid("cash", "card", "transfer", "ewallet")
+      .valid("cash", "card", "banking", "momo", "other")
       .required()
       .label("Phương thức thanh toán"),
     location: Joi.string().max(200).optional().label("Địa điểm"),
@@ -242,7 +242,7 @@ export const expenseSchemas = {
     subcategory: Joi.string().optional().label("Danh mục phụ"),
     date: Joi.date().iso().max("now").optional().label("Ngày"),
     paymentMethod: Joi.string()
-      .valid("cash", "card", "transfer", "ewallet")
+      .valid("cash", "card", "banking", "momo", "other")
       .optional()
       .label("Phương thức thanh toán"),
     location: Joi.string().max(200).optional().label("Địa điểm"),
@@ -262,7 +262,7 @@ export const expenseSchemas = {
     minAmount: commonSchemas.vndAmount.optional().label("Số tiền tối thiểu"),
     maxAmount: commonSchemas.vndAmount.optional().label("Số tiền tối đa"),
     paymentMethod: Joi.string()
-      .valid("cash", "card", "transfer", "ewallet")
+      .valid("cash", "card", "banking", "momo", "other")
       .optional()
       .label("Phương thức thanh toán"),
     tags: Joi.alternatives()

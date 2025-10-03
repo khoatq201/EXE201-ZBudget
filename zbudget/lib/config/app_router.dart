@@ -8,7 +8,7 @@ import '../screens/auth/password_reset_otp_screen.dart';
 import '../screens/onboarding_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/main_navigator.dart';
-import '../screens/home/new_dashboard_screen.dart';
+import '../screens/home/dashboard_screen_api.dart';
 import '../screens/home/add_expense_screen.dart';
 import '../screens/home/add_income_screen.dart';
 import '../screens/budget/budget_list_screen.dart';
@@ -105,7 +105,7 @@ final router = GoRouter(
       routes: [
         GoRoute(
           path: '/home',
-          builder: (context, state) => const NewDashboardScreen(),
+          builder: (context, state) => const DashboardScreenApi(),
           redirect: AuthGuard.checkAuthentication, // ✅ Route protection
         ),
         GoRoute(

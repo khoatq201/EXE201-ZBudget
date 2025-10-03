@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 import '../services/profile_service.dart';
 import '../services/auth_service.dart';
 import '../providers/app_provider.dart';
-import 'onboarding_screen.dart';
-import 'auth/login_screen.dart';
-import 'home/new_dashboard_screen.dart';
 
 class InitializationWrapper extends StatefulWidget {
   const InitializationWrapper({super.key});
@@ -58,15 +56,21 @@ class _InitializationWrapperState extends State<InitializationWrapper> {
 
     return Consumer2<AppProvider, AuthService>(
       builder: (context, appProvider, authService, child) {
-        // With GoRouter, we just return a simple loading state
-        // The actual routing is handled by AppRouter
-        if (appProvider.isFirstLaunch) {
-          return const OnboardingScreen();
-        } else if (authService.isAuthenticated) {
-          return const NewDashboardScreen(); // Default authenticated screen
-        } else {
-          return const LoginScreen();
-        }
+        // Navigate to appropriate route based on state
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (appProvider.isFirstLaunch) {
+            context.go('/onboarding');
+          } else if (authService.isAuthenticated) {
+            context.go('/home'); // Navigate to home with bottom navbar
+          } else {
+            context.go('/login');
+          }
+        });
+
+        // Show loading while navigation happens
+        return const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        );
       },
     );
   }

@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "mongodb": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mongodb-mcp-server",
+        "mongodb://localhost:27017/zbudget"
+      ],
+      "env": {},
+      "description": "MongoDB MCP Server for ZBudget database"
+    }
+  }
+}

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../constants/colors.dart';
 import '../../constants/typography.dart';
 import '../../models/budget_models.dart';
+import '../../models/expense.dart';
 
 class BudgetEditScreen extends StatefulWidget {
   final BudgetData budget;

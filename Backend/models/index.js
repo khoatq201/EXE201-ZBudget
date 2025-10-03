@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 // Import all models
 import User from "./User.js";
 import Expense from "./Expense.js";
+import Income from "./Income.js";
 import Budget from "./Budget.js";
 import Challenge from "./Challenge.js";
 import UserChallenge from "./UserChallenge.js";
@@ -87,6 +88,7 @@ const dbUtils = {
     const models = [
       User,
       Expense,
+      Income,
       Budget,
       Challenge,
       UserChallenge,
@@ -342,6 +344,7 @@ export {
   // Models
   User,
   Expense,
+  Income,
   Budget,
   Challenge,
   UserChallenge,
@@ -362,6 +365,7 @@ export {
 export default {
   User,
   Expense,
+  Income,
   Budget,
   Challenge,
   UserChallenge,

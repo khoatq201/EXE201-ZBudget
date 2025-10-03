@@ -167,6 +167,42 @@ const StatsSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const FinancialSummarySchema = new mongoose.Schema(
+  {
+    monthlyAllowance: {
+      type: mongoose.Schema.Types.Decimal128,
+      default: 0,
+      validate: {
+        validator: function (v) {
+          return parseFloat(v.toString()) >= 0;
+        },
+        message: "Định mức tháng phải >= 0",
+      },
+    },
+    currentBalance: {
+      type: mongoose.Schema.Types.Decimal128,
+      default: 0,
+    },
+    totalIncome: {
+      type: mongoose.Schema.Types.Decimal128,
+      default: 0,
+    },
+    totalExpenses: {
+      type: mongoose.Schema.Types.Decimal128,
+      default: 0,
+    },
+    totalSavings: {
+      type: mongoose.Schema.Types.Decimal128,
+      default: 0,
+    },
+    lastUpdated: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
+
 // Main User Schema
 const UserSchema = new mongoose.Schema(
   {
@@ -203,6 +239,12 @@ const UserSchema = new mongoose.Schema(
     // Gamification Stats
     stats: {
       type: StatsSchema,
+      default: () => ({}),
+    },
+
+    // Financial Summary
+    financialSummary: {
+      type: FinancialSummarySchema,
       default: () => ({}),
     },
 

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../constants/colors.dart';
 import '../../constants/typography.dart';
 import '../../models/budget_models.dart';
+import '../../models/expense.dart';
 import '../../services/expense_service.dart';
 import 'budget_edit_screen.dart';
 import 'add_expense_from_budget_screen.dart';

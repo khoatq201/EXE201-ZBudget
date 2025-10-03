@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../constants/colors.dart';
 import '../../constants/typography.dart';
+import '../../services/income_service.dart';
 
 enum IncomeCategory {
   salary,
@@ -698,15 +700,40 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
     });
 
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 1));
+      final incomeService = Provider.of<IncomeService>(context, listen: false);
+
+      // Parse amount
+      final amount = double.parse(_amountController.text);
+
+      // Get category name from enum
+      final categoryName = _selectedCategory.toString().split('.').last;
+
+      // Get payment method id
+      final paymentMethodId = _selectedPaymentMethod?.id;
+
+      // Get category display name for title
+      final categoryOption = categoryOptions.firstWhere(
+        (opt) => opt.category == _selectedCategory,
+      );
+
+      // Create income via API
+      await incomeService.createIncome(
+        title: _noteController.text.isNotEmpty
+            ? _noteController.text
+            : categoryOption.name,
+        description: _noteController.text.isNotEmpty ? _noteController.text : null,
+        amount: amount,
+        category: categoryName,
+        date: _selectedDate,
+        paymentMethod: paymentMethodId,
+      );
 
       if (!mounted) return;
 
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Thu nhập đã được lưu thành công!'),
+          content: const Text('Thu nhập đã được lưu thành công!'),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -716,8 +743,10 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
       );
 
       // Navigate back
-      Navigator.pop(context);
+      Navigator.pop(context, true); // Return true to indicate success
     } catch (e) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Đã có lỗi xảy ra: $e'),

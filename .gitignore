@@ -220,6 +220,9 @@ cache/
 # Serena (AI assistant) files
 .serena/
 
+# MCP configuration (may contain sensitive connection strings)
+.mcp.json
+
 # ===============================
 # Additional project-specific
 # ===============================

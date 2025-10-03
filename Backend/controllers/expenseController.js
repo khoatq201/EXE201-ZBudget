@@ -1,5 +1,6 @@
 import Expense from "../models/Expense.js";
 import Budget from "../models/Budget.js";
+import { User } from "../models/index.js";
 import {
   BadRequestError,
   NotFoundError,
@@ -45,8 +46,7 @@ export const createExpense = async (req, res) => {
     receipt = getFileUrl(file);
   }
 
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  console.log('🔥 Creating expense:', { title, amount, category, paymentMethod });
 
   try {
     // Create expense
@@ -66,55 +66,58 @@ export const createExpense = async (req, res) => {
       budgetId: budgetId || null,
     });
 
-    await expense.save({ session });
+    console.log('💾 Saving expense...');
+    await expense.save();
+    console.log('✅ Expense saved:', expense._id);
 
-    // Update budget if specified
-    if (budgetId) {
-      const budget = await Budget.findOne({
-        _id: budgetId,
+    // Update user financial summary
+    console.log('💰 Updating user financial summary...');
+    try {
+      await User.findByIdAndUpdate(
         userId,
-        isActive: true,
-      }).session(session);
+        {
+          $inc: {
+            'financialSummary.totalExpenses': amount,
+            'financialSummary.currentBalance': -amount,
+          },
+          'financialSummary.lastUpdated': new Date(),
+        },
+        { new: true }
+      );
+      console.log('✅ Financial summary updated');
+    } catch (summaryError) {
+      console.error('⚠️ Financial summary update failed:', summaryError.message);
+    }
 
-      if (budget) {
-        const categoryBudget = budget.categories.find(
-          (cat) =>
-            cat.category === category &&
-            (!subcategory ||
-              !cat.subcategories.length ||
-              cat.subcategories.includes(subcategory))
-        );
+    // Update budget if specified (simplified without transaction)
+    if (budgetId) {
+      console.log('🔄 Updating budget:', budgetId);
+      try {
+        const budget = await Budget.findOne({
+          _id: budgetId,
+          userId,
+          isActive: true,
+        });
 
-        if (categoryBudget) {
-          categoryBudget.spent = (categoryBudget.spent || 0) + amount;
-          budget.totalSpent = (budget.totalSpent || 0) + amount;
+        if (budget) {
+          // Note: Budget model uses categoryAllocations, not categories
+          const categoryAllocation = budget.categoryAllocations?.find(
+            (cat) => cat.category === category
+          );
 
-          // Calculate usage percentage
-          const usagePercentage =
-            (categoryBudget.spent / categoryBudget.amount) * 100;
-
-          // Check if alert threshold is reached
-          if (usagePercentage >= budget.alertThreshold) {
-            budget.alerts.push({
-              type: "threshold_exceeded",
-              category: category,
-              message: `Đã sử dụng ${usagePercentage.toFixed(1)}% ngân sách cho ${category}`,
-              createdAt: new Date(),
-            });
+          if (categoryAllocation) {
+            categoryAllocation.spent = (categoryAllocation.spent || 0) + amount;
+            await budget.save();
+            console.log('✅ Budget updated');
           }
-
-          await budget.save({ session });
         }
+      } catch (budgetError) {
+        console.error('⚠️ Budget update failed (non-critical):', budgetError.message);
+        // Don't fail the whole request if budget update fails
       }
     }
 
-    await session.commitTransaction();
-
-    // Populate related data for response
-    await expense.populate([
-      { path: "budgetId", select: "name totalAmount" },
-      { path: "groupId", select: "name type" },
-    ]);
+    console.log('📤 Preparing response...');
 
     res.locals.expenseId = expense._id;
 
@@ -131,27 +134,26 @@ export const createExpense = async (req, res) => {
       hasBudget: !!budgetId,
     });
 
+    console.log('✅ Sending success response');
     res
       .status(201)
       .json(successResponse("Tạo chi tiêu thành công!", { expense }));
   } catch (error) {
-    await session.abortTransaction();
+    console.error('❌ Create expense error:', error);
 
-    // Clean up uploaded file if transaction failed
+    // Clean up uploaded file if failed
     if (receipt) {
       try {
         await deleteFile(receipt);
       } catch (cleanupError) {
         console.error(
-          "Error cleaning up file after failed transaction:",
+          "Error cleaning up file after failed request:",
           cleanupError
         );
       }
     }
 
     throw error;
-  } finally {
-    session.endSession();
   }
 };
 

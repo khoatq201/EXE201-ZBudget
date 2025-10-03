@@ -1,17 +1,7 @@
 import 'package:flutter/material.dart';
+import 'expense.dart';
 
 enum BudgetPeriod { daily, weekly, monthly, yearly }
-
-enum ExpenseCategory {
-  food,
-  transport,
-  shopping,
-  entertainment,
-  healthcare,
-  education,
-  utilities,
-  other,
-}
 
 class BudgetCategoryData {
   final ExpenseCategory category;

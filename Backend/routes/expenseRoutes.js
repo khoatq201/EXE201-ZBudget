@@ -30,8 +30,8 @@ const router = express.Router();
 // Apply authentication to all expense routes
 router.use(authenticate);
 
-// Apply general rate limiting
-router.use(rateLimitGeneral);
+// Apply general rate limiting (with default 15min window, 100 requests max)
+router.use(rateLimitGeneral());
 
 // Audit logging for expense operations
 const auditExpenseOperation = (operation) => (req, res, next) => {

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../constants/colors.dart';
 import '../../constants/typography.dart';
 import '../../models/budget_models.dart';
+import '../../models/expense.dart';
 import '../../services/expense_service.dart';
 
 class AddExpenseFromBudgetScreen extends StatefulWidget {
