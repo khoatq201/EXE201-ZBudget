@@ -333,8 +333,13 @@ export const getAllTransactions = async (req, res) => {
       })),
     ];
 
-    // Sort by date descending
-    transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+    // Sort by date descending, then by createdAt for same-day transactions
+    transactions.sort((a, b) => {
+      const dateCompare = new Date(b.date) - new Date(a.date);
+      if (dateCompare !== 0) return dateCompare;
+      // If same date, sort by createdAt (newest first)
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
 
     // Apply pagination if provided
     const skipNum = parseInt(skip) || 0;
@@ -370,14 +375,14 @@ async function getRecentTransactions(userId, limit = 10) {
       userId: new mongoose.Types.ObjectId(userId),
       isConfirmed: true,
     })
-      .select("title description amount category date paymentMethod")
-      .sort({ date: -1 })
+      .select("title description amount category date paymentMethod createdAt")
+      .sort({ date: -1, createdAt: -1 })
       .limit(limit)
       .lean(),
 
     Expense.find({ userId: new mongoose.Types.ObjectId(userId) })
-      .select("title description amount category date paymentMethod")
-      .sort({ date: -1 })
+      .select("title description amount category date paymentMethod createdAt")
+      .sort({ date: -1, createdAt: -1 })
       .limit(limit)
       .lean(),
   ]);
@@ -398,8 +403,13 @@ async function getRecentTransactions(userId, limit = 10) {
     })),
   ];
 
-  // Sort by date descending
-  transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+  // Sort by date descending, then by createdAt for same-day transactions
+  transactions.sort((a, b) => {
+    const dateCompare = new Date(b.date) - new Date(a.date);
+    if (dateCompare !== 0) return dateCompare;
+    // If same date, sort by createdAt (newest first)
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
 
   return transactions.slice(0, limit);
 }

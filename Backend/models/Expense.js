@@ -202,7 +202,7 @@ const ExpenseSchema = new mongoose.Schema(
     // Payment Information
     paymentMethod: {
       type: String,
-      enum: ["cash", "card", "momo", "banking", "other"],
+      enum: ["cash", "card", "momo", "banking", "zalopay", "viettelpay", "other"],
       default: "cash",
     },
     paymentDetails: {

@@ -201,9 +201,22 @@ class CurrencyFormatter {
           cleaned = cleaned.replaceAll(',', '');
         }
       }
-      // If only dots, assume thousand separators: 1.000.000
-      if (cleaned.split('.').length > 2) {
-        cleaned = cleaned.replaceAll('.', '');
+      // If only dots, assume thousand separators: 65.000 or 1.000.000
+      // Need >= 2 parts (at least one dot) to be thousand separator
+      if (cleaned.contains('.')) {
+        final parts = cleaned.split('.');
+        // Check if this looks like a thousand separator pattern
+        // VND format uses dots for thousands: 65.000, 1.000.000
+        // Each part after first should be exactly 3 digits for thousands
+        bool isThousandSeparator = parts.length >= 2;
+        if (isThousandSeparator && parts.length == 2) {
+          // For exactly one dot, verify the pattern (e.g., 65.000)
+          // Should have 3 digits after the dot for thousand separator
+          isThousandSeparator = parts[1].length == 3;
+        }
+        if (isThousandSeparator) {
+          cleaned = cleaned.replaceAll('.', '');
+        }
       }
     }
 

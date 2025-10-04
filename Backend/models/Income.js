@@ -140,7 +140,7 @@ const IncomeSchema = new mongoose.Schema(
     // Payment Method
     paymentMethod: {
       type: String,
-      enum: ["cash", "card", "momo", "banking", "other"],
+      enum: ["cash", "card", "momo", "banking", "zalopay", "viettelpay", "other"],
       required: [true, "Phương thức thanh toán là bắt buộc"],
       default: "banking",
     },

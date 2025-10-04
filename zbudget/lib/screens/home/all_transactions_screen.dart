@@ -372,13 +372,21 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       groupedTransactions[dateKey]!.add(transaction);
     }
 
+    // Sort date keys in descending order (newest first)
+    final sortedDateKeys = groupedTransactions.keys.toList()
+      ..sort((a, b) {
+        final dateA = DateFormat('dd/MM/yyyy').parse(a);
+        final dateB = DateFormat('dd/MM/yyyy').parse(b);
+        return dateB.compareTo(dateA); // Descending order
+      });
+
     return RefreshIndicator(
       onRefresh: _loadTransactions,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: groupedTransactions.length,
+        itemCount: sortedDateKeys.length,
         itemBuilder: (context, index) {
-          final dateKey = groupedTransactions.keys.elementAt(index);
+          final dateKey = sortedDateKeys[index];
           final transactions = groupedTransactions[dateKey]!;
 
           return Column(

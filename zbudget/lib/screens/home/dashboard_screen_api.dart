@@ -17,7 +17,12 @@ class DashboardScreenApi extends StatefulWidget {
   State<DashboardScreenApi> createState() => _DashboardScreenApiState();
 }
 
-class _DashboardScreenApiState extends State<DashboardScreenApi> {
+class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticKeepAliveClientMixin {
+  DateTime? _lastLoadTime;
+
+  @override
+  bool get wantKeepAlive => true;
+
   @override
   void initState() {
     super.initState();
@@ -27,7 +32,20 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> {
     });
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Auto-reload if coming back after 5 seconds
+    if (_lastLoadTime != null) {
+      final timeSinceLastLoad = DateTime.now().difference(_lastLoadTime!);
+      if (timeSinceLastLoad.inSeconds > 5) {
+        _loadDashboardData();
+      }
+    }
+  }
+
   Future<void> _loadDashboardData() async {
+    _lastLoadTime = DateTime.now();
     final dashboardService = Provider.of<DashboardService>(context, listen: false);
     try {
       await dashboardService.getDashboardSummary(period: 'month');
@@ -46,6 +64,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
     final authService = Provider.of<AuthService>(context);
     final dashboardService = Provider.of<DashboardService>(context);
 
