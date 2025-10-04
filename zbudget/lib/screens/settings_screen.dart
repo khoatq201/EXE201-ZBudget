@@ -3,12 +3,12 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/app_provider.dart';
+import '../services/notification_service.dart';
 import '../constants/colors.dart';
 import '../constants/typography.dart';
 import '../constants/spacing.dart';
-import 'settings/profile/profile_screen_simple.dart';
+import 'settings/profile/profile_screen.dart';
 import 'settings/security/security_screen_simple.dart';
-import 'settings/notifications/notifications_screen.dart';
 import 'settings/theme/theme_screen.dart';
 import 'settings/language/language_screen.dart';
 import 'settings/currency/currency_screen.dart';
@@ -43,16 +43,24 @@ class SettingsScreen extends StatelessWidget {
               );
             },
           ),
-          _buildSettingItem(
-            icon: Icons.notifications,
-            title: 'Thông báo',
-            subtitle: 'Quản lý thông báo',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificationsScreen(),
-                ),
+          Consumer<NotificationService>(
+            builder: (context, notificationService, child) {
+              final isEnabled =
+                  notificationService.notificationSettings.isGlobalEnabled;
+              final enabledCount = notificationService
+                  .notificationSettings
+                  .enabledNotificationCount;
+              final totalCount = notificationService
+                  .notificationSettings
+                  .totalNotificationCount;
+
+              return _buildNotificationSettingItem(
+                isEnabled: isEnabled,
+                enabledCount: enabledCount,
+                totalCount: totalCount,
+                onTap: () {
+                  context.push('/notifications-settings');
+                },
               );
             },
           ),
@@ -304,5 +312,54 @@ class SettingsScreen extends StatelessWidget {
         );
       }
     }
+  }
+
+  Widget _buildNotificationSettingItem({
+    required bool isEnabled,
+    required int enabledCount,
+    required int totalCount,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: AppColors.primary500.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Icon(Icons.notifications, size: 20, color: AppColors.primary500),
+      ),
+      title: Text(
+        'Thông báo',
+        style: AppTypography.body.copyWith(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(
+        isEnabled
+            ? '$enabledCount/$totalCount loại đang bật'
+            : 'Đã tắt thông báo',
+        style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+      ),
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: isEnabled
+              ? Colors.green.withValues(alpha: 0.1)
+              : Colors.grey.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          isEnabled ? 'BẬT' : 'TẮT',
+          style: AppTypography.caption.copyWith(
+            color: isEnabled ? Colors.green : Colors.grey,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      onTap: onTap,
+    );
   }
 }

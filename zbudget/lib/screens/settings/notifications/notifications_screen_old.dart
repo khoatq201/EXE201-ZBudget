@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../constants/colors.dart';
 import '../../../constants/typography.dart';
@@ -30,98 +30,87 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           final stats = notificationService.getNotificationStatistics();
 
           return CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                expandedHeight: 120,
-                floating: false,
-                pinned: true,
-                backgroundColor: AppColors.primary500,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                flexibleSpace: FlexibleSpaceBar(
-                  title: Text(
-                    'Thông báo',
-                    style: AppTypography.h3.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  background: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppColors.primary500,
-                          AppColors.primary500.withValues(alpha: 0.8),
-                        ],
-                      ),
-                    ),
-                    child: Stack(
-                      children: [
-                        Positioned(
-                          right: -30,
-                          top: -30,
-                          child: Icon(
-                            Icons.notifications,
-                            size: 150,
-                            color: Colors.white.withValues(alpha: 0.1),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 120,
+            floating: false,
+            pinned: true,
+            backgroundColor: AppColors.primary500,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            flexibleSpace: FlexibleSpaceBar(
+              title: Text(
+                'Thông báo',
+                style: AppTypography.h3.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Notification Overview Card
-                      _buildNotificationOverviewCard(settings, stats),
-                      const SizedBox(height: 24),
-
-                      // Global Settings Section
-                      _buildSectionHeader('Cài đặt chung'),
-                      const SizedBox(height: 16),
-                      _buildGlobalSettingsSection(
-                        settings,
-                        notificationService,
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Notification Types Section
-                      _buildSectionHeader('Loại thông báo'),
-                      const SizedBox(height: 16),
-                      _buildNotificationTypesSection(
-                        settings,
-                        notificationService,
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Quiet Hours Section
-                      _buildSectionHeader('Giờ im lặng'),
-                      const SizedBox(height: 16),
-                      _buildQuietHoursSection(settings, notificationService),
-                      const SizedBox(height: 24),
-
-                      // Advanced Settings Section
-                      _buildSectionHeader('Cài đặt nâng cao'),
-                      const SizedBox(height: 16),
-                      _buildAdvancedSettingsSection(
-                        settings,
-                        notificationService,
-                      ),
-                      const SizedBox(height: 100),
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppColors.primary500,
+                      AppColors.primary500.withValues(alpha: 0.8),
                     ],
                   ),
                 ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      right: -30,
+                      top: -30,
+                      child: Icon(
+                        Icons.notifications,
+                        size: 150,
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          );
-        },
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Notification Overview Card
+                  _buildNotificationOverviewCard(settings, stats),
+                  const SizedBox(height: 24),
+
+                  // Global Settings Section
+                  _buildSectionHeader('Cài đặt chung'),
+                  const SizedBox(height: 16),
+                  _buildGlobalSettingsSection(settings),
+                  const SizedBox(height: 24),
+
+                  // Notification Types Section
+                  _buildSectionHeader('Loại thông báo'),
+                  const SizedBox(height: 16),
+                  _buildNotificationTypesSection(settings),
+                  const SizedBox(height: 24),
+
+                  // Quiet Hours Section
+                  _buildSectionHeader('Giờ im lặng'),
+                  const SizedBox(height: 16),
+                  _buildQuietHoursSection(settings),
+                  const SizedBox(height: 24),
+
+                  // Advanced Settings Section
+                  _buildSectionHeader('Cài đặt nâng cao'),
+                  const SizedBox(height: 16),
+                  _buildAdvancedSettingsSection(settings),
+                  const SizedBox(height: 100),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -263,10 +252,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildGlobalSettingsSection(
-    NotificationSettings settings,
-    NotificationService notificationService,
-  ) {
+  Widget _buildGlobalSettingsSection(NotificationSettings settings) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -290,7 +276,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 : 'Đã tắt thông báo',
             value: settings.isGlobalEnabled,
             onChanged: (value) =>
-                notificationService.toggleGlobalNotifications(value),
+                _notificationService.toggleGlobalNotifications(value),
             showDivider: true,
           ),
 
@@ -301,7 +287,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             subtitle: 'Gộp thông báo cùng loại lại với nhau',
             value: settings.groupNotifications,
             onChanged: (value) =>
-                notificationService.toggleGroupNotifications(value),
+                _notificationService.toggleGroupNotifications(value),
             showDivider: true,
           ),
 
@@ -312,7 +298,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             subtitle: 'Xem trước nội dung trong thông báo',
             value: settings.showPreviewInNotifications,
             onChanged: (value) =>
-                notificationService.toggleShowPreviewInNotifications(value),
+                _notificationService.toggleShowPreviewInNotifications(value),
             showDivider: true,
           ),
 
@@ -323,17 +309,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             subtitle: 'Tự động điều chỉnh thông báo theo thói quen',
             value: settings.enableSmartNotifications,
             onChanged: (value) =>
-                notificationService.toggleSmartNotifications(value),
+                _notificationService.toggleSmartNotifications(value),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildNotificationTypesSection(
-    NotificationSettings settings,
-    NotificationService notificationService,
-  ) {
+  Widget _buildNotificationTypesSection(NotificationSettings settings) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -363,8 +346,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 Row(
                   children: [
                     TextButton(
-                      onPressed: () =>
-                          _enableAllNotifications(notificationService),
+                      onPressed: () => _enableAllNotifications(),
                       child: Text(
                         'Bật tất cả',
                         style: AppTypography.bodySmall.copyWith(
@@ -375,8 +357,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     ),
                     const SizedBox(width: 8),
                     TextButton(
-                      onPressed: () =>
-                          _disableAllNotifications(notificationService),
+                      onPressed: () => _disableAllNotifications(),
                       child: Text(
                         'Tắt tất cả',
                         style: AppTypography.bodySmall.copyWith(
@@ -402,7 +383,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             return _buildNotificationTypeTile(
               type: type,
               setting: setting,
-              notificationService: notificationService,
               showDivider: !isLast,
             );
           }),
@@ -414,15 +394,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget _buildNotificationTypeTile({
     required NotificationType type,
     NotificationSetting? setting,
-    required NotificationService notificationService,
     bool showDivider = false,
   }) {
     final isEnabled = setting?.isEnabled ?? false;
-    final subtitle = _getNotificationTypeSubtitle(
-      type,
-      setting,
-      notificationService,
-    );
+    final subtitle = _getNotificationTypeSubtitle(type, setting);
 
     return Column(
       children: [
@@ -463,8 +438,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             children: [
               Switch(
                 value: isEnabled,
-                onChanged: (value) =>
-                    _toggleNotificationType(type, value, notificationService),
+                onChanged: (value) => _toggleNotificationType(type, value),
                 activeThumbColor: AppColors.primary500,
               ),
               IconButton(
@@ -473,11 +447,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   color: AppColors.textSecondary,
                   size: 20,
                 ),
-                onPressed: () => _showNotificationTypeSettings(
-                  type,
-                  setting,
-                  notificationService,
-                ),
+                onPressed: () => _showNotificationTypeSettings(type, setting),
               ),
             ],
           ),
@@ -490,7 +460,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   String _getNotificationTypeSubtitle(
     NotificationType type,
     NotificationSetting? setting,
-    NotificationService notificationService,
   ) {
     if (setting == null || !setting.isEnabled) {
       return 'Đã tắt';
@@ -498,17 +467,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     final frequency = setting.frequency.displayName;
     if (setting.scheduledTime != null) {
-      final time = notificationService.formatTime(setting.scheduledTime!);
+      final time = _notificationService.formatTime(setting.scheduledTime!);
       return '$frequency • $time';
     }
 
     return frequency;
   }
 
-  Widget _buildQuietHoursSection(
-    NotificationSettings settings,
-    NotificationService notificationService,
-  ) {
+  Widget _buildQuietHoursSection(NotificationSettings settings) {
     final quietHours = settings.quietHours;
 
     return Container(
@@ -533,7 +499,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ? '${quietHours.timeRangeText} • ${quietHours.daysText}'
                 : 'Nhận thông báo mọi lúc',
             value: quietHours.isEnabled,
-            onChanged: (value) => notificationService.toggleQuietHours(value),
+            onChanged: (value) => _notificationService.toggleQuietHours(value),
             showDivider: quietHours.isEnabled,
           ),
 
@@ -543,14 +509,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               icon: Icons.schedule,
               title: 'Thời gian im lặng',
               subtitle: quietHours.timeRangeText,
-              onTap: () => _showQuietHoursTimeDialog(notificationService),
+              onTap: () => _showQuietHoursTimeDialog(),
               showDivider: true,
             ),
             _buildActionTile(
               icon: Icons.calendar_today,
               title: 'Ngày trong tuần',
               subtitle: quietHours.daysText,
-              onTap: () => _showQuietHoursDaysDialog(notificationService),
+              onTap: () => _showQuietHoursDaysDialog(),
             ),
           ],
         ],
@@ -558,10 +524,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildAdvancedSettingsSection(
-    NotificationSettings settings,
-    NotificationService notificationService,
-  ) {
+  Widget _buildAdvancedSettingsSection(NotificationSettings settings) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -580,10 +543,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           _buildActionTile(
             icon: Icons.volume_up,
             title: 'Âm thanh thông báo',
-            subtitle: notificationService.getNotificationSoundDisplayName(
+            subtitle: _notificationService.getNotificationSoundDisplayName(
               settings.notificationSound,
             ),
-            onTap: () => _showNotificationSoundDialog(notificationService),
+            onTap: () => _showNotificationSoundDialog(),
             showDivider: true,
           ),
 
@@ -592,7 +555,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             icon: Icons.numbers,
             title: 'Tối đa mỗi ngày',
             subtitle: '${settings.maxNotificationsPerDay} thông báo',
-            onTap: () => _showMaxNotificationsDialog(notificationService),
+            onTap: () => _showMaxNotificationsDialog(),
             showDivider: true,
           ),
 
@@ -601,7 +564,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             icon: Icons.restore,
             title: 'Đặt lại cài đặt',
             subtitle: 'Khôi phục về mặc định',
-            onTap: () => _showResetSettingsDialog(notificationService),
+            onTap: () => _showResetSettingsDialog(),
           ),
         ],
       ),
@@ -702,35 +665,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Future<void> _toggleNotificationType(
     NotificationType type,
     bool enabled,
-    NotificationService notificationService,
   ) async {
-    await notificationService.toggleNotificationType(type, enabled);
+    await _notificationService.toggleNotificationType(type, enabled);
+    setState(() {});
   }
 
-  Future<void> _enableAllNotifications(
-    NotificationService notificationService,
-  ) async {
-    await notificationService.enableAllNotifications();
+  Future<void> _enableAllNotifications() async {
+    await _notificationService.enableAllNotifications();
+    setState(() {});
   }
 
-  Future<void> _disableAllNotifications(
-    NotificationService notificationService,
-  ) async {
-    await notificationService.disableAllNotifications();
+  Future<void> _disableAllNotifications() async {
+    await _notificationService.disableAllNotifications();
+    setState(() {});
   }
 
   // Dialog methods
   void _showNotificationTypeSettings(
     NotificationType type,
     NotificationSetting? setting,
-    NotificationService notificationService,
   ) async {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => NotificationTypeSettingsDialog(
         notificationType: type,
         initialSetting: setting,
-        notificationService: notificationService,
+        notificationService: _notificationService,
       ),
     );
 
@@ -739,14 +699,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  void _showQuietHoursTimeDialog(
-    NotificationService notificationService,
-  ) async {
+  void _showQuietHoursTimeDialog() async {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => QuietHoursDialog(
-        initialQuietHours: notificationService.notificationSettings.quietHours,
-        notificationService: notificationService,
+        initialQuietHours: _notificationService.notificationSettings.quietHours,
+        notificationService: _notificationService,
       ),
     );
 
@@ -755,14 +713,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  void _showQuietHoursDaysDialog(
-    NotificationService notificationService,
-  ) async {
+  void _showQuietHoursDaysDialog() async {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => QuietHoursDialog(
-        initialQuietHours: notificationService.notificationSettings.quietHours,
-        notificationService: notificationService,
+        initialQuietHours: _notificationService.notificationSettings.quietHours,
+        notificationService: _notificationService,
       ),
     );
 
@@ -771,27 +727,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  void _showNotificationSoundDialog(NotificationService notificationService) {
+  void _showNotificationSoundDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Âm thanh thông báo'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: notificationService.availableNotificationSounds.map((
+          children: _notificationService.availableNotificationSounds.map((
             sound,
           ) {
             return RadioListTile<String>(
               title: Text(
-                notificationService.getNotificationSoundDisplayName(sound),
+                _notificationService.getNotificationSoundDisplayName(sound),
               ),
               value: sound,
               groupValue:
-                  notificationService.notificationSettings.notificationSound,
+                  _notificationService.notificationSettings.notificationSound,
               onChanged: (value) {
                 if (value != null) {
-                  notificationService.updateNotificationSound(value);
+                  _notificationService.updateNotificationSound(value);
                   Navigator.pop(context);
+                  setState(() {});
                 }
               },
             );
@@ -807,15 +764,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  void _showMaxNotificationsDialog(
-    NotificationService notificationService,
-  ) async {
+  void _showMaxNotificationsDialog() async {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => MaxNotificationsDialog(
         initialValue:
-            notificationService.notificationSettings.maxNotificationsPerDay,
-        notificationService: notificationService,
+            _notificationService.notificationSettings.maxNotificationsPerDay,
+        notificationService: _notificationService,
       ),
     );
 
@@ -824,7 +779,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  void _showResetSettingsDialog(NotificationService notificationService) {
+  void _showResetSettingsDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -841,7 +796,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               Navigator.pop(context);
-              await notificationService.resetToDefaults();
+              await _notificationService.resetToDefaults();
+              setState(() {});
+              if (mounted && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Đã đặt lại cài đặt thông báo')),
+                );
+              }
             },
             child: const Text('Đặt lại'),
           ),

@@ -423,7 +423,7 @@ export const logout = async (req, res) => {
     );
   }
 
-  res.json(successResponse("Đăng xuất thành công!"));
+  return successResponse(res, "Đăng xuất thành công!");
 };
 
 /**
@@ -644,7 +644,7 @@ export const resetPassword = async (req, res) => {
 
   await user.save();
 
-  res.json(successResponse("Mật khẩu đã được đặt lại thành công!"));
+  return successResponse(res, "Mật khẩu đã được đặt lại thành công!");
 };
 
 /**
@@ -811,7 +811,7 @@ export const verifyEmail = async (req, res) => {
     console.error("Failed to send welcome email:", emailError);
   }
 
-  res.json(successResponse("Email đã được xác thực thành công!"));
+  return successResponse(res, "Email đã được xác thực thành công!");
 };
 
 /**
@@ -852,7 +852,7 @@ export const resendEmailVerification = async (req, res) => {
     );
   }
 
-  res.json(successResponse("Email xác thực đã được gửi lại!"));
+  return successResponse(res, "Email xác thực đã được gửi lại!");
 };
 
 /**
@@ -894,7 +894,7 @@ export const changePassword = async (req, res) => {
 
   await user.save();
 
-  res.json(successResponse("Mật khẩu đã được thay đổi thành công!"));
+  return successResponse(res, "Mật khẩu đã được thay đổi thành công!");
 };
 
 /**
@@ -913,7 +913,7 @@ export const getProfile = async (req, res) => {
     throw new NotFoundError("Không tìm thấy người dùng");
   }
 
-  res.json(successResponse("Lấy thông tin profile thành công", { user }));
+  return successResponse(res, "Lấy thông tin profile thành công", { user });
 };
 
 /**
@@ -1029,5 +1029,5 @@ export const deleteAccount = async (req, res) => {
 
   await user.save();
 
-  res.json(successResponse("Tài khoản đã được xóa thành công!"));
+  return successResponse(res, "Tài khoản đã được xóa thành công!");
 };

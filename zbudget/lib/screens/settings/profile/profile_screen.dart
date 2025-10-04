@@ -1,13 +1,16 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../services/profile_service.dart';
 import '../../../models/settings/user_profile.dart';
+import '../../../services/profile_share_service.dart';
+import '../../../services/qr_code_service.dart';
+import '../../../services/export_data_service.dart';
 import '../../../constants/colors.dart';
 import '../../../constants/typography.dart';
 import '../../../constants/spacing.dart';
+import '../../../utils/auth_utils.dart';
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -18,42 +21,49 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen>
-    with TickerProviderStateMixin {
-  late AnimationController _fadeController;
-  late AnimationController _slideController;
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
     super.initState();
-    _fadeController = AnimationController(
+    _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
+    _animationController.forward();
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
+    // Debug profile status and force sync
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _debugProfileStatus();
+    });
+  }
 
-    _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-          CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
-        );
+  void _debugProfileStatus() async {
+    final profileService = Provider.of<ProfileService>(context, listen: false);
+    final isAuthenticated = await AuthUtils.isAuthenticated();
 
-    _fadeController.forward();
-    _slideController.forward();
+    print('=== PROFILE DEBUG ===');
+    print('Is Authenticated: $isAuthenticated');
+    print('Current Profile: ${profileService.currentProfile?.name}');
+    print('Profile ID: ${profileService.currentProfile?.id}');
+
+    if (isAuthenticated && profileService.currentProfile == null) {
+      print('Forcing backend sync...');
+      final success = await profileService.syncWithServer();
+      print('Sync result: $success');
+      print('After sync - Profile: ${profileService.currentProfile?.name}');
+      print('After sync - Profile ID: ${profileService.currentProfile?.id}');
+    }
   }
 
   @override
   void dispose() {
-    _fadeController.dispose();
-    _slideController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -80,21 +90,18 @@ class _ProfileScreenState extends State<ProfileScreen>
               SliverToBoxAdapter(
                 child: FadeTransition(
                   opacity: _fadeAnimation,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: Column(
-                      children: [
-                        const SizedBox(height: AppSpacing.lg),
-                        _buildStatsSection(context, profile),
-                        const SizedBox(height: AppSpacing.xl),
-                        _buildAchievementsSection(context, profile),
-                        const SizedBox(height: AppSpacing.xl),
-                        _buildPersonalInfoSection(context, profile),
-                        const SizedBox(height: AppSpacing.xl),
-                        _buildActionButtons(context),
-                        const SizedBox(height: AppSpacing.xl6),
-                      ],
-                    ),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: AppSpacing.lg),
+                      _buildStatsSection(context, profile),
+                      const SizedBox(height: AppSpacing.xl),
+                      _buildAchievementsSection(context, profile),
+                      const SizedBox(height: AppSpacing.xl),
+                      _buildPersonalInfoSection(context, profile),
+                      const SizedBox(height: AppSpacing.xl),
+                      _buildActionButtons(context),
+                      const SizedBox(height: AppSpacing.xl6),
+                    ],
                   ),
                 ),
               ),
@@ -125,69 +132,50 @@ class _ProfileScreenState extends State<ProfileScreen>
               ],
             ),
           ),
-          child: Stack(
-            children: [
-              // Background pattern
-              Positioned.fill(
-                child: Opacity(
-                  opacity: 0.1,
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage('assets/patterns/dots.png'),
-                        repeat: ImageRepeat.repeat,
-                      ),
-                    ),
+          child: SafeArea(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 60),
+                _buildAvatarSection(context, profile),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  profile.name,
+                  style: AppTypography.h2.copyWith(
+                    color: AppColors.textInverse,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
-              // Content
-              SafeArea(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 60),
-                    _buildAvatarSection(context, profile),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      profile.name,
-                      style: AppTypography.h2.copyWith(
-                        color: AppColors.textInverse,
-                        fontWeight: FontWeight.bold,
-                      ),
+                const SizedBox(height: AppSpacing.xs),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.xs,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary800.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppColors.textInverse.withValues(alpha: 0.3),
                     ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md,
-                        vertical: AppSpacing.xs,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary800.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: AppColors.textInverse.withValues(alpha: 0.3),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.star, color: _getLevelColor(profile.stats.currentLevel), size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Level ${profile.stats.currentLevel} • ${_getLevelTitle(profile.stats.currentLevel)}',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textInverse,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.star, color: profile.levelColor, size: 16),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Level ${profile.stats.currentLevel} • ${profile.levelTitle}',
-                            style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.textInverse,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -227,13 +215,13 @@ class _ProfileScreenState extends State<ProfileScreen>
           child: CircleAvatar(
             radius: 50,
             backgroundColor: AppColors.primary300,
-            backgroundImage: profile.avatar != null
-                ? FileImage(File(profile.avatar!))
+            backgroundImage: profile.avatar != null && profile.avatar!.isNotEmpty
+                ? NetworkImage(profile.avatar!) // Use NetworkImage for API avatar
                 : null,
-            child: profile.avatar == null
+            child: profile.avatar == null || profile.avatar!.isEmpty
                 ? Text(
-                    profile.initials,
-                    style: AppTypography.headingLarge.copyWith(
+                    _getInitials(profile.name),
+                    style: AppTypography.h2.copyWith(
                       color: AppColors.primary700,
                       fontWeight: FontWeight.bold,
                     ),
@@ -275,7 +263,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         children: [
           Text(
             'Thống kê',
-            style: AppTypography.headingMedium.copyWith(
+            style: AppTypography.h3.copyWith(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.bold,
             ),
@@ -290,8 +278,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   value: profileService.formatCurrency(
                     profile.stats.totalSaved,
                   ),
-                  color: AppColors.success500,
-                  iconColor: AppColors.success600,
+                  color: AppColors.success,
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -300,8 +287,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   icon: Icons.local_fire_department_rounded,
                   title: 'Streak hiện tại',
                   value: '${profile.stats.streakDays} ngày',
-                  color: AppColors.warning500,
-                  iconColor: AppColors.warning600,
+                  color: AppColors.warning,
                 ),
               ),
             ],
@@ -316,8 +302,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   value: profileService.formatDuration(
                     profile.stats.activeDays,
                   ),
-                  color: AppColors.info500,
-                  iconColor: AppColors.info600,
+                  color: AppColors.info,
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -327,7 +312,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                   title: 'Challenges',
                   value: '${profile.stats.completedChallenges} hoàn thành',
                   color: AppColors.primary500,
-                  iconColor: AppColors.primary600,
                 ),
               ),
             ],
@@ -344,7 +328,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     required String title,
     required String value,
     required Color color,
-    required Color iconColor,
   }) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -361,17 +344,17 @@ class _ProfileScreenState extends State<ProfileScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.2),
+                  color: color.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, color: iconColor, size: 20),
+                child: Icon(icon, color: color, size: 20),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
             value,
-            style: AppTypography.headingSmall.copyWith(
+            style: AppTypography.h4.copyWith(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.bold,
             ),
@@ -390,32 +373,33 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _buildLevelProgressCard(BuildContext context, UserProfile profile) {
     final currentLevel = profile.stats.currentLevel;
     final currentPoints = profile.stats.totalPoints;
-    final pointsToNextLevel = (currentLevel * 200); // Simple formula
+    final pointsToNextLevel = (currentLevel * 200);
     final progress = (currentPoints % 200) / 200;
+    final levelColor = _getLevelColor(currentLevel);
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            profile.levelColor.withValues(alpha: 0.1),
-            profile.levelColor.withValues(alpha: 0.05),
+            levelColor.withValues(alpha: 0.1),
+            levelColor.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: profile.levelColor.withValues(alpha: 0.3)),
+        border: Border.all(color: levelColor.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.star_rounded, color: profile.levelColor, size: 24),
+              Icon(Icons.star_rounded, color: levelColor, size: 24),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  'Level $currentLevel - ${profile.levelTitle}',
-                  style: AppTypography.bodyLarge.copyWith(
+                  'Level $currentLevel - ${_getLevelTitle(currentLevel)}',
+                  style: AppTypography.body.copyWith(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.bold,
                   ),
@@ -423,8 +407,8 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
               Text(
                 '$currentPoints điểm',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: profile.levelColor,
+                style: AppTypography.body.copyWith(
+                  color: levelColor,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -434,7 +418,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           LinearProgressIndicator(
             value: progress,
             backgroundColor: AppColors.backgroundSecondary,
-            valueColor: AlwaysStoppedAnimation<Color>(profile.levelColor),
+            valueColor: AlwaysStoppedAnimation<Color>(levelColor),
             borderRadius: BorderRadius.circular(8),
             minHeight: 8,
           ),
@@ -468,14 +452,14 @@ class _ProfileScreenState extends State<ProfileScreen>
             children: [
               Text(
                 'Thành tích',
-                style: AppTypography.headingMedium.copyWith(
+                style: AppTypography.h3.copyWith(
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
                 '${unlockedAchievements.length}/${profile.achievements.length}',
-                style: AppTypography.bodyMedium.copyWith(
+                style: AppTypography.body.copyWith(
                   color: AppColors.textSecondary,
                 ),
               ),
@@ -485,8 +469,8 @@ class _ProfileScreenState extends State<ProfileScreen>
           if (unlockedAchievements.isNotEmpty) ...[
             Text(
               'Đã mở khóa',
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.success600,
+              style: AppTypography.body.copyWith(
+                color: AppColors.success,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -513,7 +497,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             const SizedBox(height: AppSpacing.lg),
             Text(
               'Chưa mở khóa',
-              style: AppTypography.bodyMedium.copyWith(
+              style: AppTypography.body.copyWith(
                 color: AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
               ),
@@ -537,6 +521,26 @@ class _ProfileScreenState extends State<ProfileScreen>
               },
             ),
           ],
+          // Show default achievements if none from API
+          if (profile.achievements.isEmpty) ...[
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                childAspectRatio: 0.8,
+                crossAxisSpacing: AppSpacing.sm,
+                mainAxisSpacing: AppSpacing.sm,
+              ),
+              itemCount: _getDefaultAchievements().length,
+              itemBuilder: (context, index) {
+                return _buildAchievementCard(
+                  _getDefaultAchievements()[index],
+                  isUnlocked: index < 2,
+                );
+              },
+            ),
+          ],
         ],
       ),
     );
@@ -552,13 +556,13 @@ class _ProfileScreenState extends State<ProfileScreen>
         padding: const EdgeInsets.all(AppSpacing.sm),
         decoration: BoxDecoration(
           color: isUnlocked
-              ? AppColors.success50
+              ? AppColors.success.withValues(alpha: 0.1)
               : AppColors.backgroundSecondary,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isUnlocked
-                ? AppColors.success200
-                : AppColors.borderSecondary,
+                ? AppColors.success.withValues(alpha: 0.3)
+                : AppColors.dark200,
           ),
         ),
         child: Column(
@@ -568,7 +572,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               achievement.emoji,
               style: TextStyle(
                 fontSize: 32,
-                color: isUnlocked ? null : AppColors.textDisabled,
+                color: isUnlocked ? null : AppColors.textTertiary,
               ),
             ),
             const SizedBox(height: AppSpacing.xs),
@@ -577,7 +581,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               style: AppTypography.bodySmall.copyWith(
                 color: isUnlocked
                     ? AppColors.textPrimary
-                    : AppColors.textDisabled,
+                    : AppColors.textTertiary,
                 fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
@@ -589,7 +593,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: isUnlocked
-                    ? AppColors.success100
+                    ? AppColors.success.withValues(alpha: 0.2)
                     : AppColors.backgroundSecondary,
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -597,8 +601,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                 '${achievement.pointsReward} điểm',
                 style: AppTypography.caption.copyWith(
                   color: isUnlocked
-                      ? AppColors.success700
-                      : AppColors.textDisabled,
+                      ? AppColors.success
+                      : AppColors.textTertiary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -617,7 +621,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         children: [
           Text(
             'Thông tin cá nhân',
-            style: AppTypography.headingMedium.copyWith(
+            style: AppTypography.h3.copyWith(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.bold,
             ),
@@ -650,7 +654,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     icon: Icons.cake_outlined,
                     label: 'Ngày sinh',
                     value:
-                        '${profile.birthday!.day}/${profile.birthday!.month}/${profile.birthday!.year} (${profile.age} tuổi)',
+                        '${profile.birthday!.day}/${profile.birthday!.month}/${profile.birthday!.year} (${_calculateAge(profile.birthday!)} tuổi)',
                   ),
                 ],
                 if (profile.gender != null) ...[
@@ -704,7 +708,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: AppTypography.bodyMedium.copyWith(
+                  style: AppTypography.body.copyWith(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w500,
                   ),
@@ -745,7 +749,10 @@ class _ProfileScreenState extends State<ProfileScreen>
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _shareProfile(context),
+                  onPressed: () {
+                    print('🔴 BUTTON "Chia sẻ" CLICKED!');
+                    _shareProfile(context);
+                  },
                   icon: const Icon(Icons.share_rounded),
                   label: const Text('Chia sẻ'),
                   style: OutlinedButton.styleFrom(
@@ -762,7 +769,10 @@ class _ProfileScreenState extends State<ProfileScreen>
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _exportData(context),
+                  onPressed: () {
+                    print('🔴 BUTTON "Xuất dữ liệu" CLICKED!');
+                    _exportData(context);
+                  },
                   icon: const Icon(Icons.download_rounded),
                   label: const Text('Xuất dữ liệu'),
                   style: OutlinedButton.styleFrom(
@@ -783,10 +793,69 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  // Helper methods
+  String _getInitials(String name) {
+    return name.split(' ').map((word) => word.isNotEmpty ? word[0] : '').join('').toUpperCase();
+  }
+
+  Color _getLevelColor(int level) {
+    if (level <= 5) return AppColors.success;
+    if (level <= 10) return AppColors.info;
+    if (level <= 20) return AppColors.warning;
+    return AppColors.primary500;
+  }
+
+  String _getLevelTitle(int level) {
+    if (level <= 5) return 'Người mới';
+    if (level <= 10) return 'Học viên';
+    if (level <= 20) return 'Chuyên gia';
+    return 'Bậc thầy';
+  }
+
+  int _calculateAge(DateTime birthday) {
+    final now = DateTime.now();
+    int age = now.year - birthday.year;
+    if (now.month < birthday.month || (now.month == birthday.month && now.day < birthday.day)) {
+      age--;
+    }
+    return age;
+  }
+
+  List<Achievement> _getDefaultAchievements() {
+    return [
+      Achievement(
+        id: '1',
+        title: 'Người mới',
+        description: 'Hoàn thành hồ sơ cá nhân',
+        emoji: '🎉',
+        isUnlocked: true,
+        unlockedAt: DateTime.now().subtract(const Duration(days: 7)),
+        pointsReward: 50,
+      ),
+      Achievement(
+        id: '2',
+        title: 'Tiết kiệm',
+        description: 'Tiết kiệm được 100,000 VND',
+        emoji: '💰',
+        isUnlocked: true,
+        unlockedAt: DateTime.now().subtract(const Duration(days: 3)),
+        pointsReward: 100,
+      ),
+      Achievement(
+        id: '3',
+        title: 'Kỷ luật',
+        description: 'Ghi chép chi tiêu 7 ngày liên tiếp',
+        emoji: '📝',
+        isUnlocked: false,
+        pointsReward: 150,
+      ),
+    ];
+  }
+
   void _navigateToEditProfile(BuildContext context) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => const EditProfileScreen()));
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+    );
   }
 
   void _showAvatarOptions(BuildContext context) {
@@ -804,7 +873,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.borderSecondary,
+                color: AppColors.dark200,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -817,7 +886,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               title: const Text('Chụp ảnh'),
               onTap: () {
                 Navigator.pop(context);
-                _changeAvatar(ImageSource.camera);
+                _changeAvatar();
               },
             ),
             ListTile(
@@ -828,11 +897,11 @@ class _ProfileScreenState extends State<ProfileScreen>
               title: const Text('Chọn từ thư viện'),
               onTap: () {
                 Navigator.pop(context);
-                _changeAvatar(ImageSource.gallery);
+                _changeAvatar();
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete, color: AppColors.error500),
+              leading: const Icon(Icons.delete, color: AppColors.error),
               title: const Text('Xóa ảnh đại diện'),
               onTap: () {
                 Navigator.pop(context);
@@ -846,12 +915,13 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  void _changeAvatar(ImageSource source) async {
-    final profileService = Provider.of<ProfileService>(context, listen: false);
-    final imageFile = await profileService.pickImage(source: source);
-    if (imageFile != null) {
-      await profileService.updateAvatar(imageFile);
-    }
+  void _changeAvatar() async {
+    // TODO: Implement avatar change with image picker
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Tính năng thay đổi ảnh đại diện đang được phát triển'),
+      ),
+    );
   }
 
   void _removeAvatar() async {
@@ -871,9 +941,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             Expanded(
               child: Text(
                 achievement.title,
-                style: AppTypography.headingSmall.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: AppTypography.h4.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -882,13 +950,13 @@ class _ProfileScreenState extends State<ProfileScreen>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(achievement.description, style: AppTypography.bodyMedium),
+            Text(achievement.description, style: AppTypography.body),
             const SizedBox(height: AppSpacing.md),
             Container(
               padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
                 color: achievement.isUnlocked
-                    ? AppColors.success50
+                    ? AppColors.success.withValues(alpha: 0.1)
                     : AppColors.backgroundSecondary,
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -897,8 +965,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                   Icon(
                     achievement.isUnlocked ? Icons.check_circle : Icons.lock,
                     color: achievement.isUnlocked
-                        ? AppColors.success500
-                        : AppColors.textDisabled,
+                        ? AppColors.success
+                        : AppColors.textTertiary,
                     size: 20,
                   ),
                   const SizedBox(width: AppSpacing.sm),
@@ -908,8 +976,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                         : 'Chưa mở khóa • ${achievement.pointsReward} điểm',
                     style: AppTypography.bodySmall.copyWith(
                       color: achievement.isUnlocked
-                          ? AppColors.success700
-                          : AppColors.textDisabled,
+                          ? AppColors.success
+                          : AppColors.textTertiary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -952,7 +1020,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.borderSecondary,
+                color: AppColors.dark200,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -962,12 +1030,13 @@ class _ProfileScreenState extends State<ProfileScreen>
               title: const Text('QR Code'),
               subtitle: const Text('Tạo mã QR để chia sẻ profile'),
               onTap: () {
+                print('🔴 QR CODE BUTTON CLICKED!');
                 Navigator.pop(context);
                 _showQRCode(context);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.backup, color: AppColors.info500),
+              leading: const Icon(Icons.backup, color: AppColors.info),
               title: const Text('Sao lưu dữ liệu'),
               subtitle: const Text('Sao lưu thông tin profile'),
               onTap: () {
@@ -976,7 +1045,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               },
             ),
             ListTile(
-              leading: const Icon(Icons.security, color: AppColors.warning500),
+              leading: const Icon(Icons.security, color: AppColors.warning),
               title: const Text('Cài đặt bảo mật'),
               subtitle: const Text('Quản lý mật khẩu và bảo mật'),
               onTap: () {
@@ -991,33 +1060,56 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  // IMPLEMENTED SERVICES (with debug logging)
   void _shareProfile(BuildContext context) {
-    // Implement profile sharing
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Tính năng chia sẻ profile đang được phát triển'),
-      ),
-    );
+    print('🔴 _shareProfile method called!');
+    final profileService = Provider.of<ProfileService>(context, listen: false);
+    final profile = profileService.currentProfile;
+    
+    if (profile != null) {
+      print('🔴 Profile found: ${profile.name}, calling ProfileShareService');
+      ProfileShareService.shareProfile(profile);
+    } else {
+      print('🔴 Profile is null');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể chia sẻ profile')),
+      );
+    }
   }
 
   void _exportData(BuildContext context) {
-    // Implement data export
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Tính năng xuất dữ liệu đang được phát triển'),
-      ),
-    );
+    print('🔴 _exportData method called!');
+    final profileService = Provider.of<ProfileService>(context, listen: false);
+    final profile = profileService.currentProfile;
+    
+    if (profile != null) {
+      print('🔴 Profile found: ${profile.name}, calling ExportDataService');
+      ExportDataService.showExportDialog(context, profile);
+    } else {
+      print('🔴 Profile is null for export');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể xuất dữ liệu')),
+      );
+    }
   }
 
   void _showQRCode(BuildContext context) {
-    // Implement QR code generation
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tính năng QR Code đang được phát triển')),
-    );
+    print('🔴 _showQRCode method called!');
+    final profileService = Provider.of<ProfileService>(context, listen: false);
+    final profile = profileService.currentProfile;
+    
+    if (profile != null) {
+      print('🔴 Profile found: ${profile.name}, calling QRCodeService');
+      QRCodeService.showQRCodeDialog(context, profile);
+    } else {
+      print('🔴 Profile is null for QR code');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể tạo QR code')),
+      );
+    }
   }
 
   void _backupData(BuildContext context) {
-    // Implement data backup
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Tính năng sao lưu dữ liệu đang được phát triển'),

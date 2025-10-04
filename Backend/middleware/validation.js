@@ -894,6 +894,261 @@ export const businessRuleValidation = {
   },
 };
 
+// Settings validation schemas
+export const settingsSchemas = {
+  updateSettings: Joi.object({
+    language: Joi.string().valid("vi", "en").optional().label("Ngôn ngữ"),
+    theme: Joi.string()
+      .valid("light", "dark", "system")
+      .optional()
+      .label("Giao diện"),
+    currency: Joi.object({
+      primary: Joi.string()
+        .valid("VND", "USD", "EUR", "JPY", "KRW", "CNY", "THB", "SGD")
+        .optional()
+        .label("Tiền tệ chính"),
+      displayFormat: Joi.string()
+        .valid("symbol", "code", "name")
+        .optional()
+        .label("Định dạng hiển thị"),
+      decimalPlaces: Joi.number()
+        .integer()
+        .min(0)
+        .max(4)
+        .optional()
+        .label("Số chữ số thập phân"),
+    })
+      .optional()
+      .label("Cài đặt tiền tệ"),
+    notifications: Joi.object({
+      challenges: Joi.boolean().optional().label("Thông báo thử thách"),
+      budgetAlerts: Joi.boolean().optional().label("Cảnh báo ngân sách"),
+      groupActivities: Joi.boolean().optional().label("Hoạt động nhóm"),
+      weeklyReports: Joi.boolean().optional().label("Báo cáo hàng tuần"),
+      pushEnabled: Joi.boolean().optional().label("Thông báo đẩy"),
+    })
+      .optional()
+      .label("Cài đặt thông báo"),
+    security: Joi.object({
+      biometricEnabled: Joi.boolean()
+        .optional()
+        .label("Xác thực sinh trắc học"),
+      pinEnabled: Joi.boolean().optional().label("Mã PIN"),
+      sessionTimeout: Joi.number()
+        .integer()
+        .min(5)
+        .max(1440)
+        .optional()
+        .label("Thời gian hết phiên (phút)"),
+    })
+      .optional()
+      .label("Cài đặt bảo mật"),
+  }).messages(vietnameseMessages),
+
+  updateCurrency: Joi.object({
+    primary: Joi.string()
+      .valid("VND", "USD", "EUR", "JPY", "KRW", "CNY", "THB", "SGD")
+      .required()
+      .label("Tiền tệ chính"),
+    displayFormat: Joi.string()
+      .valid("symbol", "code", "name")
+      .required()
+      .label("Định dạng hiển thị"),
+    decimalPlaces: Joi.number()
+      .integer()
+      .min(0)
+      .max(4)
+      .required()
+      .label("Số chữ số thập phân"),
+  }).messages(vietnameseMessages),
+
+  updateNotifications: Joi.object({
+    notifications: Joi.object({
+      isGlobalEnabled: Joi.boolean().optional().label("Bật/tắt thông báo"),
+      notificationSettings: Joi.array()
+        .items(
+          Joi.object({
+            type: Joi.string().optional(),
+            isEnabled: Joi.boolean().optional(),
+            showBadge: Joi.boolean().optional(),
+            playSound: Joi.boolean().optional(),
+            vibrate: Joi.boolean().optional(),
+            frequency: Joi.string().optional(),
+            scheduledTime: Joi.string().allow(null).optional(), // Accept string or null
+          })
+        )
+        .optional(),
+      quietHours: Joi.object({
+        isEnabled: Joi.boolean().optional(),
+        startTime: Joi.string().optional(),
+        endTime: Joi.string().optional(),
+        selectedDays: Joi.array().items(Joi.number().integer()).optional(), // Accept array of integers
+      }).optional(),
+      groupNotifications: Joi.boolean().optional(),
+      showPreviewInNotifications: Joi.boolean().optional(),
+      notificationSound: Joi.string().optional(),
+      maxNotificationsPerDay: Joi.number().min(1).max(100).optional(),
+      enableSmartNotifications: Joi.boolean().optional(),
+    })
+      .required()
+      .label("Cài đặt thông báo"),
+  }).messages(vietnameseMessages),
+
+  updateSecurity: Joi.object({
+    security: Joi.object({
+      // Authentication
+      biometricEnabled: Joi.boolean()
+        .optional()
+        .label("Xác thực sinh trắc học"),
+      pinEnabled: Joi.boolean().optional().label("Mã PIN"),
+      isTwoFactorEnabled: Joi.boolean().optional().label("Xác thực 2 bước"),
+      primaryAuthMethod: Joi.string()
+        .valid("password", "biometric", "pin", "pattern")
+        .optional()
+        .label("Phương thức xác thực chính"),
+      enabledAuthMethods: Joi.array()
+        .items(Joi.string().valid("password", "biometric", "pin", "pattern"))
+        .optional()
+        .label("Các phương thức xác thực"),
+
+      // Session Management
+      isAutoLockEnabled: Joi.boolean().optional().label("Tự động khóa"),
+      sessionTimeout: Joi.number()
+        .integer()
+        .min(5)
+        .max(1440)
+        .optional()
+        .label("Thời gian hết phiên (phút)"),
+      isLoginNotificationEnabled: Joi.boolean()
+        .optional()
+        .label("Thông báo đăng nhập"),
+
+      // Privacy & Protection
+      isDataEncryptionEnabled: Joi.boolean().optional().label("Mã hóa dữ liệu"),
+      maxFailedAttempts: Joi.number()
+        .integer()
+        .min(3)
+        .max(10)
+        .optional()
+        .label("Số lần thử tối đa"),
+      isScreenshotBlocked: Joi.boolean().optional().label("Chặn chụp màn hình"),
+    })
+      .required()
+      .label("Cài đặt bảo mật"),
+  }).messages(vietnameseMessages),
+
+  // Security-specific validations
+  changePassword: Joi.object({
+    currentPassword: Joi.string().required().label("Mật khẩu hiện tại"),
+    newPassword: Joi.string()
+      .min(8)
+      .max(128)
+      .pattern(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/
+      )
+      .required()
+      .label("Mật khẩu mới")
+      .messages({
+        "string.pattern.base":
+          "Mật khẩu phải chứa ít nhất 1 chữ thường, 1 chữ hoa, 1 số và 1 ký tự đặc biệt",
+      }),
+    confirmPassword: Joi.any()
+      .equal(Joi.ref("newPassword"))
+      .required()
+      .label("Xác nhận mật khẩu")
+      .messages({
+        "any.only": "Mật khẩu xác nhận không khớp",
+      }),
+  }).messages(vietnameseMessages),
+
+  setup2FA: Joi.object({
+    secret: Joi.string().required().label("Mã bí mật 2FA"),
+    token: Joi.string()
+      .length(6)
+      .pattern(/^\d+$/)
+      .required()
+      .label("Mã xác thực 6 số"),
+  }).messages(vietnameseMessages),
+
+  verify2FA: Joi.object({
+    token: Joi.string()
+      .length(6)
+      .pattern(/^\d+$/)
+      .required()
+      .label("Mã xác thực 6 số"),
+  }).messages(vietnameseMessages),
+
+  terminateSession: Joi.object({
+    sessionId: Joi.string().required().label("ID phiên đăng nhập"),
+  }).messages(vietnameseMessages),
+
+  updateTheme: Joi.object({
+    theme: Joi.string()
+      .valid("light", "dark", "system")
+      .required()
+      .label("Giao diện"),
+  }).messages(vietnameseMessages),
+
+  updateLanguage: Joi.object({
+    language: Joi.string().valid("vi", "en").required().label("Ngôn ngữ"),
+  }).messages(vietnameseMessages),
+
+  // Profile validation schemas
+  updateProfile: Joi.object({
+    name: Joi.string()
+      .trim()
+      .min(2)
+      .max(100)
+      .optional()
+      .label("Tên người dùng"),
+    phone: Joi.string()
+      .pattern(/^(\+84|84|0)(3|5|7|8|9)[0-9]{8}$/)
+      .optional()
+      .allow("")
+      .label("Số điện thoại"),
+    dateOfBirth: Joi.date().max(new Date()).optional().label("Ngày sinh"),
+    gender: Joi.string()
+      .valid("male", "female", "other")
+      .optional()
+      .label("Giới tính"),
+    location: Joi.object({
+      city: Joi.string().max(50).optional().allow("").label("Thành phố"),
+      country: Joi.string().max(50).optional().allow("").label("Quốc gia"),
+    })
+      .optional()
+      .label("Địa chỉ"),
+  }).messages(vietnameseMessages),
+
+  updateAvatar: Joi.object({
+    avatar: Joi.string().uri().required().label("URL Avatar"),
+  }).messages(vietnameseMessages),
+
+  updateStats: Joi.object({
+    level: Joi.number().integer().min(1).max(100).optional().label("Cấp độ"),
+    points: Joi.number().integer().min(0).optional().label("Điểm số"),
+    currentStreak: Joi.number()
+      .integer()
+      .min(0)
+      .optional()
+      .label("Chuỗi ngày hiện tại"),
+    longestStreak: Joi.number()
+      .integer()
+      .min(0)
+      .optional()
+      .label("Chuỗi ngày dài nhất"),
+    totalSaved: Joi.number().min(0).optional().label("Tổng tiết kiệm"),
+    challengesCompleted: Joi.number()
+      .integer()
+      .min(0)
+      .optional()
+      .label("Thử thách hoàn thành"),
+    rank: Joi.string()
+      .valid("Bronze", "Silver", "Gold", "Platinum")
+      .optional()
+      .label("Hạng"),
+  }).messages(vietnameseMessages),
+};
+
 export default {
   validate,
   validateObjectId,
@@ -909,4 +1164,5 @@ export default {
   groupSchemas,
   notificationSchemas,
   uploadSchemas,
+  settingsSchemas,
 };

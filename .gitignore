@@ -133,6 +133,7 @@ zbudget/android/.gradle/
 zbudget/android/gradlew
 zbudget/android/gradlew.bat
 zbudget/android/local.properties
+zbudget/android/gradle.properties
 zbudget/android/app/release/
 zbudget/android/app/debug/
 zbudget/android/app/profile/

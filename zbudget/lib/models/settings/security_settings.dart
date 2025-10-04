@@ -321,6 +321,28 @@ class SecuritySettings {
     'activeSessions': activeSessions.map((e) => e.toJson()).toList(),
   };
 
+  /// Convert to backend-compatible JSON format
+  Map<String, dynamic> toBackendJson() {
+    return {
+      // Authentication
+      'biometricEnabled': isBiometricEnabled,
+      'pinEnabled': isAppPinEnabled, // Backend uses 'pinEnabled'
+      'isTwoFactorEnabled': isTwoFactorEnabled,
+      'primaryAuthMethod': primaryAuthMethod.name,
+      'enabledAuthMethods': enabledAuthMethods.map((e) => e.name).toList(),
+
+      // Session Management
+      'isAutoLockEnabled': isAutoLockEnabled,
+      'sessionTimeout': sessionTimeout.duration?.inMinutes ?? 30,
+      'isLoginNotificationEnabled': isLoginNotificationEnabled,
+
+      // Privacy & Protection
+      'isDataEncryptionEnabled': isDataEncryptionEnabled,
+      'maxFailedAttempts': maxFailedAttempts,
+      'isScreenshotBlocked': isScreenshotBlocked,
+    };
+  }
+
   factory SecuritySettings.fromJson(Map<String, dynamic> json) =>
       SecuritySettings(
         isBiometricEnabled: json['isBiometricEnabled'] ?? false,

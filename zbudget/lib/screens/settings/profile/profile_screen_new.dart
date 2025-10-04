@@ -1,12 +1,16 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 
 import '../../../services/profile_service.dart';
 import '../../../models/settings/user_profile.dart';
+import '../../../services/profile_share_service.dart';
+import '../../../services/qr_code_service.dart';
+import '../../../services/export_data_service.dart';
 import '../../../constants/colors.dart';
 import '../../../constants/typography.dart';
 import '../../../constants/spacing.dart';
+import '../../../utils/auth_utils.dart';
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -32,6 +36,29 @@ class _ProfileScreenState extends State<ProfileScreen>
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
     _animationController.forward();
+
+    // Debug profile status and force sync
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _debugProfileStatus();
+    });
+  }
+
+  void _debugProfileStatus() async {
+    final profileService = Provider.of<ProfileService>(context, listen: false);
+    final isAuthenticated = await AuthUtils.isAuthenticated();
+
+    print('=== PROFILE DEBUG ===');
+    print('Is Authenticated: $isAuthenticated');
+    print('Current Profile: ${profileService.currentProfile?.name}');
+    print('Profile ID: ${profileService.currentProfile?.id}');
+
+    if (isAuthenticated && profileService.currentProfile == null) {
+      print('Forcing backend sync...');
+      final success = await profileService.syncWithServer();
+      print('Sync result: $success');
+      print('After sync - Profile: ${profileService.currentProfile?.name}');
+      print('After sync - Profile ID: ${profileService.currentProfile?.id}');
+    }
   }
 
   @override
@@ -135,10 +162,14 @@ class _ProfileScreenState extends State<ProfileScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.star, color: profile.levelColor, size: 16),
+                      Icon(
+                        Icons.star,
+                        color: _getLevelColor(profile.stats.currentLevel),
+                        size: 16,
+                      ),
                       const SizedBox(width: 4),
                       Text(
-                        'Level ${profile.stats.currentLevel} • ${profile.levelTitle}',
+                        'Level ${profile.stats.currentLevel} • ${_getLevelTitle(profile.stats.currentLevel)}',
                         style: AppTypography.bodySmall.copyWith(
                           color: AppColors.textInverse,
                           fontWeight: FontWeight.w500,
@@ -188,12 +219,15 @@ class _ProfileScreenState extends State<ProfileScreen>
           child: CircleAvatar(
             radius: 50,
             backgroundColor: AppColors.primary300,
-            backgroundImage: profile.avatar != null
-                ? FileImage(File(profile.avatar!))
+            backgroundImage:
+                profile.avatar != null && profile.avatar!.isNotEmpty
+                ? NetworkImage(
+                    profile.avatar!,
+                  ) // Use NetworkImage for API avatar
                 : null,
-            child: profile.avatar == null
+            child: profile.avatar == null || profile.avatar!.isEmpty
                 ? Text(
-                    profile.initials,
+                    _getInitials(profile.name),
                     style: AppTypography.h2.copyWith(
                       color: AppColors.primary700,
                       fontWeight: FontWeight.bold,
@@ -348,29 +382,30 @@ class _ProfileScreenState extends State<ProfileScreen>
     final currentPoints = profile.stats.totalPoints;
     final pointsToNextLevel = (currentLevel * 200);
     final progress = (currentPoints % 200) / 200;
+    final levelColor = _getLevelColor(currentLevel);
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            profile.levelColor.withValues(alpha: 0.1),
-            profile.levelColor.withValues(alpha: 0.05),
+            levelColor.withValues(alpha: 0.1),
+            levelColor.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: profile.levelColor.withValues(alpha: 0.3)),
+        border: Border.all(color: levelColor.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.star_rounded, color: profile.levelColor, size: 24),
+              Icon(Icons.star_rounded, color: levelColor, size: 24),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  'Level $currentLevel - ${profile.levelTitle}',
+                  'Level $currentLevel - ${_getLevelTitle(currentLevel)}',
                   style: AppTypography.body.copyWith(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.bold,
@@ -380,7 +415,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               Text(
                 '$currentPoints điểm',
                 style: AppTypography.body.copyWith(
-                  color: profile.levelColor,
+                  color: levelColor,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -390,7 +425,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           LinearProgressIndicator(
             value: progress,
             backgroundColor: AppColors.backgroundSecondary,
-            valueColor: AlwaysStoppedAnimation<Color>(profile.levelColor),
+            valueColor: AlwaysStoppedAnimation<Color>(levelColor),
             borderRadius: BorderRadius.circular(8),
             minHeight: 8,
           ),
@@ -489,6 +524,26 @@ class _ProfileScreenState extends State<ProfileScreen>
                 return _buildAchievementCard(
                   lockedAchievements[index],
                   isUnlocked: false,
+                );
+              },
+            ),
+          ],
+          // Show default achievements if none from API
+          if (profile.achievements.isEmpty) ...[
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                childAspectRatio: 0.8,
+                crossAxisSpacing: AppSpacing.sm,
+                mainAxisSpacing: AppSpacing.sm,
+              ),
+              itemCount: _getDefaultAchievements().length,
+              itemBuilder: (context, index) {
+                return _buildAchievementCard(
+                  _getDefaultAchievements()[index],
+                  isUnlocked: index < 2,
                 );
               },
             ),
@@ -606,7 +661,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     icon: Icons.cake_outlined,
                     label: 'Ngày sinh',
                     value:
-                        '${profile.birthday!.day}/${profile.birthday!.month}/${profile.birthday!.year} (${profile.age} tuổi)',
+                        '${profile.birthday!.day}/${profile.birthday!.month}/${profile.birthday!.year} (${_calculateAge(profile.birthday!)} tuổi)',
                   ),
                 ],
                 if (profile.gender != null) ...[
@@ -701,7 +756,10 @@ class _ProfileScreenState extends State<ProfileScreen>
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _shareProfile(context),
+                  onPressed: () {
+                    print('🔴 BUTTON "Chia sẻ" CLICKED!');
+                    _shareProfile(context);
+                  },
                   icon: const Icon(Icons.share_rounded),
                   label: const Text('Chia sẻ'),
                   style: OutlinedButton.styleFrom(
@@ -718,7 +776,10 @@ class _ProfileScreenState extends State<ProfileScreen>
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _exportData(context),
+                  onPressed: () {
+                    print('🔴 BUTTON "Xuất dữ liệu" CLICKED!');
+                    _exportData(context);
+                  },
                   icon: const Icon(Icons.download_rounded),
                   label: const Text('Xuất dữ liệu'),
                   style: OutlinedButton.styleFrom(
@@ -737,6 +798,70 @@ class _ProfileScreenState extends State<ProfileScreen>
         ],
       ),
     );
+  }
+
+  // Helper methods
+  String _getInitials(String name) {
+    return name
+        .split(' ')
+        .map((word) => word.isNotEmpty ? word[0] : '')
+        .join('')
+        .toUpperCase();
+  }
+
+  Color _getLevelColor(int level) {
+    if (level <= 5) return AppColors.success;
+    if (level <= 10) return AppColors.info;
+    if (level <= 20) return AppColors.warning;
+    return AppColors.primary500;
+  }
+
+  String _getLevelTitle(int level) {
+    if (level <= 5) return 'Người mới';
+    if (level <= 10) return 'Học viên';
+    if (level <= 20) return 'Chuyên gia';
+    return 'Bậc thầy';
+  }
+
+  int _calculateAge(DateTime birthday) {
+    final now = DateTime.now();
+    int age = now.year - birthday.year;
+    if (now.month < birthday.month ||
+        (now.month == birthday.month && now.day < birthday.day)) {
+      age--;
+    }
+    return age;
+  }
+
+  List<Achievement> _getDefaultAchievements() {
+    return [
+      Achievement(
+        id: '1',
+        title: 'Người mới',
+        description: 'Hoàn thành hồ sơ cá nhân',
+        emoji: '🎉',
+        isUnlocked: true,
+        unlockedAt: DateTime.now().subtract(const Duration(days: 7)),
+        pointsReward: 50,
+      ),
+      Achievement(
+        id: '2',
+        title: 'Tiết kiệm',
+        description: 'Tiết kiệm được 100,000 VND',
+        emoji: '💰',
+        isUnlocked: true,
+        unlockedAt: DateTime.now().subtract(const Duration(days: 3)),
+        pointsReward: 100,
+      ),
+      Achievement(
+        id: '3',
+        title: 'Kỷ luật',
+        description: 'Ghi chép chi tiêu 7 ngày liên tiếp',
+        emoji: '📝',
+        isUnlocked: false,
+        pointsReward: 150,
+      ),
+    ];
   }
 
   void _navigateToEditProfile(BuildContext context) {
@@ -803,7 +928,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _changeAvatar() async {
-    // Implement avatar change
+    // TODO: Implement avatar change with image picker
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Tính năng thay đổi ảnh đại diện đang được phát triển'),
@@ -917,6 +1042,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               title: const Text('QR Code'),
               subtitle: const Text('Tạo mã QR để chia sẻ profile'),
               onTap: () {
+                print('🔴 QR CODE BUTTON CLICKED!');
                 Navigator.pop(context);
                 _showQRCode(context);
               },
@@ -946,26 +1072,53 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  // IMPLEMENTED SERVICES (with debug logging)
   void _shareProfile(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Tính năng chia sẻ profile đang được phát triển'),
-      ),
-    );
+    print('🔴 _shareProfile method called!');
+    final profileService = Provider.of<ProfileService>(context, listen: false);
+    final profile = profileService.currentProfile;
+
+    if (profile != null) {
+      print('🔴 Profile found: ${profile.name}, calling ProfileShareService');
+      ProfileShareService.shareProfile(profile);
+    } else {
+      print('🔴 Profile is null');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể chia sẻ profile')),
+      );
+    }
   }
 
   void _exportData(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Tính năng xuất dữ liệu đang được phát triển'),
-      ),
-    );
+    print('🔴 _exportData method called!');
+    final profileService = Provider.of<ProfileService>(context, listen: false);
+    final profile = profileService.currentProfile;
+
+    if (profile != null) {
+      print('🔴 Profile found: ${profile.name}, calling ExportDataService');
+      ExportDataService.showExportDialog(context, profile);
+    } else {
+      print('🔴 Profile is null for export');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Không thể xuất dữ liệu')));
+    }
   }
 
   void _showQRCode(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tính năng QR Code đang được phát triển')),
-    );
+    print('🔴 _showQRCode method called!');
+    final profileService = Provider.of<ProfileService>(context, listen: false);
+    final profile = profileService.currentProfile;
+
+    if (profile != null) {
+      print('🔴 Profile found: ${profile.name}, calling QRCodeService');
+      QRCodeService.showQRCodeDialog(context, profile);
+    } else {
+      print('🔴 Profile is null for QR code');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Không thể tạo QR code')));
+    }
   }
 
   void _backupData(BuildContext context) {

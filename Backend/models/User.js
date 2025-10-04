@@ -74,8 +74,69 @@ const CurrencySettingsSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Notification Types Schema
+const NotificationTypeSettingSchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      enum: [
+        "budget",
+        "expense",
+        "income",
+        "challenge",
+        "reminder",
+        "achievement",
+        "security",
+        "system",
+        "marketing",
+      ],
+      required: true,
+    },
+    isEnabled: { type: Boolean, default: true },
+    showBadge: { type: Boolean, default: true },
+    playSound: { type: Boolean, default: true },
+    vibrate: { type: Boolean, default: true },
+    frequency: {
+      type: String,
+      enum: ["immediately", "daily", "weekly", "monthly", "never"],
+      default: "immediately",
+    },
+    scheduledTime: String, // Format: "HH:mm"
+  },
+  { _id: false }
+);
+
+// Quiet Hours Schema
+const QuietHoursSchema = new mongoose.Schema(
+  {
+    isEnabled: { type: Boolean, default: false },
+    startTime: { type: String, default: "22:00" },
+    endTime: { type: String, default: "07:00" },
+    selectedDays: { type: [Number], default: [1, 2, 3, 4, 5, 6, 7] }, // 1=Monday, 7=Sunday
+  },
+  { _id: false }
+);
+
 const NotificationSettingsSchema = new mongoose.Schema(
   {
+    // Global Settings
+    isGlobalEnabled: { type: Boolean, default: true },
+    groupNotifications: { type: Boolean, default: true },
+    showPreviewInNotifications: { type: Boolean, default: true },
+    notificationSound: { type: String, default: "default" },
+    maxNotificationsPerDay: { type: Number, default: 50 },
+    enableSmartNotifications: { type: Boolean, default: true },
+
+    // Individual notification type settings
+    notificationSettings: {
+      type: [NotificationTypeSettingSchema],
+      default: [],
+    },
+
+    // Quiet hours
+    quietHours: { type: QuietHoursSchema, default: () => ({}) },
+
+    // Legacy fields for backward compatibility
     challenges: { type: Boolean, default: true },
     budgetAlerts: { type: Boolean, default: true },
     groupActivities: { type: Boolean, default: true },
@@ -85,16 +146,86 @@ const NotificationSettingsSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Login Session Schema for tracking active sessions
+const SessionSchema = new mongoose.Schema(
+  {
+    sessionId: { type: String, required: true },
+    deviceName: { type: String, required: true },
+    deviceType: {
+      type: String,
+      enum: ["mobile", "tablet", "desktop", "web"],
+      default: "web",
+    },
+    location: { type: String, default: "Unknown" },
+    ipAddress: { type: String, required: true },
+    userAgent: { type: String, default: "" },
+    loginTime: { type: Date, default: Date.now },
+    lastActiveTime: { type: Date, default: Date.now },
+    isCurrent: { type: Boolean, default: false },
+    isRevoked: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
 const SecuritySettingsSchema = new mongoose.Schema(
   {
+    // Authentication
     biometricEnabled: { type: Boolean, default: false },
     pinEnabled: { type: Boolean, default: false },
+    isTwoFactorEnabled: { type: Boolean, default: false },
+    twoFactorSecret: { type: String, default: null }, // For TOTP
+    primaryAuthMethod: {
+      type: String,
+      enum: ["password", "biometric", "pin", "pattern"],
+      default: "password",
+    },
+    enabledAuthMethods: [
+      {
+        type: String,
+        enum: ["password", "biometric", "pin", "pattern"],
+        default: ["password"],
+      },
+    ],
+
+    // Session Management
+    isAutoLockEnabled: { type: Boolean, default: true },
     sessionTimeout: {
       type: Number,
       min: 5,
-      max: 180,
+      max: 1440, // 24 hours in minutes
       default: 30,
     },
+    isLoginNotificationEnabled: { type: Boolean, default: true },
+
+    // Privacy & Protection
+    isDataEncryptionEnabled: { type: Boolean, default: true },
+    maxFailedAttempts: {
+      type: Number,
+      min: 3,
+      max: 10,
+      default: 5,
+    },
+    isScreenshotBlocked: { type: Boolean, default: false },
+
+    // Security Tracking
+    lastPasswordChange: { type: Date, default: null },
+    failedLoginAttempts: { type: Number, default: 0 },
+    lastFailedLogin: { type: Date, default: null },
+    accountLockedUntil: { type: Date, default: null },
+
+    // Active Sessions
+    activeSessions: { type: [SessionSchema], default: [] },
+
+    // Security Events Log
+    securityEvents: [
+      {
+        type: { type: String, required: true }, // 'login', 'logout', 'password_change', '2fa_enabled', etc.
+        timestamp: { type: Date, default: Date.now },
+        details: { type: mongoose.Schema.Types.Mixed, default: {} },
+        ipAddress: { type: String, default: "" },
+        userAgent: { type: String, default: "" },
+      },
+    ],
   },
   { _id: false }
 );

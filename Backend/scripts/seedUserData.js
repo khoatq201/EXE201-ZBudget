@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { User, Expense, Income, Budget, connectDB } from "../models/index.js";
 
 // User ID from registration
-const USER_ID = "68ddedbf11688a48e6fad12d";
+const USER_ID = "68e0e0e85af682e7a47f48ff";
 const USER_EMAIL = "phuonganh160268@gmail.com";
 
 // Seed data configuration
@@ -138,7 +138,8 @@ const DESCRIPTIONS = {
 };
 
 // Helper functions
-const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+const randomInt = (min, max) =>
+  Math.floor(Math.random() * (max - min + 1)) + min;
 
 const randomElement = (array) => array[randomInt(0, array.length - 1)];
 
@@ -159,7 +160,9 @@ const getRandomDate = () => {
   const endDate = new Date(); // Today
   const startDate = new Date();
   startDate.setDate(endDate.getDate() - 30); // 30 days ago
-  const randomTime = startDate.getTime() + Math.random() * (endDate.getTime() - startDate.getTime());
+  const randomTime =
+    startDate.getTime() +
+    Math.random() * (endDate.getTime() - startDate.getTime());
   return new Date(randomTime);
 };
 
@@ -228,22 +231,29 @@ const calculateCategoryTotals = (expenses) => {
 
 const generateBudget = (userId, expenses) => {
   const categoryTotals = calculateCategoryTotals(expenses);
-  const totalSpent = Object.values(categoryTotals).reduce((sum, val) => sum + val, 0);
+  const totalSpent = Object.values(categoryTotals).reduce(
+    (sum, val) => sum + val,
+    0
+  );
   const totalBudget = SEED_CONFIG.monthlyBudget;
 
   // Create category allocations based on actual spending + buffer
-  const categoryAllocations = Object.entries(categoryTotals).map(([category, spent]) => {
-    const allocated = Math.ceil(spent * 1.2); // 20% buffer
-    const percentage = (allocated / totalBudget) * 100;
+  const categoryAllocations = Object.entries(categoryTotals).map(
+    ([category, spent]) => {
+      const allocated = Math.ceil(spent * 1.2); // 20% buffer
+      const percentage = (allocated / totalBudget) * 100;
 
-    return {
-      category,
-      allocated: mongoose.Types.Decimal128.fromString(allocated.toString()),
-      spent: mongoose.Types.Decimal128.fromString(spent.toString()),
-      remaining: mongoose.Types.Decimal128.fromString((allocated - spent).toString()),
-      percentage: Math.min(percentage, 100), // Cap at 100%
-    };
-  });
+      return {
+        category,
+        allocated: mongoose.Types.Decimal128.fromString(allocated.toString()),
+        spent: mongoose.Types.Decimal128.fromString(spent.toString()),
+        remaining: mongoose.Types.Decimal128.fromString(
+          (allocated - spent).toString()
+        ),
+        percentage: Math.min(percentage, 100), // Cap at 100%
+      };
+    }
+  );
 
   const budget = {
     userId,
@@ -275,8 +285,14 @@ const updateUserStats = async (userId, expenses, incomes) => {
   const points = totalTransactions * 10; // 10 points per transaction
   const level = Math.floor(points / 100) + 1;
 
-  const totalIncome = incomes.reduce((sum, inc) => sum + parseFloat(inc.amount.toString()), 0);
-  const totalExpenses = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount.toString()), 0);
+  const totalIncome = incomes.reduce(
+    (sum, inc) => sum + parseFloat(inc.amount.toString()),
+    0
+  );
+  const totalExpenses = expenses.reduce(
+    (sum, exp) => sum + parseFloat(exp.amount.toString()),
+    0
+  );
   const currentBalance = totalIncome - totalExpenses;
 
   await User.findByIdAndUpdate(userId, {
@@ -286,10 +302,18 @@ const updateUserStats = async (userId, expenses, incomes) => {
       "stats.totalTransactions": totalTransactions,
       "stats.currentStreak": 7, // 7 days streak
       "stats.longestStreak": 10,
-      "financialSummary.monthlyAllowance": mongoose.Types.Decimal128.fromString(SEED_CONFIG.monthlyAllowance.toString()),
-      "financialSummary.currentBalance": mongoose.Types.Decimal128.fromString(currentBalance.toString()),
-      "financialSummary.totalIncome": mongoose.Types.Decimal128.fromString(totalIncome.toString()),
-      "financialSummary.totalExpenses": mongoose.Types.Decimal128.fromString(totalExpenses.toString()),
+      "financialSummary.monthlyAllowance": mongoose.Types.Decimal128.fromString(
+        SEED_CONFIG.monthlyAllowance.toString()
+      ),
+      "financialSummary.currentBalance": mongoose.Types.Decimal128.fromString(
+        currentBalance.toString()
+      ),
+      "financialSummary.totalIncome": mongoose.Types.Decimal128.fromString(
+        totalIncome.toString()
+      ),
+      "financialSummary.totalExpenses": mongoose.Types.Decimal128.fromString(
+        totalExpenses.toString()
+      ),
       "financialSummary.lastUpdated": new Date(),
     },
   });
@@ -323,7 +347,10 @@ const seedUserData = async () => {
     const insertedIncomes = await Income.insertMany(incomes);
     console.log(`✅ Created ${insertedIncomes.length} income transactions`);
 
-    const totalIncome = incomes.reduce((sum, inc) => sum + parseFloat(inc.amount.toString()), 0);
+    const totalIncome = incomes.reduce(
+      (sum, inc) => sum + parseFloat(inc.amount.toString()),
+      0
+    );
     console.log(`💵 Total income: ${totalIncome.toLocaleString()} VND`);
 
     // Generate and insert expenses
@@ -338,17 +365,28 @@ const seedUserData = async () => {
       console.log(`   - ${category}: ${total.toLocaleString()} VND`);
     });
 
-    const totalSpent = Object.values(categoryTotals).reduce((sum, val) => sum + val, 0);
+    const totalSpent = Object.values(categoryTotals).reduce(
+      (sum, val) => sum + val,
+      0
+    );
     console.log(`💰 Total spent: ${totalSpent.toLocaleString()} VND`);
 
     // Generate and insert budget
     const budget = generateBudget(USER_ID, expenses);
     const insertedBudget = await Budget.create(budget);
     console.log(`✅ Created budget: ${insertedBudget.name}`);
-    console.log(`   - Total: ${SEED_CONFIG.monthlyBudget.toLocaleString()} VND`);
-    console.log(`   - Spent: ${totalSpent.toLocaleString()} VND (${budget.status.spentPercentage.toFixed(1)}%)`);
-    console.log(`   - Remaining: ${(SEED_CONFIG.monthlyBudget - totalSpent).toLocaleString()} VND`);
-    console.log(`   - Status: ${budget.status.isOverBudget ? "⚠️  Over budget" : "✅ Within budget"}`);
+    console.log(
+      `   - Total: ${SEED_CONFIG.monthlyBudget.toLocaleString()} VND`
+    );
+    console.log(
+      `   - Spent: ${totalSpent.toLocaleString()} VND (${budget.status.spentPercentage.toFixed(1)}%)`
+    );
+    console.log(
+      `   - Remaining: ${(SEED_CONFIG.monthlyBudget - totalSpent).toLocaleString()} VND`
+    );
+    console.log(
+      `   - Status: ${budget.status.isOverBudget ? "⚠️  Over budget" : "✅ Within budget"}`
+    );
 
     // Update user stats and financial summary
     await updateUserStats(USER_ID, expenses, incomes);
@@ -358,14 +396,23 @@ const seedUserData = async () => {
 
     console.log("\n🎉 Seed completed successfully!");
     console.log("\n📝 Summary:");
-    console.log(`   - Incomes: ${insertedIncomes.length} (Total: ${totalIncome.toLocaleString()} VND)`);
-    console.log(`   - Expenses: ${insertedExpenses.length} (Total: ${totalSpent.toLocaleString()} VND)`);
+    console.log(
+      `   - Incomes: ${insertedIncomes.length} (Total: ${totalIncome.toLocaleString()} VND)`
+    );
+    console.log(
+      `   - Expenses: ${insertedExpenses.length} (Total: ${totalSpent.toLocaleString()} VND)`
+    );
     console.log(`   - Current Balance: ${currentBalance.toLocaleString()} VND`);
-    console.log(`   - Budget: ${SEED_CONFIG.monthlyBudget.toLocaleString()} VND`);
-    console.log(`   - Monthly Allowance: ${SEED_CONFIG.monthlyAllowance.toLocaleString()} VND`);
-    console.log(`   - User level: ${Math.floor((expenses.length + incomes.length) * 10 / 100) + 1}`);
+    console.log(
+      `   - Budget: ${SEED_CONFIG.monthlyBudget.toLocaleString()} VND`
+    );
+    console.log(
+      `   - Monthly Allowance: ${SEED_CONFIG.monthlyAllowance.toLocaleString()} VND`
+    );
+    console.log(
+      `   - User level: ${Math.floor(((expenses.length + incomes.length) * 10) / 100) + 1}`
+    );
     console.log(`   - User points: ${(expenses.length + incomes.length) * 10}`);
-
   } catch (error) {
     console.error("❌ Error seeding data:", error);
     process.exit(1);

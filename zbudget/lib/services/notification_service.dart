@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/settings/notification_settings.dart';
+import '../services/notification_api_service.dart';
+import '../utils/auth_utils.dart';
 
 class NotificationService extends ChangeNotifier {
   static const String _notificationKey = 'notification_settings';
@@ -27,6 +29,20 @@ class NotificationService extends ChangeNotifier {
 
   Future<void> _loadNotificationSettings() async {
     try {
+      // Try to load from backend first if authenticated
+      final isAuthenticated = await AuthUtils.isAuthenticated();
+      if (isAuthenticated) {
+        final backendSettings =
+            await NotificationApiService.getNotificationSettings();
+        if (backendSettings != null) {
+          _notificationSettings = backendSettings;
+          // Save to local storage as backup
+          await _saveNotificationSettings();
+          return;
+        }
+      }
+
+      // Fallback to local storage
       final prefs = await SharedPreferences.getInstance();
       final settingsJson = prefs.getString(_notificationKey);
 
@@ -154,18 +170,29 @@ class NotificationService extends ChangeNotifier {
   Future<void> updateNotificationSettings(
     NotificationSettings newSettings,
   ) async {
-    _isLoading = true;
-    notifyListeners();
-
     try {
+      // Update settings immediately for optimistic UI
       _notificationSettings = newSettings;
+      notifyListeners();
+
+      // Save locally
       await _saveNotificationSettings();
+
+      // Then sync with backend without showing loading
+      final isAuthenticated = await AuthUtils.isAuthenticated();
+      if (isAuthenticated) {
+        try {
+          await NotificationApiService.updateNotificationSettings(newSettings);
+        } catch (e) {
+          debugPrint('Error syncing with backend: $e');
+          // Don't throw error for backend sync failure to prevent UI disruption
+        }
+      }
     } catch (e) {
       debugPrint('Error updating notification settings: $e');
-      rethrow;
-    } finally {
-      _isLoading = false;
+      // Only reload on critical error
       notifyListeners();
+      rethrow;
     }
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/settings/security_settings.dart';
+import 'security_api_service.dart';
 
 class SecurityService extends ChangeNotifier {
   static const String _securityKey = 'security_settings';
@@ -132,8 +133,20 @@ class SecurityService extends ChangeNotifier {
   }
 
   Future<void> _loadActiveSessions() async {
-    // In a real app, this would fetch from server
-    // For demo, we use the sessions from default settings
+    try {
+      // Load active sessions from API
+      final sessions = await SecurityApiService.getActiveSessions();
+      if (sessions != null && sessions.isNotEmpty) {
+        final updatedSettings = _securitySettings.copyWith(
+          activeSessions: sessions,
+        );
+        _securitySettings = updatedSettings;
+        await _saveSecuritySettings();
+      }
+    } catch (e) {
+      debugPrint('Failed to load active sessions from API: $e');
+      // Continue with local/demo sessions
+    }
   }
 
   Future<void> updateSecuritySettings(SecuritySettings newSettings) async {
@@ -141,11 +154,30 @@ class SecurityService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _securitySettings = newSettings;
-      await _saveSecuritySettings();
+      // Store original settings for rollback if needed
+      final originalSettings = _securitySettings;
 
-      // Trigger any necessary system-level changes
-      await _applySecurityChanges();
+      // Update settings via API first
+      final success = await SecurityApiService.updateSecuritySettings(
+        newSettings,
+      );
+
+      if (success) {
+        // Only update local settings if API call succeeded
+        _securitySettings = newSettings;
+
+        // Save locally for offline access
+        await _saveSecuritySettings();
+
+        // Trigger any necessary system-level changes
+        await _applySecurityChanges();
+
+        debugPrint('Security settings updated successfully');
+      } else {
+        // API failed, keep original settings
+        _securitySettings = originalSettings;
+        throw Exception('Failed to update security settings via API');
+      }
     } catch (e) {
       debugPrint('Error updating security settings: $e');
       rethrow;
@@ -223,14 +255,11 @@ class SecurityService extends ChangeNotifier {
   }
 
   // Two-Factor Authentication
-  Future<String> setupTwoFactor() async {
+  Future<Map<String, dynamic>?> setupTwoFactor() async {
     try {
-      // In a real app, this would generate a QR code for 2FA setup
-      // For demo, we'll return a fake secret
-      const secret = 'JBSWY3DPEHPK3PXP';
-
-      await Future.delayed(const Duration(milliseconds: 800));
-      return secret;
+      // Setup 2FA via API - this will generate QR code and secret
+      final result = await SecurityApiService.setup2FA();
+      return result;
     } catch (e) {
       debugPrint('Error setting up 2FA: $e');
       rethrow;
@@ -239,19 +268,18 @@ class SecurityService extends ChangeNotifier {
 
   Future<bool> enableTwoFactor(String verificationCode) async {
     try {
-      // In a real app, verify the code with the server
-      if (verificationCode.length != 6) {
-        throw Exception('Mã xác thực không hợp lệ');
+      // Verify and enable 2FA via API
+      final success = await SecurityApiService.enable2FA(verificationCode);
+
+      if (success) {
+        // Update local settings
+        final updatedSettings = _securitySettings.copyWith(
+          isTwoFactorEnabled: true,
+        );
+        await updateSecuritySettings(updatedSettings);
       }
 
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      final updatedSettings = _securitySettings.copyWith(
-        isTwoFactorEnabled: true,
-      );
-
-      await updateSecuritySettings(updatedSettings);
-      return true;
+      return success;
     } catch (e) {
       debugPrint('Error enabling 2FA: $e');
       return false;
@@ -260,19 +288,18 @@ class SecurityService extends ChangeNotifier {
 
   Future<bool> disableTwoFactor(String password) async {
     try {
-      // In a real app, verify password
-      if (password.isEmpty) {
-        throw Exception('Vui lòng nhập mật khẩu');
+      // Disable 2FA via API with password verification
+      final success = await SecurityApiService.disable2FA(password);
+
+      if (success) {
+        // Update local settings
+        final updatedSettings = _securitySettings.copyWith(
+          isTwoFactorEnabled: false,
+        );
+        await updateSecuritySettings(updatedSettings);
       }
 
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      final updatedSettings = _securitySettings.copyWith(
-        isTwoFactorEnabled: false,
-      );
-
-      await updateSecuritySettings(updatedSettings);
-      return true;
+      return success;
     } catch (e) {
       debugPrint('Error disabling 2FA: $e');
       return false;
@@ -285,7 +312,7 @@ class SecurityService extends ChangeNotifier {
     required String newPassword,
   }) async {
     try {
-      // In a real app, verify current password and update
+      // Basic validation
       if (currentPassword.isEmpty || newPassword.isEmpty) {
         throw Exception('Vui lòng nhập đầy đủ thông tin');
       }
@@ -294,14 +321,21 @@ class SecurityService extends ChangeNotifier {
         throw Exception('Mật khẩu mới phải có ít nhất 8 ký tự');
       }
 
-      await Future.delayed(const Duration(milliseconds: 800));
-
-      final updatedSettings = _securitySettings.copyWith(
-        lastPasswordChange: DateTime.now(),
+      // Call API to change password
+      final success = await SecurityApiService.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
       );
 
-      await updateSecuritySettings(updatedSettings);
-      return true;
+      if (success) {
+        // Update local settings to reflect password change
+        final updatedSettings = _securitySettings.copyWith(
+          lastPasswordChange: DateTime.now(),
+        );
+        await updateSecuritySettings(updatedSettings);
+      }
+
+      return success;
     } catch (e) {
       debugPrint('Error changing password: $e');
       return false;
@@ -311,16 +345,23 @@ class SecurityService extends ChangeNotifier {
   // Session Management
   Future<bool> terminateSession(String sessionId) async {
     try {
-      final updatedSessions = _securitySettings.activeSessions
-          .where((session) => session.id != sessionId)
-          .toList();
+      // Terminate session via API
+      final success = await SecurityApiService.terminateSession(sessionId);
 
-      final updatedSettings = _securitySettings.copyWith(
-        activeSessions: updatedSessions,
-      );
+      if (success) {
+        // Update local state
+        final updatedSessions = _securitySettings.activeSessions
+            .where((session) => session.id != sessionId)
+            .toList();
 
-      await updateSecuritySettings(updatedSettings);
-      return true;
+        final updatedSettings = _securitySettings.copyWith(
+          activeSessions: updatedSessions,
+        );
+
+        await updateSecuritySettings(updatedSettings);
+      }
+
+      return success;
     } catch (e) {
       debugPrint('Error terminating session: $e');
       return false;
@@ -329,16 +370,23 @@ class SecurityService extends ChangeNotifier {
 
   Future<bool> terminateAllOtherSessions() async {
     try {
-      final currentSession = _securitySettings.activeSessions
-          .where((session) => session.isCurrent)
-          .toList();
+      // Terminate all other sessions via API
+      final success = await SecurityApiService.terminateAllOtherSessions();
 
-      final updatedSettings = _securitySettings.copyWith(
-        activeSessions: currentSession,
-      );
+      if (success) {
+        // Update local state to keep only current session
+        final currentSession = _securitySettings.activeSessions
+            .where((session) => session.isCurrent)
+            .toList();
 
-      await updateSecuritySettings(updatedSettings);
-      return true;
+        final updatedSettings = _securitySettings.copyWith(
+          activeSessions: currentSession,
+        );
+
+        await updateSecuritySettings(updatedSettings);
+      }
+
+      return success;
     } catch (e) {
       debugPrint('Error terminating sessions: $e');
       return false;
