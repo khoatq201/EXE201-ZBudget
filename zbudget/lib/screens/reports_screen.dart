@@ -51,7 +51,7 @@ class _ReportsScreenState extends State<ReportsScreen>
           slivers: [
             // App Bar
             SliverAppBar(
-              expandedHeight: 160,
+              expandedHeight: 100,
               floating: false,
               pinned: true,
               backgroundColor: AppColors.primary500,
@@ -184,16 +184,13 @@ class _ReportsScreenState extends State<ReportsScreen>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Summary Cards
-        _buildSummaryCard('Tổng thu', trend.summary.totalIncome, Colors.green, Icons.arrow_upward),
-        const SizedBox(height: 12),
-        _buildSummaryCard('Tổng chi', trend.summary.totalExpense, Colors.red, Icons.arrow_downward),
-        const SizedBox(height: 12),
-        _buildSummaryCard('Số dư', trend.summary.totalBalance,
-          trend.summary.totalBalance >= 0 ? Colors.green : Colors.red,
-          Icons.account_balance_wallet),
-        const SizedBox(height: 12),
-        _buildSavingsRateCard(trend.summary.savingsRate),
+        // Quick Insights Card (with savings rate integrated)
+        _buildQuickInsightsCard(trend),
+
+        const SizedBox(height: 24),
+
+        // Balance Change Chart
+        _buildBalanceChangeChart(trend),
 
         const SizedBox(height: 24),
 
@@ -208,7 +205,344 @@ class _ReportsScreenState extends State<ReportsScreen>
     );
   }
 
-  Widget _buildSummaryCard(String title, double amount, Color color, IconData icon) {
+  Widget _buildQuickInsightsCard(TrendReportData trend) {
+    final balance = trend.summary.totalBalance;
+    final savingsRate = trend.summary.savingsRate;
+    final income = trend.summary.totalIncome;
+    final expense = trend.summary.totalExpense;
+    final isPositive = balance >= 0;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isPositive
+            ? [const Color(0xFF4CAF50), const Color(0xFF66BB6A)]
+            : [const Color(0xFFFF5252), const Color(0xFFFF7043)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: (isPositive ? Colors.green : Colors.red).withAlpha(60),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(40),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  isPositive ? Icons.trending_up : Icons.trending_down,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isPositive ? '💰 Tài chính tích cực' : '⚠️ Cần chú ý',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Trong kỳ báo cáo này',
+                      style: TextStyle(
+                        color: Colors.white.withAlpha(200),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Thu Chi Row
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(30),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.arrow_upward, color: Colors.white.withAlpha(200), size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Tổng thu',
+                            style: TextStyle(
+                              color: Colors.white.withAlpha(200),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          CurrencyFormatter.formatCompact(income),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(30),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.arrow_downward, color: Colors.white.withAlpha(200), size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Tổng chi',
+                            style: TextStyle(
+                              color: Colors.white.withAlpha(200),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          CurrencyFormatter.formatCompact(expense),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Số dư Row
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(30),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.account_balance_wallet, color: Colors.white.withAlpha(200), size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Số dư',
+                          style: TextStyle(
+                            color: Colors.white.withAlpha(200),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        CurrencyFormatter.formatCompact(balance),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+          Divider(color: Colors.white.withAlpha(60), thickness: 1),
+          const SizedBox(height: 16),
+
+          // Savings Rate with Badge and Advice
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(40),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.savings, color: Colors.white, size: 32),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tỷ lệ tiết kiệm',
+                      style: TextStyle(
+                        color: Colors.white.withAlpha(200),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Text(
+                          '${savingsRate.toStringAsFixed(1)}%',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: savingsRate >= 20
+                                ? Colors.green.withAlpha(200)
+                                : savingsRate >= 10
+                                    ? Colors.orange.withAlpha(200)
+                                    : Colors.red.withAlpha(200),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                savingsRate >= 20 ? '🎉' : savingsRate >= 10 ? '👍' : '⚠️',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                savingsRate >= 20 ? 'Xuất sắc!' : savingsRate >= 10 ? 'Tốt' : 'Cần cải thiện',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      savingsRate >= 20
+                          ? 'Bạn đang tiết kiệm rất tốt!'
+                          : savingsRate >= 10
+                              ? 'Cố gắng tiết kiệm thêm một chút'
+                              : 'Hãy cân nhắc giảm chi tiêu không cần thiết',
+                      style: TextStyle(
+                        color: Colors.white.withAlpha(180),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBalanceChangeChart(TrendReportData trend) {
+    if (trend.trendData.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Column(
+            children: [
+              Icon(Icons.trending_up, size: 48, color: Colors.grey[300]),
+              const SizedBox(height: 16),
+              Text('Chưa có dữ liệu biến động số dư', style: TextStyle(color: Colors.grey[600])),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Calculate balance changes from starting point
+    final startingBalance = trend.trendData.first.balance;
+    final balanceChanges = trend.trendData.map((point) {
+      return point.balance - startingBalance;
+    }).toList();
+
+    // Calculate symmetric min/max for better visualization
+    final maxPositive = balanceChanges.where((c) => c >= 0).isEmpty
+        ? 0.0
+        : balanceChanges.where((c) => c >= 0).reduce((a, b) => a > b ? a : b);
+    final maxNegative = balanceChanges.where((c) => c < 0).isEmpty
+        ? 0.0
+        : balanceChanges.where((c) => c < 0).reduce((a, b) => a < b ? a : b).abs();
+
+    final absMaxChange = maxPositive > maxNegative ? maxPositive : maxNegative;
+    final padding = absMaxChange * 0.2;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -222,35 +556,283 @@ class _ReportsScreenState extends State<ReportsScreen>
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              const Icon(Icons.trending_up, color: AppColors.primary500, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Biến động số dư', style: AppTypography.h3),
+                    const SizedBox(height: 4),
+                    Text(
+                      'So với đầu kỳ: ${CurrencyFormatter.formatCompact(startingBalance)}',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: balanceChanges.last >= 0 ? Colors.green.withAlpha(26) : Colors.red.withAlpha(26),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      balanceChanges.last >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
+                      size: 14,
+                      color: balanceChanges.last >= 0 ? Colors.green : Colors.red,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${balanceChanges.last >= 0 ? "+" : ""}${CurrencyFormatter.formatCompact(balanceChanges.last)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: balanceChanges.last >= 0 ? Colors.green : Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            height: 220,
+            child: LineChart(
+              LineChartData(
+                // Grid configuration
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: absMaxChange > 0 ? (absMaxChange * 2 + padding * 2) / 4 : 1000000,
+                  getDrawingHorizontalLine: (value) {
+                    if (value == 0) {
+                      return FlLine(
+                        color: Colors.grey.withAlpha(128),
+                        strokeWidth: 2,
+                      );
+                    }
+                    return FlLine(
+                      color: Colors.grey.withAlpha(25),
+                      strokeWidth: 1,
+                      dashArray: [5, 5],
+                    );
+                  },
+                ),
+
+                // Min/Max values centered around zero
+                minY: -absMaxChange - padding,
+                maxY: absMaxChange + padding,
+
+                // Titles configuration
+                titlesData: FlTitlesData(
+                  // Bottom axis (dates) - Smart interval
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: trend.trendData.length <= 5
+                          ? 1.0
+                          : trend.trendData.length <= 10
+                              ? 2.0
+                              : 3.0,
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
+                        if (index >= 0 && index < trend.trendData.length) {
+                          final date = trend.trendData[index].date;
+                          final parts = date.split('-');
+                          if (parts.length >= 3) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                '${parts[2]}/${parts[1]}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            );
+                          }
+                        }
+                        return const Text('');
+                      },
+                    ),
+                  ),
+
+                  // Left axis (balance changes) - Improved visibility
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 60,
+                      interval: absMaxChange > 0 ? (absMaxChange * 2 + padding * 2) / 4 : 1000000,
+                      getTitlesWidget: (value, meta) {
+                        // Skip label at zero to avoid clutter
+                        if (value.abs() < 0.01) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: Text(
+                            value >= 0
+                                ? '+${CurrencyFormatter.formatCompact(value)}'
+                                : CurrencyFormatter.formatCompact(value),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: value >= 0 ? Colors.green[700] : Colors.red[700],
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.right,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                ),
+
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.withAlpha(51), width: 1),
+                    left: BorderSide(color: Colors.grey.withAlpha(51), width: 1),
+                  ),
+                ),
+
+                // Tooltip configuration - Improved positioning
+                lineTouchData: LineTouchData(
+                  enabled: true,
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (touchedSpot) => Colors.black87,
+                    tooltipRoundedRadius: 8,
+                    tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    fitInsideHorizontally: true,
+                    fitInsideVertically: true,
+                    tooltipMargin: 8,
+                    getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                      return touchedSpots.map((spot) {
+                        final index = spot.x.toInt();
+                        final date = trend.trendData[index].date;
+                        final change = balanceChanges[index];
+                        final currentBalance = trend.trendData[index].balance;
+
+                        // Format date
+                        final parts = date.split('-');
+                        final formattedDate = parts.length >= 3 ? '${parts[2]}/${parts[1]}' : date;
+
+                        return LineTooltipItem(
+                          'Biến động: ${change >= 0 ? "+" : ""}${CurrencyFormatter.formatCompact(change)}\nSố dư: ${CurrencyFormatter.formatCompact(currentBalance)}\n$formattedDate',
+                          const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
+                            height: 1.4,
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
+                  handleBuiltInTouches: true,
+                  getTouchedSpotIndicator: (barData, spotIndexes) {
+                    return spotIndexes.map((index) {
+                      return TouchedSpotIndicatorData(
+                        FlLine(
+                          color: Colors.grey.withAlpha(128),
+                          strokeWidth: 2,
+                          dashArray: [5, 5],
+                        ),
+                        FlDotData(
+                          show: true,
+                          getDotPainter: (spot, percent, barData, index) {
+                            return FlDotCirclePainter(
+                              radius: 6,
+                              color: barData.color ?? Colors.blue,
+                              strokeWidth: 2,
+                              strokeColor: Colors.white,
+                            );
+                          },
+                        ),
+                      );
+                    }).toList();
+                  },
+                ),
+
+                // Balance change line
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: balanceChanges
+                        .asMap()
+                        .entries
+                        .map((e) => FlSpot(e.key.toDouble(), e.value))
+                        .toList(),
+                    isCurved: true,
+                    curveSmoothness: 0.35,
+                    color: balanceChanges.last >= 0 ? Colors.green : Colors.red,
+                    barWidth: 3,
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) {
+                        final change = balanceChanges[index];
+                        return FlDotCirclePainter(
+                          radius: 5,
+                          color: change >= 0 ? Colors.green : Colors.red,
+                          strokeWidth: 2,
+                          strokeColor: Colors.white,
+                        );
+                      },
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: balanceChanges.last >= 0
+                          ? Colors.green.withAlpha(20)
+                          : Colors.transparent,
+                      cutOffY: 0,
+                      applyCutOffY: true,
+                    ),
+                    aboveBarData: BarAreaData(
+                      show: true,
+                      color: balanceChanges.last >= 0
+                          ? Colors.transparent
+                          : Colors.red.withAlpha(20),
+                      cutOffY: 0,
+                      applyCutOffY: true,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: Colors.grey[50],
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: color, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                Text(
-                  title,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  CurrencyFormatter.formatVND(amount),
-                  style: AppTypography.h3.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                _buildBalanceChangeStat('Số dư đầu kỳ', startingBalance, Colors.blue),
+                Container(width: 1, height: 40, color: Colors.grey[300]),
+                _buildBalanceChangeStat('Số dư hiện tại', trend.trendData.last.balance,
+                  balanceChanges.last >= 0 ? Colors.green : Colors.red),
+                Container(width: 1, height: 40, color: Colors.grey[300]),
+                _buildBalanceChangeStat('Thay đổi', balanceChanges.last,
+                  balanceChanges.last >= 0 ? Colors.green : Colors.red),
               ],
             ),
           ),
@@ -259,43 +841,27 @@ class _ReportsScreenState extends State<ReportsScreen>
     );
   }
 
-  Widget _buildSavingsRateCard(double savingsRate) {
-    final color = savingsRate >= 20 ? Colors.green : savingsRate >= 10 ? Colors.orange : Colors.red;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+  Widget _buildBalanceChangeStat(String label, double value, Color color) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
         ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.savings, color: color, size: 32),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Tỷ lệ tiết kiệm',
-                  style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${savingsRate.toStringAsFixed(1)}%',
-                  style: AppTypography.h2.copyWith(color: color, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
+        const SizedBox(height: 6),
+        Text(
+          CurrencyFormatter.formatCompact(value),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: color,
           ),
-          Text(
-            savingsRate >= 20 ? '🎉 Xuất sắc!' : savingsRate >= 10 ? '👍 Tốt' : '⚠️ Cần cải thiện',
-            style: const TextStyle(fontSize: 16),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -319,6 +885,15 @@ class _ReportsScreenState extends State<ReportsScreen>
       );
     }
 
+    // Calculate min and max values for better chart scaling
+    final allValues = [
+      ...trend.trendData.map((e) => e.income),
+      ...trend.trendData.map((e) => e.expense),
+    ];
+    final maxValue = allValues.reduce((a, b) => a > b ? a : b);
+    final minValue = allValues.reduce((a, b) => a < b ? a : b);
+    final padding = (maxValue - minValue) * 0.1; // 10% padding
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -341,24 +916,86 @@ class _ReportsScreenState extends State<ReportsScreen>
             height: 250,
             child: LineChart(
               LineChartData(
-                gridData: const FlGridData(show: true),
+                // Grid configuration
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: true,
+                  horizontalInterval: (maxValue - minValue) / 4,
+                  getDrawingHorizontalLine: (value) {
+                    return FlLine(
+                      color: Colors.grey.withAlpha(25),
+                      strokeWidth: 1,
+                      dashArray: [5, 5],
+                    );
+                  },
+                  getDrawingVerticalLine: (value) {
+                    return FlLine(
+                      color: Colors.grey.withAlpha(25),
+                      strokeWidth: 1,
+                      dashArray: [5, 5],
+                    );
+                  },
+                ),
+
+                // Min/Max values for better scaling
+                minY: minValue - padding > 0 ? minValue - padding : 0,
+                maxY: maxValue + padding,
+
+                // Titles configuration
                 titlesData: FlTitlesData(
+                  // Bottom axis (dates)
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
+                      interval: 1,
                       getTitlesWidget: (value, meta) {
                         final index = value.toInt();
                         if (index >= 0 && index < trend.trendData.length) {
                           final date = trend.trendData[index].date;
+                          final parts = date.split('-');
+                          // Format: DD/MM or just DD if same month
+                          if (parts.length >= 3) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                '${parts[2]}/${parts[1]}',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            );
+                          }
                           return Text(date.split('-').last, style: const TextStyle(fontSize: 10));
                         }
                         return const Text('');
                       },
                     ),
                   ),
-                  leftTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
+
+                  // Left axis (amounts)
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 50,
+                      interval: (maxValue - minValue) / 4,
+                      getTitlesWidget: (value, meta) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: Text(
+                            CurrencyFormatter.formatCompact(value),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.black54,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
+
                   topTitles: const AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
                   ),
@@ -366,7 +1003,66 @@ class _ReportsScreenState extends State<ReportsScreen>
                     sideTitles: SideTitles(showTitles: false),
                   ),
                 ),
-                borderData: FlBorderData(show: false),
+
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.withAlpha(51), width: 1),
+                    left: BorderSide(color: Colors.grey.withAlpha(51), width: 1),
+                  ),
+                ),
+
+                // Tooltip configuration
+                lineTouchData: LineTouchData(
+                  enabled: true,
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (touchedSpot) => Colors.black87,
+                    tooltipRoundedRadius: 8,
+                    tooltipPadding: const EdgeInsets.all(8),
+                    getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                      return touchedSpots.map((spot) {
+                        final index = spot.x.toInt();
+                        final date = trend.trendData[index].date;
+                        final isIncome = spot.barIndex == 0;
+                        final label = isIncome ? 'Thu' : 'Chi';
+                        final color = isIncome ? Colors.green : Colors.red;
+
+                        return LineTooltipItem(
+                          '$label: ${CurrencyFormatter.format(spot.y)}\n$date',
+                          TextStyle(
+                            color: color,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
+                  handleBuiltInTouches: true,
+                  getTouchedSpotIndicator: (barData, spotIndexes) {
+                    return spotIndexes.map((index) {
+                      return TouchedSpotIndicatorData(
+                        FlLine(
+                          color: Colors.grey.withAlpha(128),
+                          strokeWidth: 2,
+                          dashArray: [5, 5],
+                        ),
+                        FlDotData(
+                          show: true,
+                          getDotPainter: (spot, percent, barData, index) {
+                            return FlDotCirclePainter(
+                              radius: 6,
+                              color: barData.color ?? Colors.blue,
+                              strokeWidth: 2,
+                              strokeColor: Colors.white,
+                            );
+                          },
+                        ),
+                      );
+                    }).toList();
+                  },
+                ),
+
                 lineBarsData: [
                   // Income line
                   LineChartBarData(
@@ -376,10 +1072,26 @@ class _ReportsScreenState extends State<ReportsScreen>
                         .map((e) => FlSpot(e.key.toDouble(), e.value.income))
                         .toList(),
                     isCurved: true,
+                    curveSmoothness: 0.3,
                     color: Colors.green,
                     barWidth: 3,
-                    dotData: const FlDotData(show: true),
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) {
+                        return FlDotCirclePainter(
+                          radius: 4,
+                          color: Colors.green,
+                          strokeWidth: 2,
+                          strokeColor: Colors.white,
+                        );
+                      },
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: Colors.green.withAlpha(13),
+                    ),
                   ),
+
                   // Expense line
                   LineChartBarData(
                     spots: trend.trendData
@@ -388,9 +1100,24 @@ class _ReportsScreenState extends State<ReportsScreen>
                         .map((e) => FlSpot(e.key.toDouble(), e.value.expense))
                         .toList(),
                     isCurved: true,
+                    curveSmoothness: 0.3,
                     color: Colors.red,
                     barWidth: 3,
-                    dotData: const FlDotData(show: true),
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) {
+                        return FlDotCirclePainter(
+                          radius: 4,
+                          color: Colors.red,
+                          strokeWidth: 2,
+                          strokeColor: Colors.white,
+                        );
+                      },
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: Colors.red.withAlpha(13),
+                    ),
                   ),
                 ],
               ),
@@ -424,6 +1151,66 @@ class _ReportsScreenState extends State<ReportsScreen>
         const SizedBox(width: 8),
         Text(label, style: AppTypography.bodySmall),
       ],
+    );
+  }
+
+  Widget _buildTrendBadge(double savingsRate) {
+    String icon;
+    String label;
+    Color color;
+
+    if (savingsRate >= 30) {
+      icon = '🚀';
+      label = 'Tăng mạnh';
+      color = Colors.green[700]!;
+    } else if (savingsRate >= 15) {
+      icon = '📈';
+      label = 'Tăng vừa';
+      color = Colors.green;
+    } else if (savingsRate >= 5) {
+      icon = '↗️';
+      label = 'Tăng nhẹ';
+      color = Colors.lightGreen;
+    } else if (savingsRate >= -5) {
+      icon = '➡️';
+      label = 'Ổn định';
+      color = Colors.blue;
+    } else if (savingsRate >= -15) {
+      icon = '↘️';
+      label = 'Giảm nhẹ';
+      color = Colors.orange;
+    } else if (savingsRate >= -30) {
+      icon = '📉';
+      label = 'Giảm vừa';
+      color = Colors.deepOrange;
+    } else {
+      icon = '🔻';
+      label = 'Giảm mạnh';
+      color = Colors.red[700]!;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withAlpha(30),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color, width: 1.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 12)),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -499,15 +1286,39 @@ class _ReportsScreenState extends State<ReportsScreen>
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Thu: ${CurrencyFormatter.formatCompact(period.income)}',
-                              style: const TextStyle(fontSize: 12, color: Colors.green)),
-                            Text('Chi: ${CurrencyFormatter.formatCompact(period.expense)}',
-                              style: const TextStyle(fontSize: 12, color: Colors.red)),
+                            Row(
+                              children: [
+                                const Icon(Icons.arrow_upward, size: 12, color: Colors.green),
+                                const SizedBox(width: 4),
+                                Text(CurrencyFormatter.formatCompact(period.income),
+                                  style: const TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                const Icon(Icons.arrow_downward, size: 12, color: Colors.red),
+                                const SizedBox(width: 4),
+                                Text(CurrencyFormatter.formatCompact(period.expense),
+                                  style: const TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        Text('Tiết kiệm: ${period.savingsRate.toStringAsFixed(1)}%',
-                          style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildTrendBadge(period.savingsRate),
+                            Text(
+                              '${period.savingsRate >= 0 ? "+" : ""}${period.savingsRate.toStringAsFixed(1)}%',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: period.savingsRate >= 0 ? Colors.green : Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
