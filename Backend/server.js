@@ -12,6 +12,7 @@ import authRoutes from "./routes/authRoutes.js";
 import expenseRoutes from "./routes/expenseRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import incomeRoutes from "./routes/incomeRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js";
 // import userRoutes from './routes/users.js';
 // import budgetRoutes from './routes/budgets.js';
 // import challengeRoutes from './routes/challenges.js';
@@ -163,6 +164,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/income", incomeRoutes);
+app.use("/api/reports", reportRoutes);
 
 // Protected routes (will be added later)
 // app.use('/api/users', authenticate, userRoutes);
@@ -182,6 +184,7 @@ app.get("/api", (req, res) => {
       expenses: "/api/expenses",
       dashboard: "/api/dashboard",
       income: "/api/income",
+      reports: "/api/reports",
       health: "/api/health",
     },
     todo_endpoints: {
