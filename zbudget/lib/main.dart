@@ -12,6 +12,7 @@ import 'services/currency_service.dart';
 import 'services/dashboard_service.dart';
 import 'services/income_service.dart';
 import 'services/notification_service.dart';
+import 'services/report_service.dart';
 import 'constants/colors.dart';
 import 'constants/typography.dart';
 import 'config/app_router.dart' as app_router;
@@ -40,6 +41,7 @@ class ZBudgetApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => NotificationService()..initialize(),
         ),
+        ChangeNotifierProvider(create: (_) => ReportService()),
       ],
       child: Consumer<AppProvider>(
         builder: (context, appProvider, child) {
