@@ -40,6 +40,7 @@ class SecurityService extends ChangeNotifier {
 
   Future<void> _loadSecuritySettings() async {
     try {
+      // First load from local storage for immediate UI
       final prefs = await SharedPreferences.getInstance();
       final settingsJson = prefs.getString(_securityKey);
 
@@ -50,6 +51,38 @@ class SecurityService extends ChangeNotifier {
         // Create default security settings with demo data
         _securitySettings = _createDefaultSecuritySettings();
         await _saveSecuritySettings();
+      }
+
+      // Then fetch from API to get latest settings
+      try {
+        final response = await SecurityApiService.getSecuritySettings();
+
+        if (response['success'] == true && response['data'] != null) {
+          try {
+            final newSettings = SecuritySettings.fromJson(response['data']);
+
+            // Only update if settings actually changed
+            if (newSettings != _securitySettings) {
+              _securitySettings = newSettings;
+
+              // Save updated settings to local storage
+              await prefs.setString(
+                _securityKey,
+                jsonEncode(_securitySettings.toJson()),
+              );
+
+              // Notify listeners about the change
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                notifyListeners();
+              });
+            }
+          } catch (parseError) {
+            debugPrint('Error parsing settings JSON: $parseError');
+          }
+        }
+      } catch (apiError) {
+        debugPrint('API error (using local settings): $apiError');
+        // Continue with local settings if API fails
       }
     } catch (e) {
       debugPrint('Error loading security settings: $e');
@@ -135,13 +168,33 @@ class SecurityService extends ChangeNotifier {
   Future<void> _loadActiveSessions() async {
     try {
       // Load active sessions from API
-      final sessions = await SecurityApiService.getActiveSessions();
-      if (sessions != null && sessions.isNotEmpty) {
-        final updatedSettings = _securitySettings.copyWith(
-          activeSessions: sessions,
-        );
-        _securitySettings = updatedSettings;
-        await _saveSecuritySettings();
+      final response = await SecurityApiService.getActiveSessions();
+      if (response['success'] == true && response['data'] != null) {
+        final List<dynamic> sessionsData = response['data']['sessions'] ?? [];
+        final List<LoginSession> sessions = sessionsData.map((sessionData) {
+          return LoginSession(
+            id: sessionData['sessionId'] ?? '',
+            deviceName: sessionData['deviceName'] ?? 'Unknown Device',
+            deviceType: sessionData['deviceType'] ?? 'desktop',
+            location: sessionData['location'] ?? 'Unknown Location',
+            ipAddress: sessionData['ip'] ?? '0.0.0.0',
+            loginTime:
+                DateTime.tryParse(sessionData['loginTime'] ?? '') ??
+                DateTime.now(),
+            lastActiveTime:
+                DateTime.tryParse(sessionData['lastActiveTime'] ?? '') ??
+                DateTime.now(),
+            isCurrent: sessionData['isCurrentSession'] ?? false,
+          );
+        }).toList();
+
+        if (sessions.isNotEmpty) {
+          final updatedSettings = _securitySettings.copyWith(
+            activeSessions: sessions,
+          );
+          _securitySettings = updatedSettings;
+          await _saveSecuritySettings();
+        }
       }
     } catch (e) {
       debugPrint('Failed to load active sessions from API: $e');
@@ -150,40 +203,58 @@ class SecurityService extends ChangeNotifier {
   }
 
   Future<void> updateSecuritySettings(SecuritySettings newSettings) async {
-    _isLoading = true;
-    notifyListeners();
-
     try {
-      // Store original settings for rollback if needed
-      final originalSettings = _securitySettings;
+      // First update locally for immediate UI response
+      _securitySettings = newSettings;
+      notifyListeners(); // Immediate UI update
+      await _saveSecuritySettings();
 
-      // Update settings via API first
-      final success = await SecurityApiService.updateSecuritySettings(
-        newSettings,
+      // Then sync with API using the correct property names
+      final response = await SecurityApiService.updateSecuritySettings(
+        isBiometricEnabled: newSettings.isBiometricEnabled,
+        isTwoFactorEnabled: newSettings.isTwoFactorEnabled,
+        isAutoLockEnabled: newSettings.isAutoLockEnabled,
+        sessionTimeout: _getSessionTimeoutInMinutes(newSettings.sessionTimeout),
+        isLoginNotificationEnabled: newSettings.isLoginNotificationEnabled,
+        isDataEncryptionEnabled: newSettings.isDataEncryptionEnabled,
+        maxFailedAttempts: newSettings.maxFailedAttempts,
+        isScreenshotBlocked: newSettings.isScreenshotBlocked,
+        isAppPinEnabled: newSettings.isAppPinEnabled,
+        primaryAuthMethod: newSettings.primaryAuthMethod.name,
+
+        // Legacy compatibility
+        biometricAuth: newSettings.isBiometricEnabled,
       );
 
-      if (success) {
-        // Only update local settings if API call succeeded
-        _securitySettings = newSettings;
-
-        // Save locally for offline access
-        await _saveSecuritySettings();
-
-        // Trigger any necessary system-level changes
-        await _applySecurityChanges();
-
-        debugPrint('Security settings updated successfully');
+      if (response['success'] == true) {
+        // Only update with server response if it contains valid data
+        if (response['data'] != null) {
+          try {
+            final serverSettings = SecuritySettings.fromJson(response['data']);
+            // Only update if server data looks valid (not default values)
+            if (serverSettings.toString() !=
+                const SecuritySettings().toString()) {
+              _securitySettings = serverSettings;
+              await _saveSecuritySettings();
+              notifyListeners(); // Update again with server data
+            }
+          } catch (e) {
+            debugPrint(
+              'Error parsing server response, keeping local changes: $e',
+            );
+            // Keep local changes if server response is invalid
+          }
+        }
       } else {
-        // API failed, keep original settings
-        _securitySettings = originalSettings;
-        throw Exception('Failed to update security settings via API');
+        debugPrint('API sync failed: ${response['message']}');
+        // Keep local changes even if API fails
       }
+
+      // Trigger any necessary system-level changes
+      await _applySecurityChanges();
     } catch (e) {
       debugPrint('Error updating security settings: $e');
-      rethrow;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+      // Don't rethrow - keep local changes
     }
   }
 
@@ -195,6 +266,29 @@ class SecurityService extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error saving security settings: $e');
       rethrow;
+    }
+  }
+
+  /// Refresh settings from server (call when user enters screen)
+  Future<void> refreshFromServer() async {
+    try {
+      final response = await SecurityApiService.getSecuritySettings();
+
+      if (response['success'] == true && response['data'] != null) {
+        try {
+          final serverSettings = SecuritySettings.fromJson(response['data']);
+
+          // Update with server data
+          _securitySettings = serverSettings;
+          await _saveSecuritySettings();
+          notifyListeners();
+        } catch (parseError) {
+          debugPrint('Error parsing refresh JSON: $parseError');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error refreshing from server: $e');
+      // Don't throw, just log the error
     }
   }
 
@@ -257,9 +351,14 @@ class SecurityService extends ChangeNotifier {
   // Two-Factor Authentication
   Future<Map<String, dynamic>?> setupTwoFactor() async {
     try {
-      // Setup 2FA via API - this will generate QR code and secret
-      final result = await SecurityApiService.setup2FA();
-      return result;
+      final response = await SecurityApiService.setup2FA();
+
+      if (response['success'] == true && response['data'] != null) {
+        // Return full QR code data from server
+        return response['data'];
+      } else {
+        throw Exception(response['message'] ?? 'Không thể thiết lập 2FA');
+      }
     } catch (e) {
       debugPrint('Error setting up 2FA: $e');
       rethrow;
@@ -268,18 +367,23 @@ class SecurityService extends ChangeNotifier {
 
   Future<bool> enableTwoFactor(String verificationCode) async {
     try {
-      // Verify and enable 2FA via API
-      final success = await SecurityApiService.enable2FA(verificationCode);
+      // Verify with server
+      final response = await SecurityApiService.enable2FA(verificationCode);
 
-      if (success) {
+      if (response['success'] == true) {
         // Update local settings
         final updatedSettings = _securitySettings.copyWith(
           isTwoFactorEnabled: true,
         );
-        await updateSecuritySettings(updatedSettings);
-      }
 
-      return success;
+        _securitySettings = updatedSettings;
+        await _saveSecuritySettings();
+        notifyListeners();
+
+        return true;
+      } else {
+        throw Exception(response['message'] ?? 'Mã xác thực không hợp lệ');
+      }
     } catch (e) {
       debugPrint('Error enabling 2FA: $e');
       return false;
@@ -288,18 +392,23 @@ class SecurityService extends ChangeNotifier {
 
   Future<bool> disableTwoFactor(String password) async {
     try {
-      // Disable 2FA via API with password verification
-      final success = await SecurityApiService.disable2FA(password);
+      // Disable 2FA via API
+      final response = await SecurityApiService.disable2FA();
 
-      if (success) {
+      if (response['success'] == true) {
         // Update local settings
         final updatedSettings = _securitySettings.copyWith(
           isTwoFactorEnabled: false,
         );
-        await updateSecuritySettings(updatedSettings);
-      }
 
-      return success;
+        _securitySettings = updatedSettings;
+        await _saveSecuritySettings();
+        notifyListeners();
+
+        return true;
+      } else {
+        throw Exception(response['message'] ?? 'Không thể tắt 2FA');
+      }
     } catch (e) {
       debugPrint('Error disabling 2FA: $e');
       return false;
@@ -312,7 +421,7 @@ class SecurityService extends ChangeNotifier {
     required String newPassword,
   }) async {
     try {
-      // Basic validation
+      // Validate inputs
       if (currentPassword.isEmpty || newPassword.isEmpty) {
         throw Exception('Vui lòng nhập đầy đủ thông tin');
       }
@@ -321,21 +430,26 @@ class SecurityService extends ChangeNotifier {
         throw Exception('Mật khẩu mới phải có ít nhất 8 ký tự');
       }
 
-      // Call API to change password
-      final success = await SecurityApiService.changePassword(
+      // Change password via API
+      final response = await SecurityApiService.changePassword(
         currentPassword: currentPassword,
         newPassword: newPassword,
       );
 
-      if (success) {
-        // Update local settings to reflect password change
+      if (response['success'] == true) {
+        // Update local settings
         final updatedSettings = _securitySettings.copyWith(
           lastPasswordChange: DateTime.now(),
         );
-        await updateSecuritySettings(updatedSettings);
-      }
 
-      return success;
+        _securitySettings = updatedSettings;
+        await _saveSecuritySettings();
+        notifyListeners();
+
+        return true;
+      } else {
+        throw Exception(response['message'] ?? 'Không thể đổi mật khẩu');
+      }
     } catch (e) {
       debugPrint('Error changing password: $e');
       return false;
@@ -346,9 +460,9 @@ class SecurityService extends ChangeNotifier {
   Future<bool> terminateSession(String sessionId) async {
     try {
       // Terminate session via API
-      final success = await SecurityApiService.terminateSession(sessionId);
+      final response = await SecurityApiService.terminateSession(sessionId);
 
-      if (success) {
+      if (response['success'] == true) {
         // Update local state
         final updatedSessions = _securitySettings.activeSessions
             .where((session) => session.id != sessionId)
@@ -358,10 +472,14 @@ class SecurityService extends ChangeNotifier {
           activeSessions: updatedSessions,
         );
 
-        await updateSecuritySettings(updatedSettings);
-      }
+        _securitySettings = updatedSettings;
+        await _saveSecuritySettings();
+        notifyListeners();
 
-      return success;
+        return true;
+      } else {
+        throw Exception(response['message'] ?? 'Không thể kết thúc phiên');
+      }
     } catch (e) {
       debugPrint('Error terminating session: $e');
       return false;
@@ -370,11 +488,11 @@ class SecurityService extends ChangeNotifier {
 
   Future<bool> terminateAllOtherSessions() async {
     try {
-      // Terminate all other sessions via API
-      final success = await SecurityApiService.terminateAllOtherSessions();
+      // Terminate all sessions via API
+      final response = await SecurityApiService.terminateAllSessions();
 
-      if (success) {
-        // Update local state to keep only current session
+      if (response['success'] == true) {
+        // Update local state - keep only current session
         final currentSession = _securitySettings.activeSessions
             .where((session) => session.isCurrent)
             .toList();
@@ -383,12 +501,16 @@ class SecurityService extends ChangeNotifier {
           activeSessions: currentSession,
         );
 
-        await updateSecuritySettings(updatedSettings);
-      }
+        _securitySettings = updatedSettings;
+        await _saveSecuritySettings();
+        notifyListeners();
 
-      return success;
+        return true;
+      } else {
+        throw Exception(response['message'] ?? 'Không thể kết thúc phiên');
+      }
     } catch (e) {
-      debugPrint('Error terminating sessions: $e');
+      debugPrint('Error terminating all sessions: $e');
       return false;
     }
   }
@@ -493,6 +615,24 @@ class SecurityService extends ChangeNotifier {
         return Colors.green;
       default:
         return Colors.grey;
+    }
+  }
+
+  // Helper method to convert SessionTimeout enum to minutes for API
+  int _getSessionTimeoutInMinutes(SessionTimeout timeout) {
+    switch (timeout) {
+      case SessionTimeout.never:
+        return 0; // 0 means never timeout
+      case SessionTimeout.minutes5:
+        return 5;
+      case SessionTimeout.minutes15:
+        return 15;
+      case SessionTimeout.minutes30:
+        return 30;
+      case SessionTimeout.hour1:
+        return 60;
+      case SessionTimeout.hour4:
+        return 240;
     }
   }
 }

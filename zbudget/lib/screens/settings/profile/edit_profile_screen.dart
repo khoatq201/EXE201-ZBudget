@@ -6,6 +6,7 @@ import '../../../models/settings/user_profile.dart';
 import '../../../constants/colors.dart';
 import '../../../constants/typography.dart';
 import '../../../constants/spacing.dart';
+import '../../../utils/theme_extensions.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -56,10 +57,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        backgroundColor: AppColors.primary500,
-        foregroundColor: AppColors.textInverse,
+        backgroundColor: context.headerGradientStart,
+        foregroundColor: context.colorScheme.onPrimary,
         title: const Text('Chỉnh sửa thông tin'),
         actions: [
           TextButton(
@@ -67,7 +67,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             child: Text(
               'Lưu',
               style: AppTypography.button.copyWith(
-                color: AppColors.textInverse,
+                color: context.colorScheme.onPrimary,
               ),
             ),
           ),
@@ -149,21 +149,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       maxLength: maxLength,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: AppColors.primary500),
+        prefixIcon: Icon(icon, color: context.colorScheme.primary),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.dark200),
+          borderSide: BorderSide(color: context.inputFieldBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.dark200),
+          borderSide: BorderSide(color: context.inputFieldBorder),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary500, width: 2),
+          borderSide: BorderSide(color: context.colorScheme.primary, width: 2),
         ),
         filled: true,
-        fillColor: AppColors.backgroundSecondary,
+        fillColor: context.inputFieldBackground,
       ),
     );
   }
@@ -174,13 +174,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.dark200),
+          border: Border.all(color: context.inputFieldBorder),
           borderRadius: BorderRadius.circular(12),
-          color: AppColors.backgroundSecondary,
+          color: context.inputFieldBackground,
         ),
         child: Row(
           children: [
-            const Icon(Icons.cake, color: AppColors.primary500),
+            Icon(Icons.cake, color: context.colorScheme.primary),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
@@ -189,7 +189,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   Text(
                     'Ngày sinh',
                     style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
+                      color: context.customTextSecondary,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -199,16 +199,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         : 'Chọn ngày sinh',
                     style: AppTypography.body.copyWith(
                       color: _selectedBirthday != null
-                          ? AppColors.textPrimary
-                          : AppColors.textSecondary,
+                          ? context.inputFieldText
+                          : context.customTextSecondary,
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(
+            Icon(
               Icons.arrow_forward_ios,
-              color: AppColors.textSecondary,
+              color: context.customTextSecondary,
               size: 16,
             ),
           ],
@@ -221,21 +221,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        border: Border.all(color: AppColors.dark200),
+        border: Border.all(color: context.inputFieldBorder),
         borderRadius: BorderRadius.circular(12),
-        color: AppColors.backgroundSecondary,
+        color: context.inputFieldBackground,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.person_outline, color: AppColors.primary500),
+              Icon(Icons.person_outline, color: context.colorScheme.primary),
               const SizedBox(width: AppSpacing.md),
               Text(
                 'Giới tính',
                 style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
+                  color: context.customTextSecondary,
                 ),
               ),
             ],
@@ -253,8 +253,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     _selectedGender = selected ? gender : null;
                   });
                 },
-                selectedColor: AppColors.primary100,
-                checkmarkColor: AppColors.primary500,
+                selectedColor: context.colorScheme.primaryContainer,
+                checkmarkColor: context.colorScheme.primary,
               );
             }).toList(),
           ),
@@ -275,7 +275,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: AppColors.primary500),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: context.colorScheme.primary),
           ),
           child: child!,
         );
@@ -312,8 +314,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cập nhật thông tin thành công'),
+          SnackBar(
+            content: const Text('Cập nhật thông tin thành công'),
             backgroundColor: AppColors.success,
           ),
         );

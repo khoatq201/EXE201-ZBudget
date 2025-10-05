@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user.dart';
+import '../services/session_manager.dart';
+import '../utils/device_info_helper.dart';
 
 /// Service để xử lý authentication với backend API
 class AuthService extends ChangeNotifier {
@@ -95,10 +98,7 @@ class AuthService extends ChangeNotifier {
 
       final response = await http.post(
         Uri.parse('$baseUrl/register'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await DeviceInfoHelper.getEnhancedHeaders(),
         body: jsonEncode(requestBody),
       );
 
@@ -170,18 +170,19 @@ class AuthService extends ChangeNotifier {
     bool rememberMe = false,
   }) async {
     try {
+      // ✅ DEVICE TRACKING: Sử dụng enhanced headers với device info
+      final headers = await DeviceInfoHelper.getEnhancedHeaders();
+
       final response = await http.post(
         Uri.parse('$baseUrl/login'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode({
           'email': email,
           'password': password,
           'rememberMe': rememberMe,
         }),
       );
-
       final responseData = jsonDecode(response.body);
-      debugPrint('🔍 Login response: $responseData');
 
       if (response.statusCode == 200) {
         // ✅ FIX: Match với backend response structure
@@ -203,7 +204,7 @@ class AuthService extends ChangeNotifier {
           await prefs.setString(_userKey, jsonEncode(userData));
 
           notifyListeners();
-          debugPrint('✅ Login successful, tokens saved');
+          debugPrint('✅ Login successful with device tracking, tokens saved');
           return {
             'success': true,
             'message': responseData['message'] ?? 'Đăng nhập thành công',

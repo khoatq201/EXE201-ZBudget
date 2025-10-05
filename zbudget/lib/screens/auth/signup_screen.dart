@@ -116,7 +116,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           } else if (result['user'] != null) {
             // Direct login (old flow)
             final appProvider = context.read<AppProvider>();
-            await appProvider.login(result['user'] as User);
+            await appProvider.login(result['user'] as User, context);
 
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(

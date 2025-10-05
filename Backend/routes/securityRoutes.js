@@ -7,56 +7,34 @@ import {
   changePassword,
   getActiveSessions,
   terminateSession,
-  terminateAllOtherSessions,
+  terminateAllSessions,
   setup2FA,
   enable2FA,
   disable2FA,
-  verify2FA,
-  getSecurityStats,
   getSecuritySettings,
+  updateSecuritySettings,
 } from "../controllers/securityController.js";
 
 const router = express.Router();
 
-// Apply authentication middleware to all routes
+// All security routes require authentication
 router.use(authenticate);
 
+// Two-Factor Authentication routes
+router.post("/2fa/setup", setup2FA);
+router.post("/2fa/enable", enable2FA);
+router.post("/2fa/disable", disable2FA);
+
 // Password management
-router.put(
-  "/change-password",
-  validate(settingsSchemas.changePassword),
-  catchAsync(changePassword)
-);
+router.post("/change-password", changePassword);
+
+// Security settings
+router.get("/settings", getSecuritySettings);
+router.put("/settings", updateSecuritySettings);
 
 // Session management
-router.get("/sessions", catchAsync(getActiveSessions));
-router.delete(
-  "/sessions/:sessionId",
-  validate(settingsSchemas.terminateSession),
-  catchAsync(terminateSession)
-);
-router.delete("/sessions", catchAsync(terminateAllOtherSessions));
-
-// Two-Factor Authentication
-router.post("/setup-2fa", catchAsync(setup2FA));
-router.post(
-  "/enable-2fa",
-  validate(settingsSchemas.verify2FA),
-  catchAsync(enable2FA)
-);
-router.post(
-  "/disable-2fa",
-  validate(settingsSchemas.verify2FA),
-  catchAsync(disable2FA)
-);
-router.post(
-  "/verify-2fa",
-  validate(settingsSchemas.verify2FA),
-  catchAsync(verify2FA)
-);
-
-// Security settings and statistics
-router.get("/settings", catchAsync(getSecuritySettings));
-router.get("/stats", catchAsync(getSecurityStats));
+router.get("/sessions", getActiveSessions);
+router.delete("/sessions/:sessionId", terminateSession);
+router.delete("/sessions", terminateAllSessions);
 
 export default router;

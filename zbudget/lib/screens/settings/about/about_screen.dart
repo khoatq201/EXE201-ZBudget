@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../../constants/colors.dart';
 import '../../../constants/typography.dart';
 import '../../../constants/spacing.dart';
+import '../../../utils/theme_extensions.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -10,10 +11,9 @@ class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        backgroundColor: AppColors.primary500,
-        foregroundColor: AppColors.textInverse,
+        backgroundColor: context.headerGradientStart,
+        foregroundColor: context.colorScheme.onPrimary,
         elevation: 0,
         title: const Text('Về ứng dụng'),
       ),

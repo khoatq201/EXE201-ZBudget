@@ -11,6 +11,7 @@ import '../../../constants/colors.dart';
 import '../../../constants/typography.dart';
 import '../../../constants/spacing.dart';
 import '../../../utils/auth_utils.dart';
+import '../../../utils/theme_extensions.dart';
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -70,12 +71,13 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
       body: Consumer<ProfileService>(
         builder: (context, profileService, child) {
           if (profileService.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary500),
+            return Center(
+              child: CircularProgressIndicator(
+                color: context.colorScheme.primary,
+              ),
             );
           }
 
@@ -117,18 +119,18 @@ class _ProfileScreenState extends State<ProfileScreen>
       expandedHeight: 280,
       floating: false,
       pinned: true,
-      backgroundColor: AppColors.primary500,
-      foregroundColor: AppColors.textInverse,
+      backgroundColor: context.headerGradientStart,
+      foregroundColor: context.colorScheme.onPrimary,
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                AppColors.primary500,
-                AppColors.primary600,
-                AppColors.primary700,
+                context.headerGradientStart,
+                context.headerGradientEnd,
+                context.headerGradientEnd.withOpacity(0.9),
               ],
             ),
           ),
@@ -142,7 +144,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 Text(
                   profile.name,
                   style: AppTypography.h2.copyWith(
-                    color: AppColors.textInverse,
+                    color: context.colorScheme.onPrimary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -153,21 +155,25 @@ class _ProfileScreenState extends State<ProfileScreen>
                     vertical: AppSpacing.xs,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.primary800.withValues(alpha: 0.3),
+                    color: context.colorScheme.onPrimary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: AppColors.textInverse.withValues(alpha: 0.3),
+                      color: context.colorScheme.onPrimary.withOpacity(0.3),
                     ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.star, color: _getLevelColor(profile.stats.currentLevel), size: 16),
+                      Icon(
+                        Icons.star,
+                        color: _getLevelColor(profile.stats.currentLevel),
+                        size: 16,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Level ${profile.stats.currentLevel} • ${_getLevelTitle(profile.stats.currentLevel)}',
                         style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textInverse,
+                          color: context.colorScheme.onPrimary,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -201,12 +207,12 @@ class _ProfileScreenState extends State<ProfileScreen>
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(
-              color: AppColors.textInverse.withValues(alpha: 0.3),
+              color: context.colorScheme.onPrimary.withOpacity(0.3),
               width: 3,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
+                color: Colors.black.withOpacity(0.2),
                 blurRadius: 10,
                 offset: const Offset(0, 5),
               ),
@@ -214,15 +220,18 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
           child: CircleAvatar(
             radius: 50,
-            backgroundColor: AppColors.primary300,
-            backgroundImage: profile.avatar != null && profile.avatar!.isNotEmpty
-                ? NetworkImage(profile.avatar!) // Use NetworkImage for API avatar
+            backgroundColor: context.colorScheme.primaryContainer,
+            backgroundImage:
+                profile.avatar != null && profile.avatar!.isNotEmpty
+                ? NetworkImage(
+                    profile.avatar!,
+                  ) // Use NetworkImage for API avatar
                 : null,
             child: profile.avatar == null || profile.avatar!.isEmpty
                 ? Text(
                     _getInitials(profile.name),
                     style: AppTypography.h2.copyWith(
-                      color: AppColors.primary700,
+                      color: context.colorScheme.onPrimaryContainer,
                       fontWeight: FontWeight.bold,
                     ),
                   )
@@ -237,13 +246,16 @@ class _ProfileScreenState extends State<ProfileScreen>
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.accent500,
+                color: context.colorScheme.secondary,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.textInverse, width: 2),
+                border: Border.all(
+                  color: context.colorScheme.onPrimary,
+                  width: 2,
+                ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.camera_alt,
-                color: AppColors.textInverse,
+                color: context.colorScheme.onSecondary,
                 size: 16,
               ),
             ),
@@ -264,7 +276,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           Text(
             'Thống kê',
             style: AppTypography.h3.copyWith(
-              color: AppColors.textPrimary,
+              color: context.customTextPrimary,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -273,6 +285,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             children: [
               Expanded(
                 child: _buildStatCard(
+                  context: context,
                   icon: Icons.savings_rounded,
                   title: 'Tổng tiết kiệm',
                   value: profileService.formatCurrency(
@@ -284,6 +297,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: _buildStatCard(
+                  context: context,
                   icon: Icons.local_fire_department_rounded,
                   title: 'Streak hiện tại',
                   value: '${profile.stats.streakDays} ngày',
@@ -297,6 +311,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             children: [
               Expanded(
                 child: _buildStatCard(
+                  context: context,
                   icon: Icons.calendar_today_rounded,
                   title: 'Ngày hoạt động',
                   value: profileService.formatDuration(
@@ -308,10 +323,11 @@ class _ProfileScreenState extends State<ProfileScreen>
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: _buildStatCard(
+                  context: context,
                   icon: Icons.emoji_events_rounded,
                   title: 'Challenges',
                   value: '${profile.stats.completedChallenges} hoàn thành',
-                  color: AppColors.primary500,
+                  color: context.colorScheme.primary,
                 ),
               ),
             ],
@@ -324,6 +340,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildStatCard({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required String value,
@@ -332,9 +349,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -344,7 +361,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.2),
+                  color: color.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, color: color, size: 20),
@@ -355,14 +372,14 @@ class _ProfileScreenState extends State<ProfileScreen>
           Text(
             value,
             style: AppTypography.h4.copyWith(
-              color: AppColors.textPrimary,
+              color: context.customTextPrimary,
               fontWeight: FontWeight.bold,
             ),
           ),
           Text(
             title,
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+              color: context.customTextSecondary,
             ),
           ),
         ],
@@ -381,13 +398,10 @@ class _ProfileScreenState extends State<ProfileScreen>
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            levelColor.withValues(alpha: 0.1),
-            levelColor.withValues(alpha: 0.05),
-          ],
+          colors: [levelColor.withOpacity(0.1), levelColor.withOpacity(0.05)],
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: levelColor.withValues(alpha: 0.3)),
+        border: Border.all(color: levelColor.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -400,7 +414,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 child: Text(
                   'Level $currentLevel - ${_getLevelTitle(currentLevel)}',
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textPrimary,
+                    color: context.customTextPrimary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -417,7 +431,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           const SizedBox(height: AppSpacing.sm),
           LinearProgressIndicator(
             value: progress,
-            backgroundColor: AppColors.backgroundSecondary,
+            backgroundColor: context.colorScheme.surfaceContainerHighest,
             valueColor: AlwaysStoppedAnimation<Color>(levelColor),
             borderRadius: BorderRadius.circular(8),
             minHeight: 8,
@@ -426,7 +440,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           Text(
             'Còn ${pointsToNextLevel - (currentPoints % 200)} điểm để lên Level ${currentLevel + 1}',
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+              color: context.customTextSecondary,
             ),
           ),
         ],
@@ -453,14 +467,14 @@ class _ProfileScreenState extends State<ProfileScreen>
               Text(
                 'Thành tích',
                 style: AppTypography.h3.copyWith(
-                  color: AppColors.textPrimary,
+                  color: context.customTextPrimary,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
                 '${unlockedAchievements.length}/${profile.achievements.length}',
                 style: AppTypography.body.copyWith(
-                  color: AppColors.textSecondary,
+                  color: context.customTextSecondary,
                 ),
               ),
             ],
@@ -498,7 +512,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             Text(
               'Chưa mở khóa',
               style: AppTypography.body.copyWith(
-                color: AppColors.textSecondary,
+                color: context.customTextSecondary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -556,13 +570,13 @@ class _ProfileScreenState extends State<ProfileScreen>
         padding: const EdgeInsets.all(AppSpacing.sm),
         decoration: BoxDecoration(
           color: isUnlocked
-              ? AppColors.success.withValues(alpha: 0.1)
-              : AppColors.backgroundSecondary,
+              ? AppColors.success.withOpacity(0.1)
+              : context.achievementBackground,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isUnlocked
-                ? AppColors.success.withValues(alpha: 0.3)
-                : AppColors.dark200,
+                ? AppColors.success.withOpacity(0.3)
+                : context.cardBorder,
           ),
         ),
         child: Column(
@@ -572,7 +586,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               achievement.emoji,
               style: TextStyle(
                 fontSize: 32,
-                color: isUnlocked ? null : AppColors.textTertiary,
+                color: isUnlocked ? null : context.customTextSecondary,
               ),
             ),
             const SizedBox(height: AppSpacing.xs),
@@ -580,8 +594,8 @@ class _ProfileScreenState extends State<ProfileScreen>
               achievement.title,
               style: AppTypography.bodySmall.copyWith(
                 color: isUnlocked
-                    ? AppColors.textPrimary
-                    : AppColors.textTertiary,
+                    ? context.achievementText
+                    : context.customTextSecondary,
                 fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
@@ -593,8 +607,8 @@ class _ProfileScreenState extends State<ProfileScreen>
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: isUnlocked
-                    ? AppColors.success.withValues(alpha: 0.2)
-                    : AppColors.backgroundSecondary,
+                    ? AppColors.success.withOpacity(0.2)
+                    : context.cardBackground,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -602,7 +616,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 style: AppTypography.caption.copyWith(
                   color: isUnlocked
                       ? AppColors.success
-                      : AppColors.textTertiary,
+                      : context.customTextSecondary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -622,7 +636,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           Text(
             'Thông tin cá nhân',
             style: AppTypography.h3.copyWith(
-              color: AppColors.textPrimary,
+              color: context.customTextPrimary,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -630,7 +644,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
-              color: AppColors.backgroundSecondary,
+              color: context.cardBackground,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -693,7 +707,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: AppColors.primary500, size: 20),
+          Icon(icon, color: context.colorScheme.primary, size: 20),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -702,14 +716,14 @@ class _ProfileScreenState extends State<ProfileScreen>
                 Text(
                   label,
                   style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.customTextSecondary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textPrimary,
+                    color: context.infoRowText,
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: maxLines,
@@ -735,8 +749,8 @@ class _ProfileScreenState extends State<ProfileScreen>
               icon: const Icon(Icons.edit_rounded),
               label: const Text('Chỉnh sửa thông tin'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary500,
-                foregroundColor: AppColors.textInverse,
+                backgroundColor: context.primaryButtonBackground,
+                foregroundColor: context.primaryButtonForeground,
                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -756,7 +770,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   icon: const Icon(Icons.share_rounded),
                   label: const Text('Chia sẻ'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary500,
+                    foregroundColor: context.colorScheme.primary,
                     padding: const EdgeInsets.symmetric(
                       vertical: AppSpacing.md,
                     ),
@@ -776,7 +790,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   icon: const Icon(Icons.download_rounded),
                   label: const Text('Xuất dữ liệu'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary500,
+                    foregroundColor: context.colorScheme.primary,
                     padding: const EdgeInsets.symmetric(
                       vertical: AppSpacing.md,
                     ),
@@ -795,7 +809,11 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   // Helper methods
   String _getInitials(String name) {
-    return name.split(' ').map((word) => word.isNotEmpty ? word[0] : '').join('').toUpperCase();
+    return name
+        .split(' ')
+        .map((word) => word.isNotEmpty ? word[0] : '')
+        .join('')
+        .toUpperCase();
   }
 
   Color _getLevelColor(int level) {
@@ -815,7 +833,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   int _calculateAge(DateTime birthday) {
     final now = DateTime.now();
     int age = now.year - birthday.year;
-    if (now.month < birthday.month || (now.month == birthday.month && now.day < birthday.day)) {
+    if (now.month < birthday.month ||
+        (now.month == birthday.month && now.day < birthday.day)) {
       age--;
     }
     return age;
@@ -853,9 +872,9 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _navigateToEditProfile(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const EditProfileScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const EditProfileScreen()));
   }
 
   void _showAvatarOptions(BuildContext context) {
@@ -1065,7 +1084,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     print('🔴 _shareProfile method called!');
     final profileService = Provider.of<ProfileService>(context, listen: false);
     final profile = profileService.currentProfile;
-    
+
     if (profile != null) {
       print('🔴 Profile found: ${profile.name}, calling ProfileShareService');
       ProfileShareService.shareProfile(profile);
@@ -1081,15 +1100,15 @@ class _ProfileScreenState extends State<ProfileScreen>
     print('🔴 _exportData method called!');
     final profileService = Provider.of<ProfileService>(context, listen: false);
     final profile = profileService.currentProfile;
-    
+
     if (profile != null) {
       print('🔴 Profile found: ${profile.name}, calling ExportDataService');
       ExportDataService.showExportDialog(context, profile);
     } else {
       print('🔴 Profile is null for export');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không thể xuất dữ liệu')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Không thể xuất dữ liệu')));
     }
   }
 
@@ -1097,15 +1116,15 @@ class _ProfileScreenState extends State<ProfileScreen>
     print('🔴 _showQRCode method called!');
     final profileService = Provider.of<ProfileService>(context, listen: false);
     final profile = profileService.currentProfile;
-    
+
     if (profile != null) {
       print('🔴 Profile found: ${profile.name}, calling QRCodeService');
       QRCodeService.showQRCodeDialog(context, profile);
     } else {
       print('🔴 Profile is null for QR code');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không thể tạo QR code')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Không thể tạo QR code')));
     }
   }
 

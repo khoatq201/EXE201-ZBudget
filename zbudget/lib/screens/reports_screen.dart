@@ -44,7 +44,6 @@ class _ReportsScreenState extends State<ReportsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
       body: RefreshIndicator(
         onRefresh: _loadReports,
         child: CustomScrollView(
@@ -54,23 +53,16 @@ class _ReportsScreenState extends State<ReportsScreen>
               expandedHeight: 100,
               floating: false,
               pinned: true,
-              backgroundColor: AppColors.primary500,
               flexibleSpace: FlexibleSpaceBar(
-                title: const Text(
-                  'Báo cáo chi tiêu',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                title: const Text('Báo cáo chi tiêu'),
                 background: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        AppColors.primary500,
-                        AppColors.primary600,
+                        Theme.of(context).colorScheme.primary,
+                        Theme.of(context).colorScheme.primary.withAlpha(220),
                       ],
                     ),
                   ),

@@ -1,7 +1,9 @@
-import bcrypt from "bcryptjs";
+import bcryptjs from "bcryptjs";
+const bcrypt = bcryptjs;
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import User from "../models/User.js";
+import SessionService from "../services/SessionService.js";
 import {
   BadRequestError,
   UnauthorizedError,
@@ -379,27 +381,53 @@ export const login = async (req, res) => {
   }
 
   // Success - generate tokens and return response
-  const tokenExpiry = rememberMe ? "7d" : "15m";
-  const { accessToken, refreshToken } = generateTokens(user._id, tokenExpiry);
+  const { accessToken, refreshToken, jwtTokenId } = await generateTokens(
+    user._id,
+    req,
+    "password"
+  );
 
-  // Update user login info
-  user.lastLogin = new Date();
-  await user.save();
+  // ✅ DEVICE TRACKING: Create session với device info
+  try {
+    // Calculate expiry based on rememberMe
+    const expiresAt = rememberMe
+      ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+      : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    await SessionService.createSession(
+      user._id,
+      jwtTokenId, // JWT token ID
+      req,
+      expiresAt,
+      "password"
+    );
+  } catch (sessionError) {
+    console.error("❌ Failed to create session:", sessionError);
+    // Continue với login process, session không critical
+  }
+
+  // Update user login info WITHOUT triggering validation
+  await User.updateOne(
+    { _id: user._id },
+    {
+      lastLogin: new Date(),
+      $inc: { loginCount: 1 },
+    },
+    { runValidators: false } // ← SKIP validation to avoid sessionTimeout error
+  );
 
   // Remove sensitive data from response
   const userResponse = user.toObject();
   delete userResponse.passwordHash;
 
-  res.json(
-    successResponse("Đăng nhập thành công!", {
-      user: userResponse,
-      tokens: {
-        accessToken,
-        refreshToken,
-        expiresIn: tokenExpiry,
-      },
-    })
-  );
+  return successResponse(res, "Đăng nhập thành công!", {
+    user: userResponse,
+    tokens: {
+      accessToken,
+      refreshToken,
+      expiresIn: "7d", // Default token expiry
+    },
+  });
 };
 
 /**
@@ -413,6 +441,15 @@ export const logout = async (req, res) => {
 
   // Blacklist current access token
   await blacklistToken(token);
+
+  // Cleanup session
+  try {
+    await SessionService.terminateSessionByToken(token);
+    console.log("✅ Session terminated successfully for user:", userId);
+  } catch (sessionError) {
+    console.error("❌ Failed to terminate session:", sessionError);
+    // Don't fail logout if session cleanup fails
+  }
 
   // Remove refresh token from user
   const refreshToken = req.body.refreshToken || req.headers["x-refresh-token"];
@@ -459,8 +496,10 @@ export const refreshToken = async (req, res) => {
   }
 
   // Generate new tokens
-  const { accessToken, refreshToken: newRefreshToken } = generateTokens(
-    user._id
+  const { accessToken, refreshToken: newRefreshToken } = await generateTokens(
+    user._id,
+    req,
+    "refresh"
   );
 
   // Replace old refresh token with new one
@@ -474,13 +513,11 @@ export const refreshToken = async (req, res) => {
     }
   );
 
-  res.json(
-    successResponse("Token đã được làm mới", {
-      accessToken,
-      refreshToken: newRefreshToken,
-      expiresIn: "15m",
-    })
-  );
+  return successResponse(res, "Token đã được làm mới", {
+    accessToken,
+    refreshToken: newRefreshToken,
+    expiresIn: "15m",
+  });
 };
 
 /**
@@ -498,10 +535,9 @@ export const forgotPassword = async (req, res) => {
 
   if (!user) {
     // Don't reveal if email exists
-    return res.json(
-      successResponse(
-        "Nếu email tồn tại, chúng tôi đã gửi mã OTP đặt lại mật khẩu."
-      )
+    return successResponse(
+      res,
+      "Nếu email tồn tại, chúng tôi đã gửi mã OTP đặt lại mật khẩu."
     );
   }
 
@@ -536,12 +572,14 @@ export const forgotPassword = async (req, res) => {
     );
   }
 
-  res.json(
-    successResponse("Mã OTP đặt lại mật khẩu đã được gửi đến email của bạn.", {
+  return successResponse(
+    res,
+    "Mã OTP đặt lại mật khẩu đã được gửi đến email của bạn.",
+    {
       email: email.toLowerCase(),
       otpSent: true,
       expiresIn: 600, // 10 minutes in seconds
-    })
+    }
   );
 };
 
@@ -583,12 +621,10 @@ export const verifyPasswordResetOTP = async (req, res) => {
   }
 
   // OTP is valid - return success but don't clear OTP yet (will clear after password reset)
-  res.json(
-    successResponse("Mã OTP hợp lệ. Bạn có thể đặt lại mật khẩu.", {
-      email: email.toLowerCase(),
-      otpVerified: true,
-    })
-  );
+  return successResponse(res, "Mã OTP hợp lệ. Bạn có thể đặt lại mật khẩu.", {
+    email: email.toLowerCase(),
+    otpVerified: true,
+  });
 };
 
 /**
@@ -728,7 +764,7 @@ export const verifyOTP = async (req, res) => {
     console.log("✅ DEBUG: User created successfully with ID:", user._id);
 
     // Generate JWT tokens for the new user
-    const tokens = generateTokens(user._id.toString());
+    const tokens = await generateTokens(user._id.toString(), req, "password");
 
     // Send welcome email asynchronously
     setImmediate(async () => {
@@ -988,9 +1024,9 @@ export const updateProfile = async (req, res) => {
   delete userResponse.loginAttempts;
   delete userResponse.lockUntil;
 
-  res.json(
-    successResponse("Cập nhật profile thành công!", { user: userResponse })
-  );
+  return successResponse(res, "Cập nhật profile thành công!", {
+    user: userResponse,
+  });
 };
 
 /**

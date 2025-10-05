@@ -8,17 +8,16 @@ import rateLimit from "express-rate-limit";
 import mongoose from "mongoose";
 import { connectDB } from "./models/index.js";
 import logger from "morgan";
+import sessionCleanupJob from "./services/SessionCleanupJob.js";
 
 // Import routes
 import authRoutes from "./routes/authRoutes.js";
 import expenseRoutes from "./routes/expenseRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import incomeRoutes from "./routes/incomeRoutes.js";
-<<<<<<< HEAD
 import settingsRoutes from "./routes/settingsRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import securityRoutes from "./routes/securityRoutes.js";
-=======
 import reportRoutes from "./routes/reportRoutes.js";
 // import userRoutes from './routes/users.js';
 // import budgetRoutes from './routes/budgets.js';
@@ -26,8 +25,6 @@ import reportRoutes from "./routes/reportRoutes.js";
 // import groupRoutes from './routes/groups.js';
 // import notificationRoutes from './routes/notifications.js';
 // import healthRoutes from './routes/health.js';
->>>>>>> 9abf01df9922d0649cc0d8a37c8042cfc79b8f69
-
 // Middleware
 import { errorHandler } from "./middleware/errorHandler.js";
 import { requestLogger } from "./middleware/logger.js";
@@ -307,6 +304,10 @@ async function startServer() {
       console.log(`🏥 Health Check: http://localhost:${PORT}/api/health`);
       console.log(`📖 API Docs: http://localhost:${PORT}/api`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
+
+      // Start session cleanup job
+      sessionCleanupJob.start();
+      console.log("🧹 Session cleanup job started");
 
       if (process.env.NODE_ENV === "development") {
         console.log("\n🛠️  Development URLs:");

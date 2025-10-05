@@ -1,6 +1,8 @@
 import jwt from "jsonwebtoken";
 import { User } from "../models/index.js";
 import rateLimit from "express-rate-limit";
+import SessionService from "../services/SessionService.js";
+import crypto from "crypto";
 
 // JWT Secret
 const JWT_SECRET =
@@ -10,16 +12,31 @@ const JWT_REFRESH_SECRET =
   process.env.JWT_REFRESH_SECRET || "your_refresh_secret";
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || "30d";
 
-// Generate JWT tokens
-export const generateTokens = (userId) => {
-  const accessToken = jwt.sign({ userId, type: "access" }, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
-    issuer: "zbudget-api",
-    audience: "zbudget-app",
-  });
+// Generate JWT tokens with session tracking
+export const generateTokens = async (userId, req, loginMethod = "password") => {
+  // Generate unique token ID for session tracking
+  const jwtTokenId = crypto.randomBytes(16).toString("hex");
+
+  const accessToken = jwt.sign(
+    {
+      userId,
+      type: "access",
+      jti: jwtTokenId,
+    },
+    JWT_SECRET,
+    {
+      expiresIn: JWT_EXPIRES_IN,
+      issuer: "zbudget-api",
+      audience: "zbudget-app",
+    }
+  );
 
   const refreshToken = jwt.sign(
-    { userId, type: "refresh" },
+    {
+      userId,
+      type: "refresh",
+      jti: jwtTokenId,
+    },
     JWT_REFRESH_SECRET,
     {
       expiresIn: JWT_REFRESH_EXPIRES_IN,
@@ -28,7 +45,27 @@ export const generateTokens = (userId) => {
     }
   );
 
-  return { accessToken, refreshToken };
+  // Calculate expiration date
+  const expiresAt = new Date();
+  const expiresInMs = jwt.decode(accessToken).exp * 1000;
+  expiresAt.setTime(expiresInMs);
+
+  // Create session synchronously to ensure it's ready
+  if (req) {
+    try {
+      await SessionService.createSession(
+        userId,
+        jwtTokenId,
+        req,
+        expiresAt,
+        loginMethod
+      );
+    } catch (error) {
+      console.error("Failed to create session:", error.message);
+    }
+  }
+
+  return { accessToken, refreshToken, jwtTokenId };
 };
 
 // Verify JWT token
@@ -55,11 +92,11 @@ export const verifyRefreshToken = (token) => {
 
 // Authentication middleware
 export const authenticate = async (req, res, next) => {
-  console.log('🔐 DEBUG: ===== AUTH MIDDLEWARE STARTED =====');
+  console.log("🔐 DEBUG: ===== AUTH MIDDLEWARE STARTED =====");
   try {
     // Get token from header
     const authHeader = req.headers.authorization;
-    console.log('🔐 DEBUG: Auth header present:', !!authHeader);
+    console.log("🔐 DEBUG: Auth header present:", !!authHeader);
 
     if (!authHeader) {
       return res.status(401).json({
@@ -81,7 +118,7 @@ export const authenticate = async (req, res, next) => {
     }
 
     const token = tokenParts[1];
-    console.log('🔐 DEBUG: Token extracted, length:', token.length);
+    console.log("🔐 DEBUG: Token extracted, length:", token.length);
 
     // Check if token is blacklisted
     if (isTokenBlacklisted(token)) {
@@ -91,15 +128,15 @@ export const authenticate = async (req, res, next) => {
         code: "TOKEN_BLACKLISTED",
       });
     }
-    console.log('🔐 DEBUG: Token not blacklisted');
+    console.log("🔐 DEBUG: Token not blacklisted");
 
     // Verify token
     let decoded;
     try {
       decoded = verifyToken(token);
-      console.log('🔐 DEBUG: Token verified, userId:', decoded.userId);
+      console.log("🔐 DEBUG: Token verified, userId:", decoded.userId);
     } catch (error) {
-      console.log('🔐 DEBUG: Token verification failed:', error.message);
+      console.log("🔐 DEBUG: Token verification failed:", error.message);
       return res.status(401).json({
         success: false,
         error: error.message,
@@ -115,12 +152,12 @@ export const authenticate = async (req, res, next) => {
         code: "INVALID_TOKEN_TYPE",
       });
     }
-    console.log('🔐 DEBUG: Token type is access');
+    console.log("🔐 DEBUG: Token type is access");
 
     // Get user from database
-    console.log('🔐 DEBUG: Querying database for user...');
+    console.log("🔐 DEBUG: Querying database for user...");
     const user = await User.findById(decoded.userId).select("-passwordHash");
-    console.log('🔐 DEBUG: User query completed, found:', !!user);
+    console.log("🔐 DEBUG: User query completed, found:", !!user);
 
     if (!user) {
       return res.status(401).json({
@@ -137,14 +174,22 @@ export const authenticate = async (req, res, next) => {
         code: "ACCOUNT_DISABLED",
       });
     }
-    console.log('🔐 DEBUG: User is active');
+    console.log("🔐 DEBUG: User is active");
 
     // Add user to request
     req.user = user;
     req.userId = user._id.toString();
+    req.sessionId = decoded.jti; // JWT token ID used as session ID
 
-    console.log('🔐 DEBUG: Auth middleware completed successfully');
-    console.log('🔐 DEBUG: ===== AUTH MIDDLEWARE ENDED =====');
+    // Update session activity in background
+    if (decoded.jti) {
+      SessionService.updateActivity(decoded.jti).catch((error) => {
+        console.error("Failed to update session activity:", error.message);
+      });
+    }
+
+    console.log("🔐 DEBUG: Auth middleware completed successfully");
+    console.log("🔐 DEBUG: ===== AUTH MIDDLEWARE ENDED =====");
     next();
   } catch (error) {
     console.error("❌ Authentication error:", error);
@@ -463,12 +508,12 @@ export const rateLimitPassword = (windowMs = 5 * 60 * 1000, max = 3) => {
 // General rate limiting for API routes
 export const rateLimitGeneral = (windowMs = 15 * 60 * 1000, max = 100) => {
   const attempts = new Map();
-  console.log('🔧 DEBUG: rateLimitGeneral middleware factory called');
+  console.log("🔧 DEBUG: rateLimitGeneral middleware factory called");
 
   return (req, res, next) => {
-    console.log('⚡ DEBUG: ===== RATE LIMIT GENERAL STARTED =====');
-    console.log('⚡ DEBUG: IP:', req.ip);
-    console.log('⚡ DEBUG: Path:', req.path);
+    console.log("⚡ DEBUG: ===== RATE LIMIT GENERAL STARTED =====");
+    console.log("⚡ DEBUG: IP:", req.ip);
+    console.log("⚡ DEBUG: Path:", req.path);
 
     const key = req.ip || req.connection.remoteAddress;
     const now = Date.now();
@@ -484,23 +529,23 @@ export const rateLimitGeneral = (windowMs = 15 * 60 * 1000, max = 100) => {
     const userAttempts = attempts.get(key);
 
     if (!userAttempts) {
-      console.log('⚡ DEBUG: First request from this IP');
+      console.log("⚡ DEBUG: First request from this IP");
       attempts.set(key, { count: 1, resetTime: now });
-      console.log('⚡ DEBUG: Rate limit passed, calling next()');
-      console.log('⚡ DEBUG: ===== RATE LIMIT GENERAL ENDED =====');
+      console.log("⚡ DEBUG: Rate limit passed, calling next()");
+      console.log("⚡ DEBUG: ===== RATE LIMIT GENERAL ENDED =====");
       return next();
     }
 
     if (now - userAttempts.resetTime > windowMs) {
-      console.log('⚡ DEBUG: Rate limit window expired, resetting');
+      console.log("⚡ DEBUG: Rate limit window expired, resetting");
       attempts.set(key, { count: 1, resetTime: now });
-      console.log('⚡ DEBUG: Rate limit passed, calling next()');
-      console.log('⚡ DEBUG: ===== RATE LIMIT GENERAL ENDED =====');
+      console.log("⚡ DEBUG: Rate limit passed, calling next()");
+      console.log("⚡ DEBUG: ===== RATE LIMIT GENERAL ENDED =====");
       return next();
     }
 
     if (userAttempts.count >= max) {
-      console.log('⚡ DEBUG: Rate limit exceeded!');
+      console.log("⚡ DEBUG: Rate limit exceeded!");
       const resetIn = Math.ceil(
         (windowMs - (now - userAttempts.resetTime)) / 1000
       );
@@ -512,10 +557,13 @@ export const rateLimitGeneral = (windowMs = 15 * 60 * 1000, max = 100) => {
       });
     }
 
-    console.log('⚡ DEBUG: Rate limit check passed, count:', userAttempts.count + 1);
+    console.log(
+      "⚡ DEBUG: Rate limit check passed, count:",
+      userAttempts.count + 1
+    );
     userAttempts.count++;
-    console.log('⚡ DEBUG: Rate limit passed, calling next()');
-    console.log('⚡ DEBUG: ===== RATE LIMIT GENERAL ENDED =====');
+    console.log("⚡ DEBUG: Rate limit passed, calling next()");
+    console.log("⚡ DEBUG: ===== RATE LIMIT GENERAL ENDED =====");
     next();
   };
 };

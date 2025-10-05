@@ -386,13 +386,26 @@ export const getSort = (req, defaultSort = { createdAt: -1 }) => {
 };
 
 // Helper function for success responses
-export const successResponse = (message, data = null, statusCode = 200) => {
-  return {
+export const successResponse = (
+  res,
+  message,
+  data = null,
+  statusCode = 200
+) => {
+  return res.status(statusCode).json({
     success: true,
     message,
     data,
-    statusCode,
-  };
+  });
+};
+
+// Helper function for error responses
+export const errorResponse = (res, message, statusCode = 500, data = null) => {
+  return res.status(statusCode).json({
+    success: false,
+    error: message,
+    data,
+  });
 };
 
 export default {

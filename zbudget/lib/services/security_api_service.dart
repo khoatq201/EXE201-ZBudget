@@ -1,363 +1,435 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import '../utils/auth_utils.dart';
-import '../models/settings/security_settings.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/device_info_helper.dart';
 
+/// API service for security-related operations
 class SecurityApiService {
-  static const String baseUrl = 'http://10.0.2.2:3000/api/security';
-
-  /// Get security statistics and overview
-  static Future<Map<String, dynamic>?> getSecurityStats() async {
-    try {
-      final token = await AuthUtils.getToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/stats'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      print(
-        'SecurityApiService: getSecurityStats response: ${response.statusCode}',
-      );
-      print('SecurityApiService: Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          return data['data'];
-        }
-      }
-      return null;
-    } catch (e) {
-      print('SecurityApiService: Error getting security stats: $e');
-      return null;
+  // Base URL - different for web and mobile
+  static String get baseUrl {
+    if (kIsWeb) {
+      return 'http://localhost:3000/api/security';
+    } else {
+      return 'http://10.0.2.2:3000/api/security';
     }
   }
 
-  /// Change user password
-  static Future<bool> changePassword({
-    required String currentPassword,
-    required String newPassword,
-  }) async {
-    try {
-      final token = await AuthUtils.getToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
+  /// Get authorization headers
+  static Future<Map<String, String>> _getHeaders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token');
 
-      final requestBody = {
-        'currentPassword': currentPassword,
-        'newPassword': newPassword,
-        'confirmPassword': newPassword, // Frontend handles confirmation
+    if (token == null) {
+      throw Exception('No access token found. Please login again.');
+    }
+
+    return await DeviceInfoHelper.getEnhancedHeaders(
+      token: token,
+      includeAuth: true,
+    );
+  }
+
+  /// Setup Two-Factor Authentication
+  static Future<Map<String, dynamic>> setup2FA() async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/2fa/setup'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+
+        if (responseData['success'] == true && responseData['data'] != null) {
+          return {
+            'success': true,
+            'data': responseData['data'],
+            'message': responseData['message'] ?? 'Thiết lập 2FA thành công',
+          };
+        } else {
+          throw Exception(responseData['message'] ?? 'Không thể thiết lập 2FA');
+        }
+      } else {
+        final errorBody = jsonDecode(response.body);
+        throw Exception(errorBody['error'] ?? 'Lỗi server khi thiết lập 2FA');
+      }
+    } catch (e) {
+      debugPrint('❌ Setup 2FA error: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi kết nối. Vui lòng thử lại sau.',
       };
-
-      print('SecurityApiService: changePassword request');
-      print('SecurityApiService: Request body: ${jsonEncode(requestBody)}');
-
-      final response = await http.put(
-        Uri.parse('$baseUrl/change-password'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(requestBody),
-      );
-
-      print(
-        'SecurityApiService: changePassword response: ${response.statusCode}',
-      );
-      print('SecurityApiService: Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['success'] == true;
-      }
-      return false;
-    } catch (e) {
-      print('SecurityApiService: Error changing password: $e');
-      return false;
     }
   }
 
-  /// Get active sessions
-  static Future<List<LoginSession>?> getActiveSessions() async {
+  /// Enable Two-Factor Authentication with OTP
+  static Future<Map<String, dynamic>> enable2FA(String otp) async {
     try {
-      final token = await AuthUtils.getToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/sessions'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      print(
-        'SecurityApiService: getActiveSessions response: ${response.statusCode}',
-      );
-      print('SecurityApiService: Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          final sessions = data['data']['sessions'] as List;
-          return sessions
-              .map((session) => LoginSession.fromJson(session))
-              .toList();
-        }
-      }
-      return null;
-    } catch (e) {
-      print('SecurityApiService: Error getting active sessions: $e');
-      return null;
-    }
-  }
-
-  /// Terminate a specific session
-  static Future<bool> terminateSession(String sessionId) async {
-    try {
-      final token = await AuthUtils.getToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final response = await http.delete(
-        Uri.parse('$baseUrl/sessions/$sessionId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      print(
-        'SecurityApiService: terminateSession response: ${response.statusCode}',
-      );
-      print('SecurityApiService: Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['success'] == true;
-      }
-      return false;
-    } catch (e) {
-      print('SecurityApiService: Error terminating session: $e');
-      return false;
-    }
-  }
-
-  /// Terminate all other sessions
-  static Future<bool> terminateAllOtherSessions() async {
-    try {
-      final token = await AuthUtils.getToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final response = await http.delete(
-        Uri.parse('$baseUrl/sessions'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      print(
-        'SecurityApiService: terminateAllOtherSessions response: ${response.statusCode}',
-      );
-      print('SecurityApiService: Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['success'] == true;
-      }
-      return false;
-    } catch (e) {
-      print('SecurityApiService: Error terminating all sessions: $e');
-      return false;
-    }
-  }
-
-  /// Setup Two-Factor Authentication (get QR code)
-  static Future<Map<String, dynamic>?> setup2FA() async {
-    try {
-      final token = await AuthUtils.getToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
+      final headers = await _getHeaders();
 
       final response = await http.post(
-        Uri.parse('$baseUrl/setup-2fa'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        Uri.parse('$baseUrl/2fa/enable'),
+        headers: headers,
+        body: jsonEncode({'otp': otp}),
       );
 
-      print('SecurityApiService: setup2FA response: ${response.statusCode}');
-      print('SecurityApiService: Response body: ${response.body}');
-
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          return data['data'];
+        final responseData = jsonDecode(response.body);
+
+        if (responseData['success'] == true) {
+          return {
+            'success': true,
+            'message': responseData['message'] ?? 'Kích hoạt 2FA thành công',
+          };
+        } else {
+          throw Exception(responseData['message'] ?? 'Mã OTP không hợp lệ');
         }
+      } else {
+        final errorBody = jsonDecode(response.body);
+        throw Exception(errorBody['error'] ?? 'Lỗi khi kích hoạt 2FA');
       }
-      return null;
     } catch (e) {
-      print('SecurityApiService: Error setting up 2FA: $e');
-      return null;
-    }
-  }
-
-  /// Enable Two-Factor Authentication
-  static Future<bool> enable2FA(String token) async {
-    try {
-      final authToken = await AuthUtils.getToken();
-      if (authToken == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final requestBody = {'token': token};
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/enable-2fa'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $authToken',
-        },
-        body: jsonEncode(requestBody),
-      );
-
-      print('SecurityApiService: enable2FA response: ${response.statusCode}');
-      print('SecurityApiService: Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['success'] == true;
-      }
-      return false;
-    } catch (e) {
-      print('SecurityApiService: Error enabling 2FA: $e');
-      return false;
+      debugPrint('❌ Enable 2FA error: $e');
+      return {
+        'success': false,
+        'message': e.toString().contains('Exception:')
+            ? e.toString().replaceAll('Exception: ', '')
+            : 'Lỗi kết nối. Vui lòng thử lại sau.',
+      };
     }
   }
 
   /// Disable Two-Factor Authentication
-  static Future<bool> disable2FA(String token) async {
+  static Future<Map<String, dynamic>> disable2FA() async {
     try {
-      final authToken = await AuthUtils.getToken();
-      if (authToken == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final requestBody = {'token': token};
+      final headers = await _getHeaders();
+      debugPrint('🚫 Disabling 2FA');
 
       final response = await http.post(
-        Uri.parse('$baseUrl/disable-2fa'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $authToken',
-        },
-        body: jsonEncode(requestBody),
+        Uri.parse('$baseUrl/2fa/disable'),
+        headers: headers,
       );
 
-      print('SecurityApiService: disable2FA response: ${response.statusCode}');
-      print('SecurityApiService: Response body: ${response.body}');
+      debugPrint('📡 2FA Disable response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['success'] == true;
+        final responseData = jsonDecode(response.body);
+
+        if (responseData['success'] == true) {
+          return {
+            'success': true,
+            'message': responseData['message'] ?? 'Tắt 2FA thành công',
+          };
+        } else {
+          throw Exception(responseData['message'] ?? 'Không thể tắt 2FA');
+        }
+      } else {
+        final errorBody = jsonDecode(response.body);
+        throw Exception(errorBody['error'] ?? 'Lỗi server khi tắt 2FA');
       }
-      return false;
     } catch (e) {
-      print('SecurityApiService: Error disabling 2FA: $e');
-      return false;
+      debugPrint('❌ Disable 2FA error: $e');
+      return {
+        'success': false,
+        'message': e.toString().contains('Exception:')
+            ? e.toString().replaceAll('Exception: ', '')
+            : 'Lỗi kết nối. Vui lòng thử lại sau.',
+      };
     }
   }
 
-  /// Verify Two-Factor Authentication token
-  static Future<bool> verify2FA(String token) async {
+  /// Change password
+  static Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
     try {
-      final authToken = await AuthUtils.getToken();
-      if (authToken == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final requestBody = {'token': token};
+      final headers = await _getHeaders();
+      debugPrint('🔑 Changing password');
 
       final response = await http.post(
-        Uri.parse('$baseUrl/verify-2fa'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $authToken',
-        },
-        body: jsonEncode(requestBody),
+        Uri.parse('$baseUrl/change-password'),
+        headers: headers,
+        body: jsonEncode({
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+        }),
       );
 
-      print('SecurityApiService: verify2FA response: ${response.statusCode}');
-      print('SecurityApiService: Response body: ${response.body}');
+      debugPrint('📡 Change password response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          return data['data']['verified'] == true;
+        final responseData = jsonDecode(response.body);
+
+        if (responseData['success'] == true) {
+          return {
+            'success': true,
+            'message': responseData['message'] ?? 'Đổi mật khẩu thành công',
+          };
+        } else {
+          throw Exception(responseData['message'] ?? 'Không thể đổi mật khẩu');
         }
+      } else {
+        final errorBody = jsonDecode(response.body);
+        throw Exception(errorBody['error'] ?? 'Lỗi server khi đổi mật khẩu');
       }
-      return false;
     } catch (e) {
-      print('SecurityApiService: Error verifying 2FA: $e');
-      return false;
+      debugPrint('❌ Change password error: $e');
+      return {
+        'success': false,
+        'message': e.toString().contains('Exception:')
+            ? e.toString().replaceAll('Exception: ', '')
+            : 'Lỗi kết nối. Vui lòng thử lại sau.',
+      };
     }
   }
 
   /// Update security settings
-  static Future<bool> updateSecuritySettings(SecuritySettings settings) async {
+  static Future<Map<String, dynamic>> updateSecuritySettings({
+    // New frontend fields
+    bool? isBiometricEnabled,
+    bool? isTwoFactorEnabled,
+    bool? isAutoLockEnabled,
+    int? sessionTimeout,
+    bool? isLoginNotificationEnabled,
+    bool? isDataEncryptionEnabled,
+    int? maxFailedAttempts,
+    bool? isScreenshotBlocked,
+    bool? isAppPinEnabled,
+    String? primaryAuthMethod,
+
+    // Legacy fields for backward compatibility
+    bool? sessionPersistence,
+    bool? keepSessionsAcrossDevices,
+    bool? enablePrivacyMode,
+    bool? enhancedProtection,
+    bool? biometricAuth,
+  }) async {
     try {
-      final token = await AuthUtils.getToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
+      final headers = await _getHeaders();
 
-      final requestBody = {'security': settings.toBackendJson()};
+      final body = <String, dynamic>{};
 
-      print('SecurityApiService: updateSecuritySettings request');
-      print('SecurityApiService: Request body: ${jsonEncode(requestBody)}');
+      // Map new frontend fields to backend expected names
+      if (isBiometricEnabled != null)
+        body['biometricEnabled'] = isBiometricEnabled;
+      if (isTwoFactorEnabled != null)
+        body['isTwoFactorEnabled'] = isTwoFactorEnabled;
+      if (isAutoLockEnabled != null)
+        body['autoLockEnabled'] = isAutoLockEnabled;
+      if (sessionTimeout != null) body['sessionTimeout'] = sessionTimeout;
+      if (isLoginNotificationEnabled != null)
+        body['loginNotificationEnabled'] = isLoginNotificationEnabled;
+      if (isDataEncryptionEnabled != null)
+        body['dataEncryptionEnabled'] = isDataEncryptionEnabled;
+      if (maxFailedAttempts != null)
+        body['maxFailedAttempts'] = maxFailedAttempts;
+      if (isScreenshotBlocked != null)
+        body['screenshotBlocked'] = isScreenshotBlocked;
+      if (isAppPinEnabled != null) body['appPinEnabled'] = isAppPinEnabled;
+      if (primaryAuthMethod != null)
+        body['primaryAuthMethod'] = primaryAuthMethod;
+
+      // Legacy fields for backward compatibility
+      if (sessionPersistence != null)
+        body['sessionPersistence'] = sessionPersistence;
+      if (keepSessionsAcrossDevices != null)
+        body['keepSessionsAcrossDevices'] = keepSessionsAcrossDevices;
+      if (enablePrivacyMode != null)
+        body['enablePrivacyMode'] = enablePrivacyMode;
+      if (enhancedProtection != null)
+        body['enhancedProtection'] = enhancedProtection;
+      if (biometricAuth != null) body['biometricAuth'] = biometricAuth;
 
       final response = await http.put(
-        Uri.parse('http://10.0.2.2:3000/api/settings/security'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(requestBody),
+        Uri.parse('$baseUrl/settings'),
+        headers: headers,
+        body: jsonEncode(body),
       );
 
-      print(
-        'SecurityApiService: updateSecuritySettings response: ${response.statusCode}',
-      );
-      print('SecurityApiService: Response body: ${response.body}');
+      debugPrint('📡 Security settings response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['success'] == true;
+        final responseData = jsonDecode(response.body);
+
+        if (responseData['success'] == true) {
+          return {
+            'success': true,
+            'data': responseData['data'],
+            'message':
+                responseData['message'] ??
+                'Cập nhật cài đặt bảo mật thành công',
+          };
+        } else {
+          throw Exception(
+            responseData['message'] ?? 'Không thể cập nhật cài đặt',
+          );
+        }
       } else {
-        print(
-          'SecurityApiService: Error ${response.statusCode}: ${response.body}',
+        final errorBody = jsonDecode(response.body);
+        throw Exception(
+          errorBody['error'] ?? 'Lỗi server khi cập nhật cài đặt',
         );
-        return false;
       }
     } catch (e) {
-      print('SecurityApiService: Exception updating security settings: $e');
-      return false;
+      debugPrint('❌ Update security settings error: $e');
+      return {
+        'success': false,
+        'message': e.toString().contains('Exception:')
+            ? e.toString().replaceAll('Exception: ', '')
+            : 'Lỗi kết nối. Vui lòng thử lại sau.',
+      };
+    }
+  }
+
+  /// Get user security settings
+  static Future<Map<String, dynamic>> getSecuritySettings() async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/settings'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+
+        if (responseData['success'] == true && responseData['data'] != null) {
+          return {'success': true, 'data': responseData['data']};
+        } else {
+          throw Exception(
+            responseData['message'] ?? 'Không thể lấy cài đặt bảo mật',
+          );
+        }
+      } else {
+        final errorBody = jsonDecode(response.body);
+        throw Exception(errorBody['error'] ?? 'Lỗi server');
+      }
+    } catch (e) {
+      debugPrint('❌ Get security settings error: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi kết nối. Vui lòng thử lại sau.',
+      };
+    }
+  }
+
+  /// Terminate specific session
+  static Future<Map<String, dynamic>> terminateSession(String sessionId) async {
+    try {
+      final headers = await _getHeaders();
+      debugPrint('🔄 Terminating session: $sessionId');
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/sessions/$sessionId'),
+        headers: headers,
+      );
+
+      debugPrint('📡 Terminate session response: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+
+        if (responseData['success'] == true) {
+          return {
+            'success': true,
+            'message': responseData['message'] ?? 'Kết thúc phiên thành công',
+          };
+        } else {
+          throw Exception(
+            responseData['message'] ?? 'Không thể kết thúc phiên',
+          );
+        }
+      } else {
+        final errorBody = jsonDecode(response.body);
+        throw Exception(errorBody['error'] ?? 'Lỗi server khi kết thúc phiên');
+      }
+    } catch (e) {
+      debugPrint('❌ Terminate session error: $e');
+      return {
+        'success': false,
+        'message': e.toString().contains('Exception:')
+            ? e.toString().replaceAll('Exception: ', '')
+            : 'Lỗi kết nối. Vui lòng thử lại sau.',
+      };
+    }
+  }
+
+  /// Terminate all sessions
+  static Future<Map<String, dynamic>> terminateAllSessions() async {
+    try {
+      final headers = await _getHeaders();
+      debugPrint('🔄 Terminating all sessions');
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/sessions'),
+        headers: headers,
+      );
+
+      debugPrint('📡 Terminate all sessions response: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+
+        if (responseData['success'] == true) {
+          return {
+            'success': true,
+            'message':
+                responseData['message'] ?? 'Kết thúc tất cả phiên thành công',
+          };
+        } else {
+          throw Exception(
+            responseData['message'] ?? 'Không thể kết thúc phiên',
+          );
+        }
+      } else {
+        final errorBody = jsonDecode(response.body);
+        throw Exception(errorBody['error'] ?? 'Lỗi server khi kết thúc phiên');
+      }
+    } catch (e) {
+      debugPrint('❌ Terminate all sessions error: $e');
+      return {
+        'success': false,
+        'message': e.toString().contains('Exception:')
+            ? e.toString().replaceAll('Exception: ', '')
+            : 'Lỗi kết nối. Vui lòng thử lại sau.',
+      };
+    }
+  }
+
+  /// Get active sessions
+  static Future<Map<String, dynamic>> getActiveSessions() async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/sessions'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+
+        if (responseData['success'] == true && responseData['data'] != null) {
+          return {'success': true, 'data': responseData['data']};
+        } else {
+          return {'success': true, 'data': []};
+        }
+      } else {
+        final errorBody = jsonDecode(response.body);
+        throw Exception(errorBody['error'] ?? 'Lỗi server');
+      }
+    } catch (e) {
+      debugPrint('❌ Get active sessions error: $e');
+      return {
+        'success': false,
+        'data': [],
+        'message': 'Lỗi kết nối. Vui lòng thử lại sau.',
+      };
     }
   }
 }

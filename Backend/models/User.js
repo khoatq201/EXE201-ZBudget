@@ -192,40 +192,29 @@ const SecuritySettingsSchema = new mongoose.Schema(
     sessionTimeout: {
       type: Number,
       min: 5,
-      max: 1440, // 24 hours in minutes
+      max: 1440, // 24 hours max instead of 180 (3 hours)
       default: 30,
     },
-    isLoginNotificationEnabled: { type: Boolean, default: true },
-
-    // Privacy & Protection
-    isDataEncryptionEnabled: { type: Boolean, default: true },
-    maxFailedAttempts: {
-      type: Number,
-      min: 3,
-      max: 10,
-      default: 5,
+    // Additional security fields to match frontend
+    twoFactorEnabled: { type: Boolean, default: false },
+    autoLockEnabled: { type: Boolean, default: true },
+    loginNotificationEnabled: { type: Boolean, default: true },
+    dataEncryptionEnabled: { type: Boolean, default: true },
+    maxFailedAttempts: { type: Number, min: 3, max: 10, default: 5 },
+    screenshotBlocked: { type: Boolean, default: false },
+    appPinEnabled: { type: Boolean, default: false },
+    primaryAuthMethod: {
+      type: String,
+      enum: ["password", "biometric", "pin"],
+      default: "password",
     },
-    isScreenshotBlocked: { type: Boolean, default: false },
-
-    // Security Tracking
-    lastPasswordChange: { type: Date, default: null },
-    failedLoginAttempts: { type: Number, default: 0 },
-    lastFailedLogin: { type: Date, default: null },
-    accountLockedUntil: { type: Date, default: null },
-
-    // Active Sessions
-    activeSessions: { type: [SessionSchema], default: [] },
-
-    // Security Events Log
-    securityEvents: [
-      {
-        type: { type: String, required: true }, // 'login', 'logout', 'password_change', '2fa_enabled', etc.
-        timestamp: { type: Date, default: Date.now },
-        details: { type: mongoose.Schema.Types.Mixed, default: {} },
-        ipAddress: { type: String, default: "" },
-        userAgent: { type: String, default: "" },
-      },
-    ],
+    lastPasswordChange: { type: Date, default: Date.now },
+    // Fields for current backend compatibility
+    sessionPersistence: { type: Boolean, default: true },
+    keepSessionsAcrossDevices: { type: Boolean, default: false },
+    enablePrivacyMode: { type: Boolean, default: false },
+    enhancedProtection: { type: Boolean, default: false },
+    biometricAuth: { type: Boolean, default: false }, // alias for biometricEnabled
   },
   { _id: false }
 );

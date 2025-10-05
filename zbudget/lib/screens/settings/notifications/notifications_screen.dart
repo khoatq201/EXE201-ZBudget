@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../constants/colors.dart';
 import '../../../constants/typography.dart';
 import '../../../services/notification_service.dart';
 import '../../../models/settings/notification_settings.dart';
+import '../../../utils/theme_extensions.dart';
 import 'notification_dialogs.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -17,7 +17,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
       body: Consumer<NotificationService>(
         builder: (context, notificationService, child) {
           if (notificationService.isLoading) {
@@ -35,14 +34,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 expandedHeight: 120,
                 floating: false,
                 pinned: true,
-                backgroundColor: AppColors.primary500,
-                foregroundColor: Colors.white,
+                backgroundColor: context.headerGradientStart,
+                foregroundColor: context.colorScheme.onPrimary,
                 elevation: 0,
                 flexibleSpace: FlexibleSpaceBar(
                   title: Text(
                     'Thông báo',
                     style: AppTypography.h3.copyWith(
-                      color: Colors.white,
+                      color: context.colorScheme.onPrimary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -52,8 +51,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          AppColors.primary500,
-                          AppColors.primary500.withValues(alpha: 0.8),
+                          context.headerGradientStart,
+                          context.headerGradientEnd,
                         ],
                       ),
                     ),
@@ -65,7 +64,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           child: Icon(
                             Icons.notifications,
                             size: 150,
-                            color: Colors.white.withValues(alpha: 0.1),
+                            color: context.colorScheme.onPrimary.withOpacity(
+                              0.1,
+                            ),
                           ),
                         ),
                       ],
@@ -133,11 +134,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -151,8 +152,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: settings.isGlobalEnabled
-                      ? Colors.green.withValues(alpha: 0.1)
-                      : Colors.orange.withValues(alpha: 0.1),
+                      ? Colors.green.withOpacity(0.1)
+                      : Colors.orange.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -173,7 +174,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     Text(
                       'Trạng thái thông báo',
                       style: AppTypography.body.copyWith(
-                        color: AppColors.textSecondary,
+                        color: context.notificationCardSubtext,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -195,13 +196,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.primary500.withValues(alpha: 0.1),
+                  color: context.colorScheme.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   '${stats['enabledNotifications']}/${stats['totalNotifications']}',
                   style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.primary500,
+                    color: context.colorScheme.primary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -247,7 +248,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         const SizedBox(height: 4),
         Text(
           label,
-          style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+          style: AppTypography.caption.copyWith(
+            color: context.notificationCardSubtext,
+          ),
         ),
       ],
     );
@@ -258,7 +261,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       title,
       style: AppTypography.h4.copyWith(
         fontWeight: FontWeight.bold,
-        color: AppColors.textPrimary,
+        color: context.settingsSectionTitle,
       ),
     );
   }
@@ -269,11 +272,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -336,11 +339,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -357,7 +360,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 Text(
                   'Tùy chỉnh từng loại',
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.notificationCardSubtext,
                   ),
                 ),
                 Row(
@@ -368,7 +371,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       child: Text(
                         'Bật tất cả',
                         style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.primary500,
+                          color: context.colorScheme.primary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -435,27 +438,29 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: isEnabled
-                  ? AppColors.primary500.withValues(alpha: 0.1)
-                  : AppColors.textSecondary.withValues(alpha: 0.1),
+                  ? context.notificationIconBackground
+                  : context.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               type.icon,
-              color: isEnabled ? AppColors.primary500 : AppColors.textSecondary,
+              color: isEnabled
+                  ? context.notificationIconColor
+                  : context.notificationCardSubtext,
               size: 20,
             ),
           ),
           title: Text(
             type.displayName,
             style: AppTypography.body.copyWith(
-              color: AppColors.textPrimary,
+              color: context.notificationCardText,
               fontWeight: FontWeight.w600,
             ),
           ),
           subtitle: Text(
             subtitle,
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+              color: context.notificationCardSubtext,
             ),
           ),
           trailing: Row(
@@ -465,12 +470,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 value: isEnabled,
                 onChanged: (value) =>
                     _toggleNotificationType(type, value, notificationService),
-                activeThumbColor: AppColors.primary500,
+                activeColor: context.colorScheme.primary,
               ),
               IconButton(
                 icon: Icon(
                   Icons.settings,
-                  color: AppColors.textSecondary,
+                  color: context.notificationCardSubtext,
                   size: 20,
                 ),
                 onPressed: () => _showNotificationTypeSettings(
@@ -513,11 +518,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -564,11 +569,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -626,28 +631,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           leading: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.primary500.withValues(alpha: 0.1),
+              color: context.notificationIconBackground,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: AppColors.primary500, size: 20),
+            child: Icon(icon, color: context.notificationIconColor, size: 20),
           ),
           title: Text(
             title,
             style: AppTypography.body.copyWith(
-              color: AppColors.textPrimary,
+              color: context.notificationCardText,
               fontWeight: FontWeight.w600,
             ),
           ),
           subtitle: Text(
             subtitle,
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+              color: context.notificationCardSubtext,
             ),
           ),
           trailing: Switch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: AppColors.primary500,
+            activeColor: context.colorScheme.primary,
           ),
         ),
         if (showDivider) const Divider(height: 1, indent: 16, endIndent: 16),
@@ -672,25 +677,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           leading: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.primary500.withValues(alpha: 0.1),
+              color: context.notificationIconBackground,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: AppColors.primary500, size: 20),
+            child: Icon(icon, color: context.notificationIconColor, size: 20),
           ),
           title: Text(
             title,
             style: AppTypography.body.copyWith(
-              color: AppColors.textPrimary,
+              color: context.notificationCardText,
               fontWeight: FontWeight.w600,
             ),
           ),
           subtitle: Text(
             subtitle,
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+              color: context.notificationCardSubtext,
             ),
           ),
-          trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary),
+          trailing: Icon(
+            Icons.chevron_right,
+            color: context.notificationCardSubtext,
+          ),
           onTap: onTap,
         ),
         if (showDivider) const Divider(height: 1, indent: 16, endIndent: 16),
