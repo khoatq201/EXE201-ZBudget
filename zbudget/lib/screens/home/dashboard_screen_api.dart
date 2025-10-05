@@ -6,9 +6,9 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../services/dashboard_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/dashboard.dart';
-import '../../constants/colors.dart';
 import '../../constants/typography.dart';
 import '../../utils/formatters.dart';
+import '../../utils/theme_extensions.dart';
 
 class DashboardScreenApi extends StatefulWidget {
   const DashboardScreenApi({super.key});
@@ -17,7 +17,8 @@ class DashboardScreenApi extends StatefulWidget {
   State<DashboardScreenApi> createState() => _DashboardScreenApiState();
 }
 
-class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticKeepAliveClientMixin {
+class _DashboardScreenApiState extends State<DashboardScreenApi>
+    with AutomaticKeepAliveClientMixin {
   DateTime? _lastLoadTime;
 
   @override
@@ -46,14 +47,17 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
 
   Future<void> _loadDashboardData() async {
     _lastLoadTime = DateTime.now();
-    final dashboardService = Provider.of<DashboardService>(context, listen: false);
+    final dashboardService = Provider.of<DashboardService>(
+      context,
+      listen: false,
+    );
     try {
       await dashboardService.getDashboardSummary(period: 'month');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi tải dữ liệu: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi tải dữ liệu: $e')));
       }
     }
   }
@@ -69,17 +73,25 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
     final dashboardService = Provider.of<DashboardService>(context);
 
     return Container(
-      color: AppColors.backgroundPrimary,
+      color: context.screenBackground,
       child: dashboardService.isLoading
           ? const Center(child: CircularProgressIndicator())
           : dashboardService.error != null
-              ? _buildErrorView(dashboardService.error!)
-              : dashboardService.dashboardData == null
-                  ? const Center(child: Text('Không có dữ liệu'))
-                  : RefreshIndicator(
-                      onRefresh: _refreshDashboard,
-                      child: _buildDashboardContent(dashboardService.dashboardData!, authService),
-                    ),
+          ? _buildErrorView(dashboardService.error!)
+          : dashboardService.dashboardData == null
+          ? Center(
+              child: Text(
+                'Không có dữ liệu',
+                style: TextStyle(color: context.settingsItemTitleColor),
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _refreshDashboard,
+              child: _buildDashboardContent(
+                dashboardService.dashboardData!,
+                authService,
+              ),
+            ),
     );
   }
 
@@ -90,9 +102,18 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
         children: [
           const Icon(Icons.error_outline, size: 64, color: Colors.red),
           const SizedBox(height: 16),
-          Text('Có lỗi xảy ra', style: AppTypography.h2),
+          Text(
+            'Có lỗi xảy ra',
+            style: AppTypography.h2.copyWith(
+              color: context.settingsItemTitleColor,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text(error, textAlign: TextAlign.center),
+          Text(
+            error,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: context.settingsItemSubtitleColor),
+          ),
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: _loadDashboardData,
@@ -133,7 +154,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.primary500, AppColors.primary600],
+          colors: [context.headerGradientStart, context.headerGradientEnd],
         ),
       ),
       child: Row(
@@ -144,21 +165,28 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
             children: [
               Text(
                 'Xin chào! 👋',
-                style: AppTypography.h3.copyWith(color: Colors.white),
+                style: AppTypography.h3.copyWith(
+                  color: context.colorScheme.onPrimary,
+                ),
               ),
               Text(
                 authService.currentUser?.email ?? '',
-                style: AppTypography.bodySmall.copyWith(color: Colors.white70),
+                style: AppTypography.bodySmall.copyWith(
+                  color: context.colorScheme.onPrimary.withOpacity(0.7),
+                ),
               ),
             ],
           ),
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white24,
+              color: context.colorScheme.onPrimary.withOpacity(0.24),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.notifications_outlined, color: Colors.white),
+            child: Icon(
+              Icons.notifications_outlined,
+              color: context.colorScheme.onPrimary,
+            ),
           ),
         ],
       ),
@@ -176,12 +204,12 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Colors.blue.shade400, Colors.blue.shade600],
+          colors: [context.headerGradientStart, context.headerGradientEnd],
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withAlpha(76),
+            color: context.colorScheme.primary.withOpacity(0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -192,13 +220,15 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
         children: [
           Text(
             'Số dư hiện tại',
-            style: AppTypography.bodyMedium.copyWith(color: Colors.white70),
+            style: AppTypography.bodyMedium.copyWith(
+              color: context.colorScheme.onPrimary.withOpacity(0.7),
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             data.currentBalance.toVND(),
             style: AppTypography.h1.copyWith(
-              color: Colors.white,
+              color: context.colorScheme.onPrimary,
               fontSize: 32,
               fontWeight: FontWeight.bold,
             ),
@@ -209,7 +239,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha(51),
+              color: context.colorScheme.onPrimary.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -217,7 +247,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
                 Text(
                   'Thống kê $periodLabel',
                   style: AppTypography.bodySmall.copyWith(
-                    color: Colors.white70,
+                    color: context.colorScheme.onPrimary.withOpacity(0.7),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -228,12 +258,19 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Thu nhập', style: AppTypography.bodySmall.copyWith(color: Colors.white70)),
+                        Text(
+                          'Thu nhập',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: context.colorScheme.onPrimary.withOpacity(
+                              0.7,
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           data.period.income.toVND(),
                           style: AppTypography.bodyMedium.copyWith(
-                            color: Colors.white,
+                            color: context.colorScheme.onPrimary,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -242,12 +279,19 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text('Chi tiêu', style: AppTypography.bodySmall.copyWith(color: Colors.white70)),
+                        Text(
+                          'Chi tiêu',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: context.colorScheme.onPrimary.withOpacity(
+                              0.7,
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           data.period.expense.toVND(),
                           style: AppTypography.bodyMedium.copyWith(
-                            color: Colors.white,
+                            color: context.colorScheme.onPrimary,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -260,17 +304,23 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      periodBalance >= 0 ? Icons.trending_up : Icons.trending_down,
-                      color: periodBalance >= 0 ? Colors.greenAccent : Colors.redAccent,
+                      periodBalance >= 0
+                          ? Icons.trending_up
+                          : Icons.trending_down,
+                      color: periodBalance >= 0
+                          ? Colors.greenAccent
+                          : Colors.redAccent,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       periodBalance >= 0
-                        ? CurrencyFormatter.formatIncome(periodBalance)
-                        : CurrencyFormatter.formatExpense(periodBalance.abs()),
+                          ? CurrencyFormatter.formatIncome(periodBalance)
+                          : CurrencyFormatter.formatExpense(
+                              periodBalance.abs(),
+                            ),
                       style: AppTypography.bodyLarge.copyWith(
-                        color: periodBalance >= 0 ? Colors.greenAccent : Colors.redAccent,
+                        color: context.colorScheme.onPrimary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -284,8 +334,18 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildBalanceItem('Tổng thu', data.totalIncome, Icons.arrow_downward, Colors.green),
-              _buildBalanceItem('Tổng chi', data.totalExpenses, Icons.arrow_upward, Colors.red),
+              _buildBalanceItem(
+                'Tổng thu',
+                data.totalIncome,
+                Icons.arrow_downward,
+                Colors.green,
+              ),
+              _buildBalanceItem(
+                'Tổng chi',
+                data.totalExpenses,
+                Icons.arrow_upward,
+                Colors.red,
+              ),
             ],
           ),
         ],
@@ -305,22 +365,36 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
     }
   }
 
-  Widget _buildBalanceItem(String label, double amount, IconData icon, Color color) {
+  Widget _buildBalanceItem(
+    String label,
+    double amount,
+    IconData icon,
+    Color color,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(icon, size: 16, color: Colors.white70),
+            Icon(
+              icon,
+              size: 16,
+              color: context.colorScheme.onPrimary.withOpacity(0.7),
+            ),
             const SizedBox(width: 4),
-            Text(label, style: AppTypography.bodySmall.copyWith(color: Colors.white70)),
+            Text(
+              label,
+              style: AppTypography.bodySmall.copyWith(
+                color: context.colorScheme.onPrimary.withOpacity(0.7),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 4),
         Text(
           amount.toVND(),
           style: AppTypography.bodyLarge.copyWith(
-            color: Colors.white,
+            color: context.colorScheme.onPrimary,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -404,7 +478,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
                 onPressed: () => _handleInsightAction(insight.action!),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: textColor,
-                  foregroundColor: Colors.white,
+                  foregroundColor: context.colorScheme.onPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -413,7 +487,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
                 child: Text(
                   insight.action!,
                   style: AppTypography.bodySmall.copyWith(
-                    color: Colors.white,
+                    color: context.colorScheme.onPrimary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -448,11 +522,11 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
       margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(13),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -468,7 +542,9 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
               Text(
                 '${budget.spentPercentage}%',
                 style: AppTypography.h3.copyWith(
-                  color: budget.isOverBudget ? Colors.red : AppColors.primary500,
+                  color: budget.isOverBudget
+                      ? Colors.red
+                      : context.colorScheme.primary,
                 ),
               ),
             ],
@@ -478,7 +554,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
             value: budget.spentPercentage / 100,
             backgroundColor: Colors.grey.shade200,
             valueColor: AlwaysStoppedAnimation<Color>(
-              budget.isOverBudget ? Colors.red : AppColors.primary500,
+              budget.isOverBudget ? Colors.red : context.colorScheme.primary,
             ),
             minHeight: 8,
             borderRadius: BorderRadius.circular(4),
@@ -494,7 +570,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
               Text(
                 'Còn lại: ${budget.remaining.toVND()}',
                 style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.primary500,
+                  color: context.colorScheme.primary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -537,15 +613,20 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(13),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -556,24 +637,30 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
           Icon(icon, color: color, size: 32),
           const SizedBox(height: 8),
           Text(value, style: AppTypography.h3),
-          Text(label, style: AppTypography.bodySmall.copyWith(color: Colors.grey)),
+          Text(
+            label,
+            style: AppTypography.bodySmall.copyWith(color: Colors.grey),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSpendingChart(List<CategoryBreakdown> categories, double totalExpense) {
+  Widget _buildSpendingChart(
+    List<CategoryBreakdown> categories,
+    double totalExpense,
+  ) {
     if (categories.isEmpty) return const SizedBox.shrink();
 
     return Container(
       margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(13),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -598,10 +685,10 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
                           title: '${cat.percentage}%',
                           color: _getCategoryColor(cat.category),
                           radius: 60,
-                          titleStyle: const TextStyle(
+                          titleStyle: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: context.colorScheme.onPrimary,
                           ),
                         );
                       }).toList(),
@@ -686,7 +773,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -697,7 +784,9 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
               children: [
                 Text(
                   _getCategoryName(category.category),
-                  style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                  style: AppTypography.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 Text(
                   '${category.count} giao dịch',
@@ -711,11 +800,15 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
             children: [
               Text(
                 category.total.toVND(),
-                style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                style: AppTypography.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               Text(
                 '${category.percentage}%',
-                style: AppTypography.bodySmall.copyWith(color: AppColors.primary500),
+                style: AppTypography.bodySmall.copyWith(
+                  color: context.colorScheme.primary,
+                ),
               ),
             ],
           ),
@@ -744,7 +837,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
                 child: Text(
                   'Xem tất cả',
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.primary500,
+                    color: context.colorScheme.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -763,7 +856,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -771,7 +864,9 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: transaction.isIncome ? Colors.green.shade50 : Colors.red.shade50,
+              color: transaction.isIncome
+                  ? Colors.green.shade50
+                  : Colors.red.shade50,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -786,7 +881,9 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
               children: [
                 Text(
                   transaction.title,
-                  style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                  style: AppTypography.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 Text(
                   '${transaction.date.day.toString().padLeft(2, '0')}/${transaction.date.month.toString().padLeft(2, '0')}/${transaction.date.year}',
@@ -797,8 +894,8 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
           ),
           Text(
             transaction.isIncome
-              ? CurrencyFormatter.formatIncome(transaction.amount)
-              : CurrencyFormatter.formatExpense(transaction.amount),
+                ? CurrencyFormatter.formatIncome(transaction.amount)
+                : CurrencyFormatter.formatExpense(transaction.amount),
             style: AppTypography.bodyMedium.copyWith(
               color: transaction.isIncome ? Colors.green : Colors.red,
               fontWeight: FontWeight.w600,
@@ -823,7 +920,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
                 child: _buildQuickActionButton(
                   'Thêm chi tiêu',
                   Icons.add,
-                  AppColors.primary500,
+                  context.colorScheme.primary,
                   () async {
                     final result = await context.push('/add-expense');
                     // Refresh dashboard if expense was created successfully
@@ -869,11 +966,11 @@ class _DashboardScreenApiState extends State<DashboardScreenApi> with AutomaticK
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardBackground,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: color.withAlpha(25),
+              color: color.withOpacity(0.1),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),

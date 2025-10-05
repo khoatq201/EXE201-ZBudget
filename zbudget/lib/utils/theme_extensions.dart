@@ -68,21 +68,33 @@ extension ThemeExtensions on BuildContext {
   Color get settingsItemIconBackground =>
       colorScheme.primary.withOpacity(isDarkTheme ? 0.20 : 0.10);
 
-  // Screen background colors
-  Color get screenBackground => colorScheme.surface;
-  Color get scaffoldBackground => colorScheme.surface;
+  // Screen background colors - with green tint for dark theme
+  Color get screenBackground => isDarkTheme
+      ? Color(0xFF0A1A0C) // Very dark green-black for dark theme
+      : colorScheme.surface; // Standard surface for light theme
+  Color get scaffoldBackground => isDarkTheme
+      ? Color(0xFF0A1A0C) // Very dark green-black for dark theme
+      : colorScheme.surface; // Standard surface for light theme
 
   // App bar colors
-  Color get appBarBackground => colorScheme.surface;
+  Color get appBarBackground => isDarkTheme
+      ? Color(0xFF0D1F0F) // Slightly lighter green-black for app bar
+      : colorScheme.surface;
   Color get appBarForeground => colorScheme.onSurface;
 
-  // Card colors
-  Color get cardBackground => colorScheme.surfaceContainerHigh;
+  // Card colors - also with green tint for dark theme
+  Color get cardBackground => isDarkTheme
+      ? Color(0xFF0F2311) // Dark green-tinted card background
+      : colorScheme.surfaceContainerHigh;
   Color get cardBorder => colorScheme.outline.withOpacity(0.2);
 
-  // Gradient colors for headers
-  Color get headerGradientStart => colorScheme.primary;
-  Color get headerGradientEnd => colorScheme.primary.withOpacity(0.8);
+  // Gradient colors for headers - vibrant and theme-aware
+  Color get headerGradientStart => isDarkTheme
+      ? Color(0xFF2E7D32) // Vibrant dark green for dark theme
+      : Color(0xFF4CAF50); // Bright green for light theme
+  Color get headerGradientEnd => isDarkTheme
+      ? Color(0xFF1B5E20) // Deep dark green for dark theme
+      : Color(0xFF388E3C); // Medium green for light theme
 
   // Section header colors
   Color get sectionHeaderColor => colorScheme.primary;
