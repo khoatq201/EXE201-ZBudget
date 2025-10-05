@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../constants/colors.dart';
+import '../utils/theme_extensions.dart';
 
 class MainNavigator extends StatefulWidget {
   final Widget child;
@@ -53,9 +53,9 @@ class _MainNavigatorState extends State<MainNavigator> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _getCurrentIndex(context),
         onTap: _onItemTapped,
-        selectedItemColor: AppColors.primary500,
-        unselectedItemColor: AppColors.textSecondary,
-        backgroundColor: AppColors.backgroundPrimary,
+        selectedItemColor: context.colorScheme.primary,
+        unselectedItemColor: context.settingsItemSubtitleColor,
+        backgroundColor: context.cardBackground,
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang chủ'),
