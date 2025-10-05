@@ -1,15 +1,18 @@
 import express from "express";
+import { validate } from "../middleware/validation.js";
+import { settingsSchemas } from "../middleware/validation.js";
 import { authenticate } from "../middleware/auth.js";
+import { catchAsync } from "../middleware/errorHandler.js";
 import {
+  changePassword,
+  getActiveSessions,
+  terminateSession,
+  terminateAllSessions,
   setup2FA,
   enable2FA,
   disable2FA,
-  updateSecuritySettings,
   getSecuritySettings,
-  changePassword,
-  terminateSession,
-  terminateAllSessions,
-  getActiveSessions,
+  updateSecuritySettings,
 } from "../controllers/securityController.js";
 
 const router = express.Router();

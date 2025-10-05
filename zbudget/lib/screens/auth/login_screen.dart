@@ -183,7 +183,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
       resizeToAvoidBottomInset: true, // ✅ Ensure layout adjusts for keyboard
       body: SafeArea(
         child: SingleChildScrollView(
@@ -201,13 +200,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 Icon(
                   Icons.account_balance_wallet,
                   size: 80,
-                  color: AppColors.primary500,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(height: AppSpacing.sectionSpacing),
                 Text(
                   'ZBudget',
                   style: AppTypography.h1.copyWith(
-                    color: AppColors.primary500,
+                    color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.bold,
                   ),
                   textAlign: TextAlign.center,
@@ -241,7 +240,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(
-                        color: AppColors.primary500,
+                        color: Theme.of(context).colorScheme.primary,
                         width: 2,
                       ),
                     ),
@@ -291,7 +290,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(
-                        color: AppColors.primary500,
+                        color: Theme.of(context).colorScheme.primary,
                         width: 2,
                       ),
                     ),
@@ -369,27 +368,29 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _login,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary500,
-                      foregroundColor: AppColors.textInverse,
+                      backgroundColor:
+                          Theme.of(context).colorScheme.primary,
+                      foregroundColor:
+                          Theme.of(context).colorScheme.onPrimary,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     child: _isLoading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
+                                Theme.of(context).colorScheme.onPrimary,
                               ),
                             ),
                           )
                         : Text(
                             'Đăng nhập',
                             style: AppTypography.button.copyWith(
-                              color: AppColors.textInverse,
+                              color: Theme.of(context).colorScheme.onPrimary,
                             ),
                           ),
                   ),

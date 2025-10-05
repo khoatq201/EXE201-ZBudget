@@ -9,13 +9,28 @@ import { ValidationError } from "./errorHandler.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "zbudget",
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true,
-});
+// Configure Cloudinary - moved to function to ensure env vars are loaded
+let cloudinaryConfigured = false;
+const configureCloudinary = () => {
+  if (!cloudinaryConfigured) {
+    console.log("🔧 Cloudinary Config Debug:", {
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY ? "***exists***" : "missing",
+      api_secret: process.env.CLOUDINARY_API_SECRET
+        ? "***exists***"
+        : "missing",
+      use_cloudinary: process.env.USE_CLOUDINARY,
+    });
+
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "zbudget",
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+      secure: true,
+    });
+    cloudinaryConfigured = true;
+  }
+};
 
 // Local storage configuration (fallback)
 const localStorage = multer.diskStorage({
@@ -56,57 +71,73 @@ const localStorage = multer.diskStorage({
 });
 
 // Cloudinary storage configuration
-const cloudinaryStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: async (req, file) => {
-    let folder = "zbudget";
-    let allowedFormats = ["jpeg", "jpg", "png", "webp"];
+const getCloudinaryStorage = () => {
+  configureCloudinary(); // Ensure cloudinary is configured first
 
-    // Configure based on file type
-    if (file.fieldname === "avatar") {
-      folder = "zbudget/avatars";
-      allowedFormats = ["jpeg", "jpg", "png", "webp"];
-    } else if (file.fieldname === "receipt") {
-      folder = "zbudget/receipts";
-      allowedFormats = ["jpeg", "jpg", "png", "webp", "pdf"];
-    } else if (file.fieldname === "groupAvatar") {
-      folder = "zbudget/groups";
-      allowedFormats = ["jpeg", "jpg", "png", "webp"];
-    }
+  return new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: async (req, file) => {
+      let folder = "zbudget";
+      let allowedFormats = ["jpeg", "jpg", "png", "webp"];
 
-    return {
-      folder: folder,
-      allowed_formats: allowedFormats,
-      public_id: `${file.fieldname}-${Date.now()}-${Math.round(Math.random() * 1e9)}`,
-      resource_type: "auto", // Automatically detect file type
-      transformation: [
-        {
-          width: file.fieldname === "avatar" ? 300 : 800,
-          height: file.fieldname === "avatar" ? 300 : 800,
-          crop: file.fieldname === "avatar" ? "fill" : "limit",
-          quality: "auto:good",
-          fetch_format: "auto",
-        },
-      ],
-    };
-  },
-});
+      // Configure based on file type
+      if (file.fieldname === "avatar") {
+        folder = "zbudget/avatars";
+        allowedFormats = ["jpeg", "jpg", "png", "webp"];
+      } else if (file.fieldname === "receipt") {
+        folder = "zbudget/receipts";
+        allowedFormats = ["jpeg", "jpg", "png", "webp", "pdf"];
+      } else if (file.fieldname === "groupAvatar") {
+        folder = "zbudget/groups";
+        allowedFormats = ["jpeg", "jpg", "png", "webp"];
+      }
+
+      return {
+        folder: folder,
+        allowed_formats: allowedFormats,
+        public_id: `${file.fieldname}-${Date.now()}-${Math.round(Math.random() * 1e9)}`,
+        resource_type: "auto", // Automatically detect file type
+        transformation: [
+          {
+            width: file.fieldname === "avatar" ? 300 : 800,
+            height: file.fieldname === "avatar" ? 300 : 800,
+            crop: file.fieldname === "avatar" ? "fill" : "limit",
+            quality: "auto:good",
+            fetch_format: "auto",
+          },
+        ],
+      };
+    },
+  });
+};
 
 // File filter function
 const fileFilter = (req, file, cb) => {
+  // Debug: Log the actual MIME type received
+  console.log(`🔍 File upload debug:`, {
+    originalname: file.originalname,
+    mimetype: file.mimetype,
+    fieldname: file.fieldname,
+    size: file.size,
+  });
+
   // Allowed mime types
   const allowedMimes = {
     "image/jpeg": true,
     "image/jpg": true,
     "image/png": true,
     "image/webp": true,
+    "image/gif": true, // Add GIF support
+    "image/bmp": true, // Add BMP support
     "application/pdf": true,
   };
 
   // Check if file type is allowed
   if (allowedMimes[file.mimetype]) {
+    console.log(`✅ File type ${file.mimetype} is allowed`);
     cb(null, true);
   } else {
+    console.log(`❌ File type ${file.mimetype} is NOT allowed`);
     cb(
       new ValidationError(
         `Loại file không được hỗ trợ. Chỉ chấp nhận: ${Object.keys(allowedMimes).join(", ")}`
@@ -124,11 +155,20 @@ const limits = {
 };
 
 // Create multer instance with appropriate storage
-const storage =
-  process.env.USE_CLOUDINARY === "true" ? cloudinaryStorage : localStorage;
+const getStorage = () => {
+  configureCloudinary(); // Ensure env vars are loaded
+  console.log("📦 Storage Debug:", {
+    USE_CLOUDINARY: process.env.USE_CLOUDINARY,
+    storageType: process.env.USE_CLOUDINARY === "true" ? "Cloudinary" : "Local",
+  });
+
+  return process.env.USE_CLOUDINARY === "true"
+    ? getCloudinaryStorage()
+    : localStorage;
+};
 
 const upload = multer({
-  storage: storage,
+  storage: getStorage(),
   fileFilter: fileFilter,
   limits: limits,
   onError: function (err, next) {

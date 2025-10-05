@@ -2,6 +2,7 @@
 import '../../../constants/colors.dart';
 import '../../../constants/typography.dart';
 import '../../../constants/spacing.dart';
+import '../../../utils/theme_extensions.dart';
 
 class FeedbackScreen extends StatefulWidget {
   const FeedbackScreen({super.key});

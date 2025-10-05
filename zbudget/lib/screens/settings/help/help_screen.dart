@@ -2,6 +2,7 @@
 import '../../../constants/colors.dart';
 import '../../../constants/typography.dart';
 import '../../../constants/spacing.dart';
+import '../../../utils/theme_extensions.dart';
 
 class HelpScreen extends StatelessWidget {
   const HelpScreen({super.key});
@@ -9,10 +10,9 @@ class HelpScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        backgroundColor: AppColors.primary500,
-        foregroundColor: AppColors.textInverse,
+        backgroundColor: context.headerGradientStart,
+        foregroundColor: context.colorScheme.onPrimary,
         elevation: 0,
         title: const Text('Trợ giúp'),
       ),
@@ -28,18 +28,18 @@ class HelpScreen extends StatelessWidget {
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.dark200),
+                  borderSide: BorderSide(color: context.inputFieldBorder),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.dark200),
+                  borderSide: BorderSide(color: context.inputFieldBorder),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.primary500),
+                  borderSide: BorderSide(color: context.colorScheme.primary),
                 ),
                 filled: true,
-                fillColor: AppColors.backgroundSecondary,
+                fillColor: context.inputFieldBackground,
               ),
             ),
           ),

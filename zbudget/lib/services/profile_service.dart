@@ -5,44 +5,117 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/settings/user_profile.dart';
+import '../utils/auth_utils.dart';
+import 'profile_api_service.dart';
+import 'image_upload_service.dart';
 
 class ProfileService extends ChangeNotifier {
   static const String _profileKey = 'user_profile';
+  static const String _lastSyncKey = 'profile_last_sync';
+
   UserProfile? _currentProfile;
   bool _isLoading = false;
+  bool _isSyncing = false;
+  String? _errorMessage;
+  DateTime? _lastSync;
+
+  final ProfileApiService _apiService = ProfileApiService();
 
   UserProfile? get currentProfile => _currentProfile;
   bool get isLoading => _isLoading;
+  bool get isSyncing => _isSyncing;
+  String? get errorMessage => _errorMessage;
+  DateTime? get lastSync => _lastSync;
 
-  // Initialize with sample data for demo
+  // Initialize with backend sync or local fallback
   Future<void> initialize() async {
     _isLoading = true;
-    // Defer notifyListeners to avoid calling during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       notifyListeners();
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final profileJson = prefs.getString(_profileKey);
+      final isAuthenticated = await AuthUtils.isAuthenticated();
+      print('ProfileService.initialize: authenticated = $isAuthenticated');
 
-      if (profileJson != null) {
-        final profileData = jsonDecode(profileJson);
-        _currentProfile = UserProfile.fromJson(profileData);
+      if (isAuthenticated) {
+        print(
+          'ProfileService.initialize: Clearing local storage to force sync...',
+        );
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(_profileKey);
+
+        print('ProfileService.initialize: Trying server sync...');
+        final syncSuccess = await _syncWithServer();
+
+        if (!syncSuccess) {
+          print(
+            'ProfileService.initialize: Server sync failed, no profile loaded',
+          );
+          _currentProfile = null;
+        }
       } else {
-        // Create demo profile
-        _currentProfile = _createDemoProfile();
-        await _saveProfile();
+        print('ProfileService.initialize: Not authenticated, loading local...');
+        await _loadLocalProfile();
+        if (_currentProfile == null) {
+          print(
+            'ProfileService.initialize: No local profile, no profile loaded',
+          );
+        }
       }
+
+      _clearError();
     } catch (e) {
-      debugPrint('Error loading profile: $e');
-      _currentProfile = _createDemoProfile();
+      _setError('Failed to initialize profile: $e');
+      debugPrint('ProfileService initialization error: $e');
+      _currentProfile = null;
     } finally {
       _isLoading = false;
-      // Defer notifyListeners to avoid calling during build
       WidgetsBinding.instance.addPostFrameCallback((_) {
         notifyListeners();
       });
+    }
+  }
+
+  /// Sync profile with server
+  Future<bool> syncWithServer() async {
+    if (!await AuthUtils.isAuthenticated()) return false;
+
+    _setSyncing(true);
+    try {
+      return await _syncWithServer();
+    } finally {
+      _setSyncing(false);
+    }
+  }
+
+  Future<bool> _syncWithServer() async {
+    try {
+      print('ProfileService: Attempting to sync with server...');
+      final backendData = await _apiService.getProfile();
+      print('ProfileService: Backend data received: $backendData');
+
+      if (backendData != null) {
+        final serverProfile = _apiService.mapBackendToUserProfile(backendData);
+        print('ProfileService: Mapped profile: ${serverProfile?.name}');
+
+        if (serverProfile != null) {
+          _currentProfile = serverProfile;
+          await _saveLocalProfile();
+          _lastSync = DateTime.now();
+          await _saveLastSync();
+          notifyListeners();
+          print(
+            'ProfileService: Sync successful - Profile name: ${serverProfile.name}',
+          );
+          return true;
+        }
+      }
+      print('ProfileService: Sync failed - no data or mapping failed');
+      return false;
+    } catch (e) {
+      print('Failed to sync profile with server: $e');
+      return false;
     }
   }
 
@@ -126,13 +199,37 @@ class ProfileService extends ChangeNotifier {
     ];
   }
 
-  Future<void> updateProfile(UserProfile updatedProfile) async {
+  Future<void> updateProfile(
+    UserProfile updatedProfile, {
+    bool syncToServer = true,
+  }) async {
     _isLoading = true;
     notifyListeners();
 
     try {
       _currentProfile = updatedProfile.copyWith(updatedAt: DateTime.now());
-      await _saveProfile();
+
+      // Save locally first
+      await _saveLocalProfile();
+
+      // Sync to server if authenticated and requested
+      if (syncToServer && await AuthUtils.isAuthenticated()) {
+        final profilePayload = _apiService.mapUserProfileToBackend(
+          _currentProfile!,
+        );
+        final success = await _apiService.updateProfile(
+          name: profilePayload['name'],
+          phone: profilePayload['phone'],
+          dateOfBirth: _currentProfile!.birthday,
+          gender: _currentProfile!.gender,
+          location: profilePayload['location'],
+        );
+
+        if (success) {
+          _lastSync = DateTime.now();
+          await _saveLastSync();
+        }
+      }
     } catch (e) {
       debugPrint('Error updating profile: $e');
       rethrow;
@@ -149,8 +246,8 @@ class ProfileService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // In a real app, you would upload to a server
-      // For demo, we'll just store the file path
+      // TODO: Upload to server and get URL in real implementation
+      // For now, we'll just store the file path locally
       final avatarPath = imageFile.path;
 
       _currentProfile = _currentProfile!.copyWith(
@@ -158,13 +255,42 @@ class ProfileService extends ChangeNotifier {
         updatedAt: DateTime.now(),
       );
 
-      await _saveProfile();
+      await _saveLocalProfile();
+
+      // TODO: Upload to server when avatar upload endpoint is ready
+      // if (await AuthUtils.isAuthenticated()) {
+      //   await _apiService.updateAvatar(avatarUrl);
+      // }
     } catch (e) {
       debugPrint('Error updating avatar: $e');
       rethrow;
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// Update avatar with URL (for server uploads)
+  Future<void> updateAvatarUrl(String avatarUrl) async {
+    if (_currentProfile == null) return;
+
+    try {
+      if (await AuthUtils.isAuthenticated()) {
+        final success = await _apiService.updateAvatar(avatarUrl);
+        if (success) {
+          _currentProfile = _currentProfile!.copyWith(
+            avatar: avatarUrl,
+            updatedAt: DateTime.now(),
+          );
+          await _saveLocalProfile();
+          _lastSync = DateTime.now();
+          await _saveLastSync();
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error updating avatar URL: $e');
+      rethrow;
     }
   }
 
@@ -261,7 +387,7 @@ class ProfileService extends ChangeNotifier {
     await updateProfile(_currentProfile!.copyWith(stats: newStats));
   }
 
-  Future<void> _saveProfile() async {
+  Future<void> _saveLocalProfile() async {
     if (_currentProfile == null) return;
 
     try {
@@ -272,6 +398,51 @@ class ProfileService extends ChangeNotifier {
       debugPrint('Error saving profile: $e');
       rethrow;
     }
+  }
+
+  Future<void> _loadLocalProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final profileJson = prefs.getString(_profileKey);
+
+      if (profileJson != null) {
+        final profileData = jsonDecode(profileJson);
+        _currentProfile = UserProfile.fromJson(profileData);
+      }
+
+      // Load last sync time
+      final lastSyncMillis = prefs.getInt(_lastSyncKey);
+      if (lastSyncMillis != null) {
+        _lastSync = DateTime.fromMillisecondsSinceEpoch(lastSyncMillis);
+      }
+    } catch (e) {
+      debugPrint('Error loading profile: $e');
+    }
+  }
+
+  Future<void> _saveLastSync() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (_lastSync != null) {
+        await prefs.setInt(_lastSyncKey, _lastSync!.millisecondsSinceEpoch);
+      }
+    } catch (e) {
+      debugPrint('Failed to save last sync time: $e');
+    }
+  }
+
+  void _setSyncing(bool syncing) {
+    _isSyncing = syncing;
+    notifyListeners();
+  }
+
+  void _setError(String error) {
+    _errorMessage = error;
+    notifyListeners();
+  }
+
+  void _clearError() {
+    _errorMessage = null;
   }
 
   Future<void> clearProfile() async {
@@ -315,6 +486,81 @@ class ProfileService extends ChangeNotifier {
       }
     } else {
       return '$days ngày';
+    }
+  }
+
+  // Avatar upload methods
+  Future<bool> uploadAvatar(File imageFile) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final result = await ImageUploadService.uploadAvatar(imageFile);
+
+      if (result != null && result['success'] == true) {
+        // Update current profile with new avatar
+        if (_currentProfile != null) {
+          _currentProfile = _currentProfile!.copyWith(
+            avatar: result['data']?['avatar'],
+          );
+          await _saveLocalProfile();
+          notifyListeners();
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Error uploading avatar: $e');
+      _errorMessage = 'Lỗi tải ảnh lên: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> deleteAvatar() async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final success = await ImageUploadService.deleteAvatar();
+
+      if (success && _currentProfile != null) {
+        _currentProfile = _currentProfile!.copyWith(avatar: null);
+        await _saveLocalProfile();
+        notifyListeners();
+      }
+
+      return success;
+    } catch (e) {
+      print('Error deleting avatar: $e');
+      _errorMessage = 'Lỗi xóa ảnh: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> pickAndUploadAvatar() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 80,
+      );
+
+      if (pickedFile != null) {
+        final File imageFile = File(pickedFile.path);
+        await uploadAvatar(imageFile);
+      }
+    } catch (e) {
+      print('Error picking image: $e');
+      _errorMessage = 'Lỗi chọn ảnh: $e';
+      notifyListeners();
     }
   }
 }

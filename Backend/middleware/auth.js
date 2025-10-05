@@ -13,7 +13,7 @@ const JWT_REFRESH_SECRET =
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || "30d";
 
 // Generate JWT tokens with session tracking
-export const generateTokens = (userId, req, loginMethod = "password") => {
+export const generateTokens = async (userId, req, loginMethod = "password") => {
   // Generate unique token ID for session tracking
   const jwtTokenId = crypto.randomBytes(16).toString("hex");
 
@@ -50,17 +50,19 @@ export const generateTokens = (userId, req, loginMethod = "password") => {
   const expiresInMs = jwt.decode(accessToken).exp * 1000;
   expiresAt.setTime(expiresInMs);
 
-  // Create session in background (don't await to avoid blocking)
+  // Create session synchronously to ensure it's ready
   if (req) {
-    SessionService.createSession(
-      userId,
-      jwtTokenId,
-      req,
-      expiresAt,
-      loginMethod
-    ).catch((error) => {
+    try {
+      await SessionService.createSession(
+        userId,
+        jwtTokenId,
+        req,
+        expiresAt,
+        loginMethod
+      );
+    } catch (error) {
       console.error("Failed to create session:", error.message);
-    });
+    }
   }
 
   return { accessToken, refreshToken, jwtTokenId };

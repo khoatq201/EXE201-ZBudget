@@ -3,6 +3,7 @@ import '../../../constants/colors.dart';
 import '../../../constants/typography.dart';
 import '../../../services/language_service.dart';
 import '../../../models/settings/language_settings.dart';
+import '../../../utils/theme_extensions.dart';
 
 class LanguageScreen extends StatefulWidget {
   const LanguageScreen({super.key});
@@ -55,21 +56,20 @@ class _LanguageScreenState extends State<LanguageScreen>
     }
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
             expandedHeight: 120,
             floating: false,
             pinned: true,
-            backgroundColor: AppColors.primary500,
-            foregroundColor: Colors.white,
+            backgroundColor: context.headerGradientStart,
+            foregroundColor: context.colorScheme.onPrimary,
             elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
                 'Ngôn ngữ & Định dạng',
                 style: AppTypography.h3.copyWith(
-                  color: Colors.white,
+                  color: context.colorScheme.onPrimary,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -79,8 +79,8 @@ class _LanguageScreenState extends State<LanguageScreen>
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      AppColors.primary500,
-                      AppColors.primary500.withValues(alpha: 0.8),
+                      context.headerGradientStart,
+                      context.headerGradientEnd,
                     ],
                   ),
                 ),

@@ -1,10 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../constants/colors.dart';
 import '../../../constants/typography.dart';
 import '../../../services/security_service.dart';
 import '../../../models/settings/security_settings.dart';
+import '../../../utils/theme_extensions.dart';
 
 class SecurityScreenSimple extends StatefulWidget {
   const SecurityScreenSimple({super.key});
@@ -19,7 +20,13 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
     super.initState();
     // Initialize SecurityService when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<SecurityService>(context, listen: false).initialize();
+      final securityService = Provider.of<SecurityService>(
+        context,
+        listen: false,
+      );
+      securityService.initialize();
+      // Refresh from server to get latest settings
+      securityService.refreshFromServer();
     });
   }
 
@@ -34,21 +41,21 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
         }
 
         return Scaffold(
-          backgroundColor: AppColors.backgroundPrimary,
+          backgroundColor: context.screenBackground,
           body: CustomScrollView(
             slivers: [
               SliverAppBar(
                 expandedHeight: 120,
                 floating: false,
                 pinned: true,
-                backgroundColor: AppColors.primary500,
-                foregroundColor: Colors.white,
+                backgroundColor: context.headerGradientStart,
+                foregroundColor: context.colorScheme.onPrimary,
                 elevation: 0,
                 flexibleSpace: FlexibleSpaceBar(
                   title: Text(
                     'Bảo mật',
                     style: AppTypography.h3.copyWith(
-                      color: Colors.white,
+                      color: context.colorScheme.onPrimary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -58,8 +65,8 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          AppColors.primary500,
-                          AppColors.primary500.withValues(alpha: 0.8),
+                          context.headerGradientStart,
+                          context.headerGradientEnd,
                         ],
                       ),
                     ),
@@ -71,7 +78,7 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
                           child: Icon(
                             Icons.security,
                             size: 150,
-                            color: Colors.white.withValues(alpha: 0.1),
+                            color: context.colorScheme.onPrimary.withOpacity(0.1),
                           ),
                         ),
                       ],
@@ -167,11 +174,11 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -182,7 +189,7 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: levelColor.withValues(alpha: 0.1),
+              color: levelColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.shield, color: levelColor, size: 24),
@@ -195,7 +202,7 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
                 Text(
                   'Mức độ bảo mật',
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.settingsCardSubtitle,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -212,7 +219,7 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: levelColor.withValues(alpha: 0.1),
+              color: levelColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -233,7 +240,7 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
       title,
       style: AppTypography.h4.copyWith(
         fontWeight: FontWeight.bold,
-        color: AppColors.textPrimary,
+        color: context.settingsSectionTitle,
       ),
     );
   }
@@ -244,11 +251,11 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -299,11 +306,11 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -363,11 +370,11 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -427,11 +434,11 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -448,7 +455,7 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
                 Text(
                   '${settings.activeSessions.length} thiết bị',
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.settingsItemSubtitleColor,
                   ),
                 ),
                 TextButton(
@@ -498,32 +505,32 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
           leading: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.primary500.withValues(alpha: 0.1),
+              color: context.settingsItemIconBackground,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               icon,
-              color: enabled ? AppColors.primary500 : AppColors.textSecondary,
+              color: enabled ? context.settingsItemIconColor : context.settingsItemSubtitleColor,
               size: 20,
             ),
           ),
           title: Text(
             title,
             style: AppTypography.body.copyWith(
-              color: enabled ? AppColors.textPrimary : AppColors.textSecondary,
+              color: enabled ? context.settingsItemTitleColor : context.settingsItemSubtitleColor,
               fontWeight: FontWeight.w600,
             ),
           ),
           subtitle: Text(
             subtitle,
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+              color: context.settingsItemSubtitleColor,
             ),
           ),
           trailing: Switch(
             value: value,
             onChanged: enabled ? onChanged : null,
-            activeThumbColor: AppColors.primary500,
+            activeColor: context.colorScheme.primary,
           ),
         ),
         if (showDivider) const Divider(height: 1, indent: 16, endIndent: 16),
@@ -548,25 +555,25 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
           leading: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.primary500.withValues(alpha: 0.1),
+              color: context.settingsItemIconBackground,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: AppColors.primary500, size: 20),
+            child: Icon(icon, color: context.settingsItemIconColor, size: 20),
           ),
           title: Text(
             title,
             style: AppTypography.body.copyWith(
-              color: AppColors.textPrimary,
+              color: context.settingsItemTitleColor,
               fontWeight: FontWeight.w600,
             ),
           ),
           subtitle: Text(
             subtitle,
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+              color: context.settingsItemSubtitleColor,
             ),
           ),
-          trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary),
+          trailing: Icon(Icons.chevron_right, color: context.settingsItemSubtitleColor),
           onTap: onTap,
         ),
         if (showDivider) const Divider(height: 1, indent: 16, endIndent: 16),
@@ -593,22 +600,22 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
           leading: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.primary500.withValues(alpha: 0.1),
+              color: context.settingsItemIconBackground,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: AppColors.primary500, size: 20),
+            child: Icon(icon, color: context.settingsItemIconColor, size: 20),
           ),
           title: Text(
             title,
             style: AppTypography.body.copyWith(
-              color: AppColors.textPrimary,
+              color: context.settingsItemTitleColor,
               fontWeight: FontWeight.w600,
             ),
           ),
           subtitle: Text(
             subtitle,
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+              color: context.settingsItemSubtitleColor,
             ),
           ),
           trailing: DropdownButton<T>(
@@ -616,7 +623,9 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
             items: items,
             onChanged: onChanged,
             underline: const SizedBox(),
-            style: AppTypography.body.copyWith(color: AppColors.textPrimary),
+            style: AppTypography.body.copyWith(
+              color: context.settingsItemTitleColor,
+            ),
           ),
         ),
         if (showDivider) const Divider(height: 1, indent: 16, endIndent: 16),
@@ -643,13 +652,13 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: session.isCurrent
-                  ? Colors.green.withValues(alpha: 0.1)
-                  : AppColors.textSecondary.withValues(alpha: 0.1),
+                  ? Colors.green.withOpacity(0.1)
+                  : context.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               deviceIcon,
-              color: session.isCurrent ? Colors.green : AppColors.textSecondary,
+              color: session.isCurrent ? Colors.green : context.settingsItemSubtitleColor,
               size: 20,
             ),
           ),
@@ -670,7 +679,7 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.1),
+                    color: Colors.green.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -689,13 +698,13 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
               Text(
                 '${session.location} • $timeText',
                 style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
+                  color: context.settingsItemSubtitleColor,
                 ),
               ),
               Text(
                 session.ipAddress,
                 style: AppTypography.caption.copyWith(
-                  color: AppColors.textSecondary,
+                  color: context.settingsItemSubtitleColor,
                 ),
               ),
             ],
@@ -788,7 +797,7 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
       builder: (context) => AlertDialog(
         title: const Text('Thiết lập xác thực 2 bước'),
         content: const Text(
-          'Bạn có muốn thiết lập xác thực 2 bước để tăng cường bảo mật không?',
+          'Bạn có muốn thiết lập xác thực 2 bước để tăng cường bảo mật không?\n\nSau khi thiết lập, bạn sẽ nhận được mã QR để quét bằng ứng dụng Authenticator.',
         ),
         actions: [
           TextButton(
@@ -798,25 +807,176 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              final securityService = Provider.of<SecurityService>(
-                context,
-                listen: false,
+
+              // Show loading
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) =>
+                    const Center(child: CircularProgressIndicator()),
               );
-              // For demo purposes, use a dummy verification code
-              final success = await securityService.enableTwoFactor('123456');
-              if (success && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Xác thực 2 bước đã được bật')),
+
+              try {
+                final securityService = Provider.of<SecurityService>(
+                  context,
+                  listen: false,
                 );
-              } else if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Không thể bật xác thực 2 bước'),
-                  ),
-                );
+
+                // Setup 2FA first
+                final result = await securityService.setupTwoFactor();
+
+                // Hide loading
+                if (mounted) Navigator.pop(context);
+
+                if (result != null && mounted) {
+                  // Show QR code dialog
+                  _showQRCodeDialog(result);
+                }
+              } catch (e) {
+                // Hide loading
+                if (mounted) Navigator.pop(context);
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Lỗi thiết lập 2FA: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               }
             },
             child: const Text('Thiết lập'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showQRCodeDialog(Map<String, dynamic> setupData) {
+    final TextEditingController otpController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Quét mã QR'),
+        content: SizedBox(
+          width: 300,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Quét mã QR này bằng ứng dụng Authenticator:',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              if (setupData['qrCode'] != null)
+                Container(
+                  height: 200,
+                  width: 200,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: setupData['qrCode'].toString().startsWith('data:')
+                      ? Image.memory(
+                          base64Decode(
+                            setupData['qrCode'].toString().split(',')[1],
+                          ),
+                          fit: BoxFit.contain,
+                        )
+                      : const Icon(Icons.error, size: 50),
+                ),
+              const SizedBox(height: 16),
+              if (setupData['secret'] != null) ...[
+                const Text(
+                  'Hoặc nhập thủ công mã này:',
+                  style: TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: SelectableText(
+                    setupData['secret'].toString(),
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              TextField(
+                controller: otpController,
+                decoration: const InputDecoration(
+                  labelText: 'Nhập mã xác thực 6 số',
+                  hintText: '123456',
+                ),
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (otpController.text.length != 6) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Vui lòng nhập mã xác thực 6 số'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+
+              try {
+                final securityService = Provider.of<SecurityService>(
+                  context,
+                  listen: false,
+                );
+                final success = await securityService.enableTwoFactor(
+                  otpController.text,
+                );
+
+                if (success && mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Kích hoạt xác thực 2 bước thành công'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  setState(() {}); // Refresh UI
+                } else if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Mã xác thực không đúng'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Lỗi: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Xác nhận'),
           ),
         ],
       ),
@@ -961,7 +1121,9 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Đăng xuất thiết bị'),
-        content: Text('Bạn có muốn đăng xuất khỏi ${session.deviceName}?'),
+        content: Text(
+          'Bạn có muốn đăng xuất khỏi thiết bị "${session.deviceName}" không?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -975,14 +1137,21 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
                 context,
                 listen: false,
               );
-              final success = await securityService.terminateSession(
-                session.id,
-              );
-              if (success && mounted && context.mounted) {
+              try {
+                await securityService.terminateSession(session.id);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Đã đăng xuất khỏi thiết bị')),
+                  const SnackBar(
+                    content: Text('Đã đăng xuất thiết bị thành công'),
+                    backgroundColor: Colors.green,
+                  ),
                 );
-                setState(() {});
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Lỗi: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
               }
             },
             child: const Text('Đăng xuất'),

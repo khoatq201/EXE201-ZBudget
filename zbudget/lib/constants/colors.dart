@@ -39,24 +39,35 @@ class AppColors {
   static const Color accent800 = Color(0xFF2D9B89);
   static const Color accent900 = Color(0xFF1F7A65);
 
-  // Dark colors
+  // Dark colors - Cải thiện cho dark theme
   static const Color dark50 = Color(0xFFF5F5F5);
   static const Color dark100 = Color(0xFFE0E0E0);
   static const Color dark200 = Color(0xFFBDBDBD);
   static const Color dark300 = Color(0xFF9E9E9E);
   static const Color dark400 = Color(0xFF757575);
-  static const Color dark500 = Color(0xFF616161); // Rich Black
+  static const Color dark500 = Color(0xFF616161);
   static const Color dark600 = Color(0xFF424242);
   static const Color dark700 = Color(0xFF303030);
   static const Color dark800 = Color(0xFF212121);
-  static const Color dark900 = Color(0xFF1C1C1C);
+  static const Color dark900 = Color(
+    0xFF121212,
+  ); // Dark theme primary background
+
+  // Dark theme specific colors
+  static const Color backgroundDark = Color(0xFF121212);
+  static const Color backgroundDarkSecondary = Color(0xFF1E1E1E);
+  static const Color surfaceDark = Color(0xFF1E1E1E);
+  static const Color surfaceDarkSecondary = Color(0xFF2A2A2A);
+
+  // Text colors for dark theme
+  static const Color textDarkPrimary = Color(0xFFFFFFFF);
+  static const Color textDarkSecondary = Color(0xFFB3B3B3);
+  static const Color textDarkTertiary = Color(0xFF8A8A8A);
 
   // Background colors
   static const Color backgroundPrimary = Color(0xFFFFFFFF);
   static const Color backgroundSecondary = Color(0xFFF5F5F5);
   static const Color backgroundTertiary = Color(0xFFE8F5E8);
-  static const Color backgroundDark = Color(0xFF1C1C1C);
-  static const Color backgroundDarkSecondary = Color(0xFF2A2A2A);
 
   // Surface colors
   static const Color surface = Color(0xFFFFFFFF);

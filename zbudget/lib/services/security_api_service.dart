@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/device_info_helper.dart';
 
 /// API service for security-related operations
 class SecurityApiService {
@@ -23,25 +24,21 @@ class SecurityApiService {
       throw Exception('No access token found. Please login again.');
     }
 
-    return {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': 'Bearer $token',
-    };
+    return await DeviceInfoHelper.getEnhancedHeaders(
+      token: token,
+      includeAuth: true,
+    );
   }
 
   /// Setup Two-Factor Authentication
   static Future<Map<String, dynamic>> setup2FA() async {
     try {
       final headers = await _getHeaders();
-      debugPrint('🔐 Setting up 2FA');
 
       final response = await http.post(
         Uri.parse('$baseUrl/2fa/setup'),
         headers: headers,
       );
-
-      debugPrint('📡 2FA Setup response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
@@ -72,15 +69,12 @@ class SecurityApiService {
   static Future<Map<String, dynamic>> enable2FA(String otp) async {
     try {
       final headers = await _getHeaders();
-      debugPrint('✅ Enabling 2FA with OTP');
 
       final response = await http.post(
         Uri.parse('$baseUrl/2fa/enable'),
         headers: headers,
         body: jsonEncode({'otp': otp}),
       );
-
-      debugPrint('📡 2FA Enable response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
@@ -216,27 +210,26 @@ class SecurityApiService {
   }) async {
     try {
       final headers = await _getHeaders();
-      debugPrint('⚙️ Updating security settings');
 
       final body = <String, dynamic>{};
 
-      // Map new frontend fields
+      // Map new frontend fields to backend expected names
       if (isBiometricEnabled != null)
-        body['isBiometricEnabled'] = isBiometricEnabled;
+        body['biometricEnabled'] = isBiometricEnabled;
       if (isTwoFactorEnabled != null)
         body['isTwoFactorEnabled'] = isTwoFactorEnabled;
       if (isAutoLockEnabled != null)
-        body['isAutoLockEnabled'] = isAutoLockEnabled;
+        body['autoLockEnabled'] = isAutoLockEnabled;
       if (sessionTimeout != null) body['sessionTimeout'] = sessionTimeout;
       if (isLoginNotificationEnabled != null)
-        body['isLoginNotificationEnabled'] = isLoginNotificationEnabled;
+        body['loginNotificationEnabled'] = isLoginNotificationEnabled;
       if (isDataEncryptionEnabled != null)
-        body['isDataEncryptionEnabled'] = isDataEncryptionEnabled;
+        body['dataEncryptionEnabled'] = isDataEncryptionEnabled;
       if (maxFailedAttempts != null)
         body['maxFailedAttempts'] = maxFailedAttempts;
       if (isScreenshotBlocked != null)
-        body['isScreenshotBlocked'] = isScreenshotBlocked;
-      if (isAppPinEnabled != null) body['isAppPinEnabled'] = isAppPinEnabled;
+        body['screenshotBlocked'] = isScreenshotBlocked;
+      if (isAppPinEnabled != null) body['appPinEnabled'] = isAppPinEnabled;
       if (primaryAuthMethod != null)
         body['primaryAuthMethod'] = primaryAuthMethod;
 
@@ -296,14 +289,11 @@ class SecurityApiService {
   static Future<Map<String, dynamic>> getSecuritySettings() async {
     try {
       final headers = await _getHeaders();
-      debugPrint('📋 Getting security settings');
 
       final response = await http.get(
         Uri.parse('$baseUrl/settings'),
         headers: headers,
       );
-
-      debugPrint('📡 Get security settings response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
@@ -415,14 +405,11 @@ class SecurityApiService {
   static Future<Map<String, dynamic>> getActiveSessions() async {
     try {
       final headers = await _getHeaders();
-      debugPrint('📋 Getting active sessions');
 
       final response = await http.get(
         Uri.parse('$baseUrl/sessions'),
         headers: headers,
       );
-
-      debugPrint('📡 Get active sessions response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);

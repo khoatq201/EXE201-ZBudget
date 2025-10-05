@@ -3,18 +3,20 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/app_provider.dart';
+import '../services/notification_service.dart';
 import '../constants/colors.dart';
 import '../constants/typography.dart';
 import '../constants/spacing.dart';
-import 'settings/profile/profile_screen_simple.dart';
+import '../utils/theme_extensions.dart';
+import 'settings/profile/profile_screen.dart';
 import 'settings/security/security_screen_simple.dart';
-import 'settings/notifications/notifications_screen.dart';
-import 'settings/theme/theme_screen.dart';
+import 'settings/theme/theme_screen_simple.dart';
 import 'settings/language/language_screen.dart';
 import 'settings/currency/currency_screen.dart';
 import 'settings/help/help_screen.dart';
 import 'settings/feedback/feedback_screen.dart';
 import 'settings/about/about_screen.dart';
+import 'debug/device_info_test_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -22,11 +24,9 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
+      // Không hardcode backgroundColor để theme tự động áp dụng
       appBar: AppBar(
-        backgroundColor: AppColors.primary500,
-        foregroundColor: AppColors.textInverse,
-        elevation: 0,
+        // Không hardcode backgroundColor để theme tự động áp dụng
         title: const Text('Cài đặt'),
       ),
       body: ListView(
@@ -34,6 +34,7 @@ class SettingsScreen extends StatelessWidget {
         children: [
           _buildSectionHeader('Tài khoản'),
           _buildSettingItem(
+            context: context,
             icon: Icons.person,
             title: 'Thông tin cá nhân',
             subtitle: 'Cập nhật thông tin cá nhân',
@@ -43,20 +44,30 @@ class SettingsScreen extends StatelessWidget {
               );
             },
           ),
-          _buildSettingItem(
-            icon: Icons.notifications,
-            title: 'Thông báo',
-            subtitle: 'Quản lý thông báo',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificationsScreen(),
-                ),
+          Consumer<NotificationService>(
+            builder: (context, notificationService, child) {
+              final isEnabled =
+                  notificationService.notificationSettings.isGlobalEnabled;
+              final enabledCount = notificationService
+                  .notificationSettings
+                  .enabledNotificationCount;
+              final totalCount = notificationService
+                  .notificationSettings
+                  .totalNotificationCount;
+
+              return _buildNotificationSettingItem(
+                context: context,
+                isEnabled: isEnabled,
+                enabledCount: enabledCount,
+                totalCount: totalCount,
+                onTap: () {
+                  context.push('/notifications-settings');
+                },
               );
             },
           ),
           _buildSettingItem(
+            context: context,
             icon: Icons.security,
             title: 'Bảo mật',
             subtitle: 'Mật khẩu và xác thực',
@@ -74,6 +85,7 @@ class SettingsScreen extends StatelessWidget {
 
           _buildSectionHeader('Ứng dụng'),
           _buildSettingItem(
+            context: context,
             icon: Icons.palette,
             title: 'Giao diện',
             subtitle: 'Thay đổi theme và màu sắc',
@@ -85,6 +97,7 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
           _buildSettingItem(
+            context: context,
             icon: Icons.language,
             title: 'Ngôn ngữ',
             subtitle: 'Tiếng Việt',
@@ -96,6 +109,7 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
           _buildSettingItem(
+            context: context,
             icon: Icons.currency_exchange,
             title: 'Tiền tệ',
             subtitle: 'VND',
@@ -111,6 +125,7 @@ class SettingsScreen extends StatelessWidget {
 
           _buildSectionHeader('Hỗ trợ'),
           _buildSettingItem(
+            context: context,
             icon: Icons.help,
             title: 'Trợ giúp',
             subtitle: 'Hướng dẫn sử dụng',
@@ -122,6 +137,7 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
           _buildSettingItem(
+            context: context,
             icon: Icons.feedback,
             title: 'Gửi phản hồi',
             subtitle: 'Đóng góp ý kiến',
@@ -133,6 +149,7 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
           _buildSettingItem(
+            context: context,
             icon: Icons.info,
             title: 'Về ứng dụng',
             subtitle: 'Phiên bản 1.0.0',
@@ -140,6 +157,25 @@ class SettingsScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const AboutScreen()),
+              );
+            },
+          ),
+
+          const SizedBox(height: AppSpacing.sectionSpacing),
+
+          // Debug Section (Development only)
+          _buildSectionHeader('Debug & Testing'),
+          _buildSettingItem(
+            context: context,
+            icon: Icons.bug_report,
+            title: 'Device Info Test',
+            subtitle: 'Test device tracking functionality',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const DeviceInfoTestScreen(),
+                ),
               );
             },
           ),
@@ -191,6 +227,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Widget _buildSettingItem({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required String subtitle,
@@ -201,23 +238,28 @@ class SettingsScreen extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: AppColors.primary500.withValues(alpha: 0.1),
+          color: context.settingsItemIconBackground,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Icon(icon, size: 20, color: AppColors.primary500),
+        child: Icon(icon, size: 20, color: context.settingsItemIconColor),
       ),
       title: Text(
         title,
         style: AppTypography.body.copyWith(
-          color: AppColors.textPrimary,
+          color: context.settingsItemTitleColor,
           fontWeight: FontWeight.w500,
         ),
       ),
       subtitle: Text(
         subtitle,
-        style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+        style: AppTypography.caption.copyWith(
+          color: context.settingsItemSubtitleColor,
+        ),
       ),
-      trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+      trailing: Icon(
+        Icons.chevron_right,
+        color: context.settingsItemTrailingColor,
+      ),
       onTap: onTap,
     );
   }
@@ -304,5 +346,61 @@ class SettingsScreen extends StatelessWidget {
         );
       }
     }
+  }
+
+  Widget _buildNotificationSettingItem({
+    required BuildContext context,
+    required bool isEnabled,
+    required int enabledCount,
+    required int totalCount,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: context.settingsItemIconBackground,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Icon(
+          Icons.notifications,
+          size: 20,
+          color: context.settingsItemIconColor,
+        ),
+      ),
+      title: Text(
+        'Thông báo',
+        style: AppTypography.body.copyWith(
+          color: context.settingsItemTitleColor,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(
+        isEnabled
+            ? '$enabledCount/$totalCount loại đang bật'
+            : 'Đã tắt thông báo',
+        style: AppTypography.caption.copyWith(
+          color: context.settingsItemSubtitleColor,
+        ),
+      ),
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: isEnabled
+              ? Colors.green.withValues(alpha: 0.1)
+              : Colors.grey.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          isEnabled ? 'BẬT' : 'TẮT',
+          style: AppTypography.caption.copyWith(
+            color: isEnabled ? Colors.green : Colors.grey,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      onTap: onTap,
+    );
   }
 }

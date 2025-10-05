@@ -301,7 +301,7 @@ export const getExpenseById = async (req, res) => {
     throw new NotFoundError("Không tìm thấy chi tiêu");
   }
 
-  res.json(successResponse("Lấy chi tiết chi tiêu thành công", { expense }));
+  return successResponse(res, "Lấy chi tiết chi tiêu thành công", { expense });
 };
 
 /**
@@ -435,7 +435,7 @@ export const updateExpense = async (req, res) => {
       hasReceiptUpdate: !!(receiptFile || req.file || removeReceipt),
     });
 
-    res.json(successResponse("Cập nhật chi tiêu thành công!", { expense }));
+    return successResponse(res, "Cập nhật chi tiêu thành công!", { expense });
   } catch (error) {
     await session.abortTransaction();
 
@@ -521,7 +521,7 @@ export const deleteExpense = async (req, res) => {
       category: expense.category,
     });
 
-    res.json(successResponse("Xóa chi tiêu thành công!"));
+    return successResponse(res, "Xóa chi tiêu thành công!");
   } catch (error) {
     await session.abortTransaction();
     throw error;

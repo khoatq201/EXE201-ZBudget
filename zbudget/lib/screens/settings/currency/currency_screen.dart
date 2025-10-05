@@ -5,6 +5,7 @@ import '../../../models/settings/currency_settings.dart';
 import '../../../constants/colors.dart';
 import '../../../constants/spacing.dart';
 import '../../../constants/typography.dart';
+import '../../../utils/theme_extensions.dart';
 
 class CurrencyScreen extends StatefulWidget {
   const CurrencyScreen({super.key});

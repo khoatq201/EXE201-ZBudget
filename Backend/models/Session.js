@@ -47,6 +47,7 @@ const SessionSchema = new mongoose.Schema(
           "Edge",
           "Opera",
           "Dart",
+          "Flutter", // ✅ Added Flutter for mobile app
           "Unknown",
         ],
         default: "Unknown",
@@ -57,6 +58,10 @@ const SessionSchema = new mongoose.Schema(
         default: "desktop",
       },
       deviceName: String, // Generated name like "Windows 11 - Chrome"
+      deviceFingerprint: {
+        type: String,
+        index: true, // For fast duplicate detection
+      },
     },
     location: {
       ip: {

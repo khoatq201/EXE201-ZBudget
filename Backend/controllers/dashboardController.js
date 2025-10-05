@@ -11,16 +11,16 @@ export const getDashboardSummary = async (req, res) => {
   const userId = req.userId;
   const { period = "month" } = req.query; // month, week, year
 
-  console.log("🎯 getDashboardSummary called for userId:", userId);
+  // console.log("🎯 getDashboardSummary called for userId:", userId);
 
   try {
     // Get date range based on period
     const dateRange = getDateRange(period);
     const { startDate, endDate } = dateRange;
-    console.log("📅 Date range:", { startDate, endDate, period });
+    // console.log("📅 Date range:", { startDate, endDate, period });
 
-    console.log("⏳ Starting parallel queries...");
-    console.log("🆔 userId type:", typeof userId, "value:", userId);
+    // console.log("⏳ Starting parallel queries...");
+    // console.log("🆔 userId type:", typeof userId, "value:", userId);
 
     // Parallel queries for performance
     const [user, incomeStats, expenseStats, recentTransactions, activeBudget] =
@@ -77,14 +77,14 @@ export const getDashboardSummary = async (req, res) => {
         }),
       ]);
 
-    console.log("✅ All parallel queries completed!");
-    console.log("📊 Results:", {
-      user: user ? "found" : "not found",
-      incomeStats: incomeStats?.length || 0,
-      expenseStats: expenseStats?.length || 0,
-      transactions: recentTransactions?.length || 0,
-      budget: activeBudget ? "found" : "not found"
-    });
+    // console.log("✅ All parallel queries completed!");
+    // console.log("📊 Results:", {
+    //   user: user ? "found" : "not found",
+    //   incomeStats: incomeStats?.length || 0,
+    //   expenseStats: expenseStats?.length || 0,
+    //   transactions: recentTransactions?.length || 0,
+    //   budget: activeBudget ? "found" : "not found"
+    // });
 
     // Calculate summary
     const periodIncome = incomeStats[0]?.totalIncome || 0;
@@ -124,9 +124,7 @@ export const getDashboardSummary = async (req, res) => {
       // Calculate daily budget (remaining / remaining days)
       const now = new Date();
       const endDate = new Date(activeBudget.period.endDate);
-      const remainingDays = Math.ceil(
-        (endDate - now) / (1000 * 60 * 60 * 24)
-      );
+      const remainingDays = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
       const dailyBudget =
         remainingDays > 0 ? Math.floor(budgetRemaining / remainingDays) : 0;
 
@@ -206,9 +204,7 @@ export const getDashboardSummary = async (req, res) => {
         total: cat.total,
         count: cat.count,
         percentage:
-          periodExpense > 0
-            ? Math.round((cat.total / periodExpense) * 100)
-            : 0,
+          periodExpense > 0 ? Math.round((cat.total / periodExpense) * 100) : 0,
       })),
 
       // Insights & recommendations
@@ -229,7 +225,7 @@ export const getDashboardSummary = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Dashboard data retrieved successfully",
-      data: response
+      data: response,
     });
   } catch (error) {
     console.error("Dashboard summary error:", error);
@@ -251,8 +247,28 @@ function getDateRange(period) {
   switch (period) {
     case "week":
       // Last 7 days from today (UTC)
-      startDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() - 7, 0, 0, 0, 0));
-      endDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999));
+      startDate = new Date(
+        Date.UTC(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() - 7,
+          0,
+          0,
+          0,
+          0
+        )
+      );
+      endDate = new Date(
+        Date.UTC(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          23,
+          59,
+          59,
+          999
+        )
+      );
       break;
 
     case "year":
@@ -264,8 +280,12 @@ function getDateRange(period) {
     case "month":
     default:
       // Current month: 1st 00:00:00 to last day 23:59:59 (UTC)
-      startDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0));
-      endDate = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999));
+      startDate = new Date(
+        Date.UTC(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
+      );
+      endDate = new Date(
+        Date.UTC(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+      );
       break;
   }
 
@@ -282,7 +302,14 @@ export const getAllTransactions = async (req, res) => {
   const { type, startDate, endDate, limit, skip } = req.query;
 
   try {
-    console.log("📋 getAllTransactions called:", { userId, type, startDate, endDate, limit, skip });
+    console.log("📋 getAllTransactions called:", {
+      userId,
+      type,
+      startDate,
+      endDate,
+      limit,
+      skip,
+    });
 
     // Build date filter
     const dateFilter = {};
@@ -302,7 +329,9 @@ export const getAllTransactions = async (req, res) => {
         isConfirmed: true,
         ...dateFilter,
       })
-        .select("title description amount category date paymentMethod createdAt")
+        .select(
+          "title description amount category date paymentMethod createdAt"
+        )
         .sort({ date: -1 })
         .lean();
     }
@@ -312,7 +341,9 @@ export const getAllTransactions = async (req, res) => {
         userId: new mongoose.Types.ObjectId(userId),
         ...dateFilter,
       })
-        .select("title description amount category date paymentMethod createdAt")
+        .select(
+          "title description amount category date paymentMethod createdAt"
+        )
         .sort({ date: -1 })
         .lean();
     }
@@ -344,9 +375,14 @@ export const getAllTransactions = async (req, res) => {
     // Apply pagination if provided
     const skipNum = parseInt(skip) || 0;
     const limitNum = parseInt(limit) || transactions.length;
-    const paginatedTransactions = transactions.slice(skipNum, skipNum + limitNum);
+    const paginatedTransactions = transactions.slice(
+      skipNum,
+      skipNum + limitNum
+    );
 
-    console.log(`✅ Found ${transactions.length} transactions, returning ${paginatedTransactions.length}`);
+    console.log(
+      `✅ Found ${transactions.length} transactions, returning ${paginatedTransactions.length}`
+    );
 
     res.status(200).json({
       success: true,
@@ -417,7 +453,13 @@ async function getRecentTransactions(userId, limit = 10) {
 /**
  * Generate insights based on financial data
  */
-function generateInsights({ periodExpense, periodIncome, currentBalance, budgetInfo, monthlyAllowance }) {
+function generateInsights({
+  periodExpense,
+  periodIncome,
+  currentBalance,
+  budgetInfo,
+  monthlyAllowance,
+}) {
   const insights = [];
 
   // Budget insights
@@ -524,7 +566,7 @@ export const getQuickStats = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Quick stats retrieved",
-      data: stats
+      data: stats,
     });
   } catch (error) {
     res.status(500).json({

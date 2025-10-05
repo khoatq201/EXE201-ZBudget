@@ -1,7 +1,9 @@
-import bcrypt from "bcryptjs";
+import bcryptjs from "bcryptjs";
+const bcrypt = bcryptjs;
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import User from "../models/User.js";
+import SessionService from "../services/SessionService.js";
 import {
   BadRequestError,
   UnauthorizedError,
@@ -379,11 +381,30 @@ export const login = async (req, res) => {
   }
 
   // Success - generate tokens and return response
-  const { accessToken, refreshToken } = generateTokens(
+  const { accessToken, refreshToken, jwtTokenId } = await generateTokens(
     user._id,
     req,
     "password"
   );
+
+  // ✅ DEVICE TRACKING: Create session với device info
+  try {
+    // Calculate expiry based on rememberMe
+    const expiresAt = rememberMe
+      ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+      : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    await SessionService.createSession(
+      user._id,
+      jwtTokenId, // JWT token ID
+      req,
+      expiresAt,
+      "password"
+    );
+  } catch (sessionError) {
+    console.error("❌ Failed to create session:", sessionError);
+    // Continue với login process, session không critical
+  }
 
   // Update user login info WITHOUT triggering validation
   await User.updateOne(
@@ -420,6 +441,15 @@ export const logout = async (req, res) => {
 
   // Blacklist current access token
   await blacklistToken(token);
+
+  // Cleanup session
+  try {
+    await SessionService.terminateSessionByToken(token);
+    console.log("✅ Session terminated successfully for user:", userId);
+  } catch (sessionError) {
+    console.error("❌ Failed to terminate session:", sessionError);
+    // Don't fail logout if session cleanup fails
+  }
 
   // Remove refresh token from user
   const refreshToken = req.body.refreshToken || req.headers["x-refresh-token"];
@@ -466,7 +496,7 @@ export const refreshToken = async (req, res) => {
   }
 
   // Generate new tokens
-  const { accessToken, refreshToken: newRefreshToken } = generateTokens(
+  const { accessToken, refreshToken: newRefreshToken } = await generateTokens(
     user._id,
     req,
     "refresh"
@@ -734,7 +764,7 @@ export const verifyOTP = async (req, res) => {
     console.log("✅ DEBUG: User created successfully with ID:", user._id);
 
     // Generate JWT tokens for the new user
-    const tokens = generateTokens(user._id.toString(), req, "password");
+    const tokens = await generateTokens(user._id.toString(), req, "password");
 
     // Send welcome email asynchronously
     setImmediate(async () => {

@@ -321,40 +321,168 @@ class SecuritySettings {
     'activeSessions': activeSessions.map((e) => e.toJson()).toList(),
   };
 
+  /// Convert to backend-compatible JSON format
+  Map<String, dynamic> toBackendJson() {
+    return {
+      // Authentication
+      'biometricEnabled': isBiometricEnabled,
+      'pinEnabled': isAppPinEnabled, // Backend uses 'pinEnabled'
+      'isTwoFactorEnabled': isTwoFactorEnabled,
+      'primaryAuthMethod': primaryAuthMethod.name,
+      'enabledAuthMethods': enabledAuthMethods.map((e) => e.name).toList(),
+
+      // Session Management
+      'isAutoLockEnabled': isAutoLockEnabled,
+      'sessionTimeout': sessionTimeout.duration?.inMinutes ?? 30,
+      'isLoginNotificationEnabled': isLoginNotificationEnabled,
+
+      // Privacy & Protection
+      'isDataEncryptionEnabled': isDataEncryptionEnabled,
+      'maxFailedAttempts': maxFailedAttempts,
+      'isScreenshotBlocked': isScreenshotBlocked,
+    };
+  }
+
   factory SecuritySettings.fromJson(Map<String, dynamic> json) =>
       SecuritySettings(
-        isBiometricEnabled: json['isBiometricEnabled'] ?? false,
-        isTwoFactorEnabled: json['isTwoFactorEnabled'] ?? false,
-        isAutoLockEnabled: json['isAutoLockEnabled'] ?? true,
-        sessionTimeout: SessionTimeout.values.firstWhere(
-          (e) => e.name == json['sessionTimeout'],
-          orElse: () => SessionTimeout.minutes30,
-        ),
-        isLoginNotificationEnabled: json['isLoginNotificationEnabled'] ?? true,
-        isDataEncryptionEnabled: json['isDataEncryptionEnabled'] ?? true,
+        isBiometricEnabled:
+            json['isBiometricEnabled'] ?? json['biometricEnabled'] ?? false,
+        isTwoFactorEnabled:
+            json['isTwoFactorEnabled'] ?? json['twoFactorEnabled'] ?? false,
+        isAutoLockEnabled:
+            json['isAutoLockEnabled'] ?? json['autoLockEnabled'] ?? true,
+        sessionTimeout: _parseSessionTimeout(json['sessionTimeout']),
+        isLoginNotificationEnabled:
+            json['isLoginNotificationEnabled'] ??
+            json['loginNotificationEnabled'] ??
+            true,
+        isDataEncryptionEnabled:
+            json['isDataEncryptionEnabled'] ??
+            json['dataEncryptionEnabled'] ??
+            true,
         maxFailedAttempts: json['maxFailedAttempts'] ?? 5,
-        isScreenshotBlocked: json['isScreenshotBlocked'] ?? false,
-        isAppPinEnabled: json['isAppPinEnabled'] ?? false,
-        primaryAuthMethod: AuthenticationMethod.values.firstWhere(
-          (e) => e.name == json['primaryAuthMethod'],
-          orElse: () => AuthenticationMethod.password,
-        ),
+        isScreenshotBlocked:
+            json['isScreenshotBlocked'] ?? json['screenshotBlocked'] ?? false,
+        isAppPinEnabled:
+            json['isAppPinEnabled'] ?? json['appPinEnabled'] ?? false,
+        primaryAuthMethod: _parseAuthMethod(json['primaryAuthMethod']),
         enabledAuthMethods: json['enabledAuthMethods'] != null
             ? (json['enabledAuthMethods'] as List)
                   .map(
                     (e) => AuthenticationMethod.values.firstWhere(
                       (method) => method.name == e,
+                      orElse: () => AuthenticationMethod.password,
                     ),
                   )
                   .toList()
             : [AuthenticationMethod.password],
-        lastPasswordChange: json['lastPasswordChange'] != null
-            ? DateTime.parse(json['lastPasswordChange'])
-            : null,
+        lastPasswordChange: _parseDateTime(json['lastPasswordChange']),
         activeSessions: json['activeSessions'] != null
             ? (json['activeSessions'] as List)
                   .map((e) => LoginSession.fromJson(e))
                   .toList()
             : [],
       );
+
+  static SessionTimeout _parseSessionTimeout(dynamic value) {
+    if (value is int) {
+      // Map timeout in minutes to enum
+      switch (value) {
+        case 5:
+          return SessionTimeout.minutes5;
+        case 15:
+          return SessionTimeout.minutes15;
+        case 30:
+          return SessionTimeout.minutes30;
+        case 60:
+          return SessionTimeout.hour1;
+        case 240:
+          return SessionTimeout.hour4;
+        default:
+          return SessionTimeout.minutes30;
+      }
+    } else if (value is String) {
+      return SessionTimeout.values.firstWhere(
+        (e) => e.name == value,
+        orElse: () => SessionTimeout.minutes30,
+      );
+    }
+    return SessionTimeout.minutes30;
+  }
+
+  static AuthenticationMethod _parseAuthMethod(dynamic value) {
+    if (value is String) {
+      return AuthenticationMethod.values.firstWhere(
+        (e) => e.name == value,
+        orElse: () => AuthenticationMethod.password,
+      );
+    }
+    return AuthenticationMethod.password;
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is String && value.isNotEmpty) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        print('Error parsing DateTime: $e');
+        return null;
+      }
+    }
+    return null;
+  }
+
+  @override
+  String toString() {
+    return 'SecuritySettings{'
+        'isTwoFactorEnabled: $isTwoFactorEnabled, '
+        'isBiometricEnabled: $isBiometricEnabled, '
+        'isAutoLockEnabled: $isAutoLockEnabled, '
+        'sessionTimeout: $sessionTimeout, '
+        'isLoginNotificationEnabled: $isLoginNotificationEnabled, '
+        'isDataEncryptionEnabled: $isDataEncryptionEnabled, '
+        'maxFailedAttempts: $maxFailedAttempts, '
+        'isScreenshotBlocked: $isScreenshotBlocked, '
+        'isAppPinEnabled: $isAppPinEnabled, '
+        'primaryAuthMethod: $primaryAuthMethod, '
+        'lastPasswordChange: $lastPasswordChange, '
+        'securityLevel: $securityLevel'
+        '}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! SecuritySettings) return false;
+
+    return isBiometricEnabled == other.isBiometricEnabled &&
+        isTwoFactorEnabled == other.isTwoFactorEnabled &&
+        isAutoLockEnabled == other.isAutoLockEnabled &&
+        sessionTimeout == other.sessionTimeout &&
+        isLoginNotificationEnabled == other.isLoginNotificationEnabled &&
+        isDataEncryptionEnabled == other.isDataEncryptionEnabled &&
+        maxFailedAttempts == other.maxFailedAttempts &&
+        isScreenshotBlocked == other.isScreenshotBlocked &&
+        isAppPinEnabled == other.isAppPinEnabled &&
+        primaryAuthMethod == other.primaryAuthMethod &&
+        lastPasswordChange == other.lastPasswordChange;
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(
+      isBiometricEnabled,
+      isTwoFactorEnabled,
+      isAutoLockEnabled,
+      sessionTimeout,
+      isLoginNotificationEnabled,
+      isDataEncryptionEnabled,
+      maxFailedAttempts,
+      isScreenshotBlocked,
+      isAppPinEnabled,
+      primaryAuthMethod,
+      lastPasswordChange,
+    );
+  }
 }

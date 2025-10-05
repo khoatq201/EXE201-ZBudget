@@ -56,13 +56,29 @@ class SecurityService extends ChangeNotifier {
       // Then fetch from API to get latest settings
       try {
         final response = await SecurityApiService.getSecuritySettings();
+
         if (response['success'] == true && response['data'] != null) {
-          _securitySettings = SecuritySettings.fromJson(response['data']);
-          // Save updated settings to local storage
-          await prefs.setString(
-            _securityKey,
-            jsonEncode(_securitySettings.toJson()),
-          );
+          try {
+            final newSettings = SecuritySettings.fromJson(response['data']);
+
+            // Only update if settings actually changed
+            if (newSettings != _securitySettings) {
+              _securitySettings = newSettings;
+
+              // Save updated settings to local storage
+              await prefs.setString(
+                _securityKey,
+                jsonEncode(_securitySettings.toJson()),
+              );
+
+              // Notify listeners about the change
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                notifyListeners();
+              });
+            }
+          } catch (parseError) {
+            debugPrint('Error parsing settings JSON: $parseError');
+          }
         }
       } catch (apiError) {
         debugPrint('API error (using local settings): $apiError');
@@ -150,24 +166,48 @@ class SecurityService extends ChangeNotifier {
   }
 
   Future<void> _loadActiveSessions() async {
-    // In a real app, this would fetch from server
-    // For demo, we use the sessions from default settings
+    try {
+      // Load active sessions from API
+      final response = await SecurityApiService.getActiveSessions();
+      if (response['success'] == true && response['data'] != null) {
+        final List<dynamic> sessionsData = response['data']['sessions'] ?? [];
+        final List<LoginSession> sessions = sessionsData.map((sessionData) {
+          return LoginSession(
+            id: sessionData['sessionId'] ?? '',
+            deviceName: sessionData['deviceName'] ?? 'Unknown Device',
+            deviceType: sessionData['deviceType'] ?? 'desktop',
+            location: sessionData['location'] ?? 'Unknown Location',
+            ipAddress: sessionData['ip'] ?? '0.0.0.0',
+            loginTime:
+                DateTime.tryParse(sessionData['loginTime'] ?? '') ??
+                DateTime.now(),
+            lastActiveTime:
+                DateTime.tryParse(sessionData['lastActiveTime'] ?? '') ??
+                DateTime.now(),
+            isCurrent: sessionData['isCurrentSession'] ?? false,
+          );
+        }).toList();
+
+        if (sessions.isNotEmpty) {
+          final updatedSettings = _securitySettings.copyWith(
+            activeSessions: sessions,
+          );
+          _securitySettings = updatedSettings;
+          await _saveSecuritySettings();
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to load active sessions from API: $e');
+      // Continue with local/demo sessions
+    }
   }
 
   Future<void> updateSecuritySettings(SecuritySettings newSettings) async {
     try {
-      debugPrint(
-        '🔄 Updating security settings - Auto Lock: ${newSettings.isAutoLockEnabled}',
-      );
-
       // First update locally for immediate UI response
       _securitySettings = newSettings;
       notifyListeners(); // Immediate UI update
       await _saveSecuritySettings();
-
-      debugPrint(
-        '✅ Local update complete - Auto Lock: ${_securitySettings.isAutoLockEnabled}',
-      );
 
       // Then sync with API using the correct property names
       final response = await SecurityApiService.updateSecuritySettings(
@@ -187,7 +227,6 @@ class SecurityService extends ChangeNotifier {
       );
 
       if (response['success'] == true) {
-        debugPrint('✅ Security settings synced with server');
         // Only update with server response if it contains valid data
         if (response['data'] != null) {
           try {
@@ -207,7 +246,7 @@ class SecurityService extends ChangeNotifier {
           }
         }
       } else {
-        debugPrint('⚠️ API sync failed: ${response['message']}');
+        debugPrint('API sync failed: ${response['message']}');
         // Keep local changes even if API fails
       }
 
@@ -227,6 +266,29 @@ class SecurityService extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error saving security settings: $e');
       rethrow;
+    }
+  }
+
+  /// Refresh settings from server (call when user enters screen)
+  Future<void> refreshFromServer() async {
+    try {
+      final response = await SecurityApiService.getSecuritySettings();
+
+      if (response['success'] == true && response['data'] != null) {
+        try {
+          final serverSettings = SecuritySettings.fromJson(response['data']);
+
+          // Update with server data
+          _securitySettings = serverSettings;
+          await _saveSecuritySettings();
+          notifyListeners();
+        } catch (parseError) {
+          debugPrint('Error parsing refresh JSON: $parseError');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error refreshing from server: $e');
+      // Don't throw, just log the error
     }
   }
 
@@ -287,15 +349,13 @@ class SecurityService extends ChangeNotifier {
   }
 
   // Two-Factor Authentication
-  Future<String> setupTwoFactor() async {
+  Future<Map<String, dynamic>?> setupTwoFactor() async {
     try {
       final response = await SecurityApiService.setup2FA();
 
       if (response['success'] == true && response['data'] != null) {
-        // Return QR code data or secret from server
-        return response['data']['secret'] ??
-            response['data']['qrCode'] ??
-            'JBSWY3DPEHPK3PXP';
+        // Return full QR code data from server
+        return response['data'];
       } else {
         throw Exception(response['message'] ?? 'Không thể thiết lập 2FA');
       }
@@ -457,56 +517,36 @@ class SecurityService extends ChangeNotifier {
 
   // Security Toggles
   Future<void> toggleAutoLock(bool enabled) async {
-    debugPrint('🔄 Toggling Auto Lock: $enabled');
     final updatedSettings = _securitySettings.copyWith(
       isAutoLockEnabled: enabled,
     );
     await updateSecuritySettings(updatedSettings);
-    debugPrint(
-      '✅ Auto Lock toggled to: ${_securitySettings.isAutoLockEnabled}',
-    );
   }
 
   Future<void> updateSessionTimeout(SessionTimeout timeout) async {
-    debugPrint('🔄 Updating Session Timeout: $timeout');
     final updatedSettings = _securitySettings.copyWith(sessionTimeout: timeout);
     await updateSecuritySettings(updatedSettings);
-    debugPrint(
-      '✅ Session Timeout updated to: ${_securitySettings.sessionTimeout}',
-    );
   }
 
   Future<void> toggleLoginNotifications(bool enabled) async {
-    debugPrint('🔄 Toggling Login Notifications: $enabled');
     final updatedSettings = _securitySettings.copyWith(
       isLoginNotificationEnabled: enabled,
     );
     await updateSecuritySettings(updatedSettings);
-    debugPrint(
-      '✅ Login Notifications toggled to: ${_securitySettings.isLoginNotificationEnabled}',
-    );
   }
 
   Future<void> toggleScreenshotBlocking(bool enabled) async {
-    debugPrint('🔄 Toggling Screenshot Blocking: $enabled');
     final updatedSettings = _securitySettings.copyWith(
       isScreenshotBlocked: enabled,
     );
     await updateSecuritySettings(updatedSettings);
-    debugPrint(
-      '✅ Screenshot Blocking toggled to: ${_securitySettings.isScreenshotBlocked}',
-    );
   }
 
   Future<void> updateMaxFailedAttempts(int attempts) async {
-    debugPrint('🔄 Updating Max Failed Attempts: $attempts');
     final updatedSettings = _securitySettings.copyWith(
       maxFailedAttempts: attempts,
     );
     await updateSecuritySettings(updatedSettings);
-    debugPrint(
-      '✅ Max Failed Attempts updated to: ${_securitySettings.maxFailedAttempts}',
-    );
   }
 
   // Security Analysis

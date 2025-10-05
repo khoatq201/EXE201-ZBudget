@@ -52,3 +52,4 @@ Write-Host "- Project Structure: ZBudget full-stack application" -ForegroundColo
 
 Write-Host "`nMCP Integration completed successfully!" -ForegroundColor Green
 
+

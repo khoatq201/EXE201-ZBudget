@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../models/settings/theme_settings.dart';
+import '../constants/colors.dart';
 
 class ThemeService extends ChangeNotifier {
   static const String _themeSettingsKey = 'theme_settings';
@@ -29,18 +31,25 @@ class ThemeService extends ChangeNotifier {
   }
 
   Future<void> initialize() async {
+    debugPrint('🎨 ThemeService: Initializing...');
     try {
       _prefs = await SharedPreferences.getInstance();
       await _loadSettings();
       _isInitialized = true;
-      // Defer notifyListeners to avoid calling during build
+
+      debugPrint('🎨 ThemeService: Initialized successfully');
+      debugPrint(
+        '🎨 Current theme mode: ${_themeSettings.themeMode.displayName}',
+      );
+      debugPrint('🎨 ThemeMode getter returns: ${themeMode}');
+
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        debugPrint('🎨 ThemeService: Notifying listeners after initialization');
         notifyListeners();
       });
     } catch (e) {
-      debugPrint('ThemeService initialization error: $e');
+      debugPrint('🎨 ThemeService initialization error: $e');
       _isInitialized = true;
-      // Defer notifyListeners to avoid calling during build
       WidgetsBinding.instance.addPostFrameCallback((_) {
         notifyListeners();
       });
@@ -50,17 +59,24 @@ class ThemeService extends ChangeNotifier {
   Future<void> _loadSettings() async {
     try {
       final settingsJson = _prefs?.getString(_themeSettingsKey);
+      debugPrint(
+        '🎨 ThemeService: Loading settings from storage: $settingsJson',
+      );
+
       if (settingsJson != null) {
-        final Map<String, dynamic> settingsMap = Map<String, dynamic>.from(
-          // Simple JSON parsing - in real app you'd use json.decode
-          _parseJsonString(settingsJson),
-        );
+        final Map<String, dynamic> settingsMap = jsonDecode(settingsJson);
         _themeSettings = ThemeSettings.fromJson(settingsMap);
+        debugPrint(
+          '🎨 ThemeService: Loaded theme mode: ${_themeSettings.themeMode.displayName}',
+        );
       } else {
         _themeSettings = const ThemeSettings();
+        debugPrint(
+          '🎨 ThemeService: No saved settings, using default (system)',
+        );
       }
     } catch (e) {
-      debugPrint('Error loading theme settings: $e');
+      debugPrint('🎨 Error loading theme settings: $e');
       _themeSettings = const ThemeSettings();
     }
   }
@@ -68,7 +84,7 @@ class ThemeService extends ChangeNotifier {
   Future<void> _saveSettings() async {
     try {
       if (_prefs != null) {
-        final settingsJson = _themeSettings.toJson().toString();
+        final settingsJson = jsonEncode(_themeSettings.toJson());
         await _prefs!.setString(_themeSettingsKey, settingsJson);
       }
     } catch (e) {
@@ -76,271 +92,159 @@ class ThemeService extends ChangeNotifier {
     }
   }
 
-  // Simple JSON string parser (for demo purposes)
-  Map<String, dynamic> _parseJsonString(String jsonStr) {
-    // This is a simplified parser - in real app use json.decode
-    return {
-      'themeMode': 'system',
-      'colorScheme': 'blue',
-      'fontSize': 'normal',
-      'useSystemFont': false,
-      'enableAnimations': true,
-      'enableHapticFeedback': true,
-      'borderRadius': 12.0,
-      'compactMode': false,
-    };
-  }
-
   // Theme data builder
   ThemeData _buildThemeData(Brightness brightness) {
     final colorScheme = _getColorScheme(brightness);
-    final textTheme = _buildTextTheme(brightness);
 
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       colorScheme: colorScheme,
-      textTheme: textTheme,
 
-      // Animation settings
-      pageTransitionsTheme: _themeSettings.enableAnimations
-          ? const PageTransitionsTheme(
-              builders: {
-                TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-                TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-                TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
-                TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-                TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
-              },
-            )
-          : const PageTransitionsTheme(
-              builders: {
-                TargetPlatform.android: _NoAnimationPageTransitionsBuilder(),
-                TargetPlatform.iOS: _NoAnimationPageTransitionsBuilder(),
-                TargetPlatform.windows: _NoAnimationPageTransitionsBuilder(),
-                TargetPlatform.macOS: _NoAnimationPageTransitionsBuilder(),
-                TargetPlatform.linux: _NoAnimationPageTransitionsBuilder(),
-              },
-            ),
+      // Scaffold background color
+      scaffoldBackgroundColor: brightness == Brightness.dark
+          ? AppColors.backgroundDark
+          : AppColors.backgroundPrimary,
 
-      // Card theme with custom border radius
+      // Card theme
       cardTheme: CardThemeData(
         elevation: 2,
+        color: brightness == Brightness.dark
+            ? AppColors.surfaceDark
+            : Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_themeSettings.borderRadius),
+          borderRadius: BorderRadius.circular(12.0),
         ),
       ),
 
       // Elevated button theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
+          backgroundColor: brightness == Brightness.dark
+              ? AppColors.primary400
+              : AppColors.primary500,
+          foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_themeSettings.borderRadius),
+            borderRadius: BorderRadius.circular(12.0),
           ),
         ),
       ),
 
       // Input decoration theme
       inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: brightness == Brightness.dark
+            ? AppColors.surfaceDark
+            : AppColors.backgroundSecondary,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_themeSettings.borderRadius),
+          borderRadius: BorderRadius.circular(12.0),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_themeSettings.borderRadius),
+          borderRadius: BorderRadius.circular(12.0),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_themeSettings.borderRadius),
+          borderRadius: BorderRadius.circular(12.0),
+          borderSide: BorderSide(
+            color: brightness == Brightness.dark
+                ? AppColors.primary400
+                : AppColors.primary500,
+            width: 2.0,
+          ),
         ),
       ),
 
       // App bar theme
       appBarTheme: AppBarTheme(
-        centerTitle: true,
         elevation: 0,
-        backgroundColor: colorScheme.surface,
-        foregroundColor: colorScheme.onSurface,
+        backgroundColor: brightness == Brightness.dark
+            ? AppColors.backgroundDark
+            : AppColors.primary500,
+        foregroundColor: Colors.white,
+        titleTextStyle: TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+        systemOverlayStyle: brightness == Brightness.light
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.light,
       ),
     );
   }
 
   ColorScheme _getColorScheme(Brightness brightness) {
-    final seedColor = _themeSettings.colorScheme.color;
-
-    return ColorScheme.fromSeed(seedColor: seedColor, brightness: brightness);
+    if (brightness == Brightness.dark) {
+      return ColorScheme.fromSeed(
+        seedColor: AppColors.primary500,
+        brightness: Brightness.dark,
+        // Override specific colors for better dark theme
+        surface: AppColors.backgroundDark,
+        onSurface: AppColors.textDarkPrimary,
+        background: AppColors.backgroundDark,
+        onBackground: AppColors.textDarkPrimary,
+        primary: AppColors.primary400,
+        onPrimary: Colors.white,
+        secondary: AppColors.secondary400,
+        onSecondary: Colors.white,
+        tertiary: AppColors.accent400,
+        onTertiary: Colors.white,
+      );
+    } else {
+      return ColorScheme.fromSeed(
+        seedColor: AppColors.primary500,
+        brightness: Brightness.light,
+        surface: AppColors.backgroundPrimary,
+        onSurface: AppColors.textPrimary,
+        background: AppColors.backgroundPrimary,
+        onBackground: AppColors.textPrimary,
+      );
+    }
   }
 
-  TextTheme _buildTextTheme(Brightness brightness) {
-    final baseTextTheme = brightness == Brightness.light
-        ? ThemeData.light().textTheme
-        : ThemeData.dark().textTheme;
-
-    // Apply font size scaling
-    final scaledTextTheme = baseTextTheme.apply(
-      fontSizeFactor: _themeSettings.fontSize.scale,
-      fontFamily: _themeSettings.useSystemFont ? null : 'Roboto',
+  // Theme mode update
+  Future<void> updateThemeMode(AppThemeMode themeMode) async {
+    debugPrint(
+      '🎨 ThemeService: Updating theme mode to ${themeMode.displayName}',
     );
 
-    return scaledTextTheme;
-  }
-
-  // Update methods
-  Future<void> updateThemeMode(AppThemeMode themeMode) async {
     if (_themeSettings.themeMode != themeMode) {
       _themeSettings = _themeSettings.copyWith(themeMode: themeMode);
       await _saveSettings();
+
+      debugPrint('🎨 ThemeService: Theme mode updated, notifying listeners');
       notifyListeners();
 
-      if (_themeSettings.enableHapticFeedback) {
-        HapticFeedback.selectionClick();
-      }
-    }
-  }
-
-  Future<void> updateColorScheme(AppColorScheme colorScheme) async {
-    if (_themeSettings.colorScheme != colorScheme) {
-      _themeSettings = _themeSettings.copyWith(colorScheme: colorScheme);
-      await _saveSettings();
-      notifyListeners();
-
-      if (_themeSettings.enableHapticFeedback) {
-        HapticFeedback.selectionClick();
-      }
-    }
-  }
-
-  Future<void> updateFontSize(FontSize fontSize) async {
-    if (_themeSettings.fontSize != fontSize) {
-      _themeSettings = _themeSettings.copyWith(fontSize: fontSize);
-      await _saveSettings();
-      notifyListeners();
-
-      if (_themeSettings.enableHapticFeedback) {
-        HapticFeedback.selectionClick();
-      }
-    }
-  }
-
-  Future<void> toggleSystemFont(bool useSystemFont) async {
-    if (_themeSettings.useSystemFont != useSystemFont) {
-      _themeSettings = _themeSettings.copyWith(useSystemFont: useSystemFont);
-      await _saveSettings();
-      notifyListeners();
-
-      if (_themeSettings.enableHapticFeedback) {
-        HapticFeedback.selectionClick();
-      }
-    }
-  }
-
-  Future<void> toggleAnimations(bool enableAnimations) async {
-    if (_themeSettings.enableAnimations != enableAnimations) {
-      _themeSettings = _themeSettings.copyWith(
-        enableAnimations: enableAnimations,
+      debugPrint(
+        '🎨 ThemeService: New themeMode getter returns ${this.themeMode}',
       );
-      await _saveSettings();
-      notifyListeners();
-
-      if (_themeSettings.enableHapticFeedback) {
-        HapticFeedback.selectionClick();
-      }
+    } else {
+      debugPrint('🎨 ThemeService: Theme mode unchanged, no update needed');
     }
   }
 
-  Future<void> toggleHapticFeedback(bool enableHapticFeedback) async {
-    if (_themeSettings.enableHapticFeedback != enableHapticFeedback) {
-      _themeSettings = _themeSettings.copyWith(
-        enableHapticFeedback: enableHapticFeedback,
-      );
-      await _saveSettings();
-      notifyListeners();
-    }
-  }
-
-  Future<void> updateBorderRadius(double borderRadius) async {
-    if (_themeSettings.borderRadius != borderRadius) {
-      _themeSettings = _themeSettings.copyWith(borderRadius: borderRadius);
-      await _saveSettings();
-      notifyListeners();
-
-      if (_themeSettings.enableHapticFeedback) {
-        HapticFeedback.selectionClick();
-      }
-    }
-  }
-
-  Future<void> toggleCompactMode(bool compactMode) async {
-    if (_themeSettings.compactMode != compactMode) {
-      _themeSettings = _themeSettings.copyWith(compactMode: compactMode);
-      await _saveSettings();
-      notifyListeners();
-
-      if (_themeSettings.enableHapticFeedback) {
-        HapticFeedback.selectionClick();
-      }
-    }
-  }
-
+  // Reset to defaults
   Future<void> resetToDefaults() async {
     _themeSettings = const ThemeSettings();
     await _saveSettings();
     notifyListeners();
-
-    if (_themeSettings.enableHapticFeedback) {
-      HapticFeedback.heavyImpact();
-    }
   }
 
-  // Utility methods
+  // Helper methods
   String getThemeModeDisplayName() {
     return _themeSettings.themeMode.displayName;
   }
 
-  String getColorSchemeDisplayName() {
-    return _themeSettings.colorScheme.displayName;
-  }
-
-  String getFontSizeDisplayName() {
-    return _themeSettings.fontSize.displayName;
-  }
-
   Color getPrimaryColor() {
-    return _themeSettings.colorScheme.color;
+    return AppColors.primary500;
   }
 
-  // Preview method for theme customization
-  ThemeData getPreviewTheme(
-    Brightness brightness, {
-    AppColorScheme? colorScheme,
-    FontSize? fontSize,
-    double? borderRadius,
-  }) {
-    final previewSettings = _themeSettings.copyWith(
-      colorScheme: colorScheme,
-      fontSize: fontSize,
-      borderRadius: borderRadius,
-    );
-
-    final originalSettings = _themeSettings;
-    _themeSettings = previewSettings;
-    final themeData = _buildThemeData(brightness);
-    _themeSettings = originalSettings;
-
-    return themeData;
-  }
-}
-
-// No animation page transitions builder
-class _NoAnimationPageTransitionsBuilder extends PageTransitionsBuilder {
-  const _NoAnimationPageTransitionsBuilder();
-
-  @override
-  Widget buildTransitions<T extends Object?>(
-    PageRoute<T> route,
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) {
-    return child;
+  // Get preview theme for UI
+  ThemeData getPreviewTheme(AppThemeMode themeMode) {
+    final brightness = themeMode == AppThemeMode.dark
+        ? Brightness.dark
+        : Brightness.light;
+    return _buildThemeData(brightness);
   }
 }
