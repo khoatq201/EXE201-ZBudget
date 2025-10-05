@@ -92,9 +92,29 @@ const SecuritySettingsSchema = new mongoose.Schema(
     sessionTimeout: {
       type: Number,
       min: 5,
-      max: 180,
+      max: 1440, // 24 hours max instead of 180 (3 hours)
       default: 30,
     },
+    // Additional security fields to match frontend
+    twoFactorEnabled: { type: Boolean, default: false },
+    autoLockEnabled: { type: Boolean, default: true },
+    loginNotificationEnabled: { type: Boolean, default: true },
+    dataEncryptionEnabled: { type: Boolean, default: true },
+    maxFailedAttempts: { type: Number, min: 3, max: 10, default: 5 },
+    screenshotBlocked: { type: Boolean, default: false },
+    appPinEnabled: { type: Boolean, default: false },
+    primaryAuthMethod: {
+      type: String,
+      enum: ["password", "biometric", "pin"],
+      default: "password",
+    },
+    lastPasswordChange: { type: Date, default: Date.now },
+    // Fields for current backend compatibility
+    sessionPersistence: { type: Boolean, default: true },
+    keepSessionsAcrossDevices: { type: Boolean, default: false },
+    enablePrivacyMode: { type: Boolean, default: false },
+    enhancedProtection: { type: Boolean, default: false },
+    biometricAuth: { type: Boolean, default: false }, // alias for biometricEnabled
   },
   { _id: false }
 );

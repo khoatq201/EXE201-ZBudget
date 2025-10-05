@@ -9,6 +9,7 @@ import Challenge from "./Challenge.js";
 import UserChallenge from "./UserChallenge.js";
 import Group from "./Group.js";
 import Notification from "./Notification.js";
+import Session from "./Session.js";
 
 // Database connection configuration
 const connectDB = async () => {
@@ -350,6 +351,7 @@ export {
   UserChallenge,
   Group,
   Notification,
+  Session,
 
   // Database utilities
   connectDB,
@@ -371,6 +373,7 @@ export default {
   UserChallenge,
   Group,
   Notification,
+  Session,
   connectDB,
   dbUtils,
   validateModels,

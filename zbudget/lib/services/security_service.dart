@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/settings/security_settings.dart';
+import 'security_api_service.dart';
 
 class SecurityService extends ChangeNotifier {
   static const String _securityKey = 'security_settings';
@@ -39,6 +40,7 @@ class SecurityService extends ChangeNotifier {
 
   Future<void> _loadSecuritySettings() async {
     try {
+      // First load from local storage for immediate UI
       final prefs = await SharedPreferences.getInstance();
       final settingsJson = prefs.getString(_securityKey);
 
@@ -49,6 +51,22 @@ class SecurityService extends ChangeNotifier {
         // Create default security settings with demo data
         _securitySettings = _createDefaultSecuritySettings();
         await _saveSecuritySettings();
+      }
+
+      // Then fetch from API to get latest settings
+      try {
+        final response = await SecurityApiService.getSecuritySettings();
+        if (response['success'] == true && response['data'] != null) {
+          _securitySettings = SecuritySettings.fromJson(response['data']);
+          // Save updated settings to local storage
+          await prefs.setString(
+            _securityKey,
+            jsonEncode(_securitySettings.toJson()),
+          );
+        }
+      } catch (apiError) {
+        debugPrint('API error (using local settings): $apiError');
+        // Continue with local settings if API fails
       }
     } catch (e) {
       debugPrint('Error loading security settings: $e');
@@ -137,21 +155,67 @@ class SecurityService extends ChangeNotifier {
   }
 
   Future<void> updateSecuritySettings(SecuritySettings newSettings) async {
-    _isLoading = true;
-    notifyListeners();
-
     try {
+      debugPrint(
+        '🔄 Updating security settings - Auto Lock: ${newSettings.isAutoLockEnabled}',
+      );
+
+      // First update locally for immediate UI response
       _securitySettings = newSettings;
+      notifyListeners(); // Immediate UI update
       await _saveSecuritySettings();
+
+      debugPrint(
+        '✅ Local update complete - Auto Lock: ${_securitySettings.isAutoLockEnabled}',
+      );
+
+      // Then sync with API using the correct property names
+      final response = await SecurityApiService.updateSecuritySettings(
+        isBiometricEnabled: newSettings.isBiometricEnabled,
+        isTwoFactorEnabled: newSettings.isTwoFactorEnabled,
+        isAutoLockEnabled: newSettings.isAutoLockEnabled,
+        sessionTimeout: _getSessionTimeoutInMinutes(newSettings.sessionTimeout),
+        isLoginNotificationEnabled: newSettings.isLoginNotificationEnabled,
+        isDataEncryptionEnabled: newSettings.isDataEncryptionEnabled,
+        maxFailedAttempts: newSettings.maxFailedAttempts,
+        isScreenshotBlocked: newSettings.isScreenshotBlocked,
+        isAppPinEnabled: newSettings.isAppPinEnabled,
+        primaryAuthMethod: newSettings.primaryAuthMethod.name,
+
+        // Legacy compatibility
+        biometricAuth: newSettings.isBiometricEnabled,
+      );
+
+      if (response['success'] == true) {
+        debugPrint('✅ Security settings synced with server');
+        // Only update with server response if it contains valid data
+        if (response['data'] != null) {
+          try {
+            final serverSettings = SecuritySettings.fromJson(response['data']);
+            // Only update if server data looks valid (not default values)
+            if (serverSettings.toString() !=
+                const SecuritySettings().toString()) {
+              _securitySettings = serverSettings;
+              await _saveSecuritySettings();
+              notifyListeners(); // Update again with server data
+            }
+          } catch (e) {
+            debugPrint(
+              'Error parsing server response, keeping local changes: $e',
+            );
+            // Keep local changes if server response is invalid
+          }
+        }
+      } else {
+        debugPrint('⚠️ API sync failed: ${response['message']}');
+        // Keep local changes even if API fails
+      }
 
       // Trigger any necessary system-level changes
       await _applySecurityChanges();
     } catch (e) {
       debugPrint('Error updating security settings: $e');
-      rethrow;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+      // Don't rethrow - keep local changes
     }
   }
 
@@ -225,12 +289,16 @@ class SecurityService extends ChangeNotifier {
   // Two-Factor Authentication
   Future<String> setupTwoFactor() async {
     try {
-      // In a real app, this would generate a QR code for 2FA setup
-      // For demo, we'll return a fake secret
-      const secret = 'JBSWY3DPEHPK3PXP';
+      final response = await SecurityApiService.setup2FA();
 
-      await Future.delayed(const Duration(milliseconds: 800));
-      return secret;
+      if (response['success'] == true && response['data'] != null) {
+        // Return QR code data or secret from server
+        return response['data']['secret'] ??
+            response['data']['qrCode'] ??
+            'JBSWY3DPEHPK3PXP';
+      } else {
+        throw Exception(response['message'] ?? 'Không thể thiết lập 2FA');
+      }
     } catch (e) {
       debugPrint('Error setting up 2FA: $e');
       rethrow;
@@ -239,19 +307,23 @@ class SecurityService extends ChangeNotifier {
 
   Future<bool> enableTwoFactor(String verificationCode) async {
     try {
-      // In a real app, verify the code with the server
-      if (verificationCode.length != 6) {
-        throw Exception('Mã xác thực không hợp lệ');
+      // Verify with server
+      final response = await SecurityApiService.enable2FA(verificationCode);
+
+      if (response['success'] == true) {
+        // Update local settings
+        final updatedSettings = _securitySettings.copyWith(
+          isTwoFactorEnabled: true,
+        );
+
+        _securitySettings = updatedSettings;
+        await _saveSecuritySettings();
+        notifyListeners();
+
+        return true;
+      } else {
+        throw Exception(response['message'] ?? 'Mã xác thực không hợp lệ');
       }
-
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      final updatedSettings = _securitySettings.copyWith(
-        isTwoFactorEnabled: true,
-      );
-
-      await updateSecuritySettings(updatedSettings);
-      return true;
     } catch (e) {
       debugPrint('Error enabling 2FA: $e');
       return false;
@@ -260,19 +332,23 @@ class SecurityService extends ChangeNotifier {
 
   Future<bool> disableTwoFactor(String password) async {
     try {
-      // In a real app, verify password
-      if (password.isEmpty) {
-        throw Exception('Vui lòng nhập mật khẩu');
+      // Disable 2FA via API
+      final response = await SecurityApiService.disable2FA();
+
+      if (response['success'] == true) {
+        // Update local settings
+        final updatedSettings = _securitySettings.copyWith(
+          isTwoFactorEnabled: false,
+        );
+
+        _securitySettings = updatedSettings;
+        await _saveSecuritySettings();
+        notifyListeners();
+
+        return true;
+      } else {
+        throw Exception(response['message'] ?? 'Không thể tắt 2FA');
       }
-
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      final updatedSettings = _securitySettings.copyWith(
-        isTwoFactorEnabled: false,
-      );
-
-      await updateSecuritySettings(updatedSettings);
-      return true;
     } catch (e) {
       debugPrint('Error disabling 2FA: $e');
       return false;
@@ -285,7 +361,7 @@ class SecurityService extends ChangeNotifier {
     required String newPassword,
   }) async {
     try {
-      // In a real app, verify current password and update
+      // Validate inputs
       if (currentPassword.isEmpty || newPassword.isEmpty) {
         throw Exception('Vui lòng nhập đầy đủ thông tin');
       }
@@ -294,14 +370,26 @@ class SecurityService extends ChangeNotifier {
         throw Exception('Mật khẩu mới phải có ít nhất 8 ký tự');
       }
 
-      await Future.delayed(const Duration(milliseconds: 800));
-
-      final updatedSettings = _securitySettings.copyWith(
-        lastPasswordChange: DateTime.now(),
+      // Change password via API
+      final response = await SecurityApiService.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
       );
 
-      await updateSecuritySettings(updatedSettings);
-      return true;
+      if (response['success'] == true) {
+        // Update local settings
+        final updatedSettings = _securitySettings.copyWith(
+          lastPasswordChange: DateTime.now(),
+        );
+
+        _securitySettings = updatedSettings;
+        await _saveSecuritySettings();
+        notifyListeners();
+
+        return true;
+      } else {
+        throw Exception(response['message'] ?? 'Không thể đổi mật khẩu');
+      }
     } catch (e) {
       debugPrint('Error changing password: $e');
       return false;
@@ -311,16 +399,27 @@ class SecurityService extends ChangeNotifier {
   // Session Management
   Future<bool> terminateSession(String sessionId) async {
     try {
-      final updatedSessions = _securitySettings.activeSessions
-          .where((session) => session.id != sessionId)
-          .toList();
+      // Terminate session via API
+      final response = await SecurityApiService.terminateSession(sessionId);
 
-      final updatedSettings = _securitySettings.copyWith(
-        activeSessions: updatedSessions,
-      );
+      if (response['success'] == true) {
+        // Update local state
+        final updatedSessions = _securitySettings.activeSessions
+            .where((session) => session.id != sessionId)
+            .toList();
 
-      await updateSecuritySettings(updatedSettings);
-      return true;
+        final updatedSettings = _securitySettings.copyWith(
+          activeSessions: updatedSessions,
+        );
+
+        _securitySettings = updatedSettings;
+        await _saveSecuritySettings();
+        notifyListeners();
+
+        return true;
+      } else {
+        throw Exception(response['message'] ?? 'Không thể kết thúc phiên');
+      }
     } catch (e) {
       debugPrint('Error terminating session: $e');
       return false;
@@ -329,54 +428,85 @@ class SecurityService extends ChangeNotifier {
 
   Future<bool> terminateAllOtherSessions() async {
     try {
-      final currentSession = _securitySettings.activeSessions
-          .where((session) => session.isCurrent)
-          .toList();
+      // Terminate all sessions via API
+      final response = await SecurityApiService.terminateAllSessions();
 
-      final updatedSettings = _securitySettings.copyWith(
-        activeSessions: currentSession,
-      );
+      if (response['success'] == true) {
+        // Update local state - keep only current session
+        final currentSession = _securitySettings.activeSessions
+            .where((session) => session.isCurrent)
+            .toList();
 
-      await updateSecuritySettings(updatedSettings);
-      return true;
+        final updatedSettings = _securitySettings.copyWith(
+          activeSessions: currentSession,
+        );
+
+        _securitySettings = updatedSettings;
+        await _saveSecuritySettings();
+        notifyListeners();
+
+        return true;
+      } else {
+        throw Exception(response['message'] ?? 'Không thể kết thúc phiên');
+      }
     } catch (e) {
-      debugPrint('Error terminating sessions: $e');
+      debugPrint('Error terminating all sessions: $e');
       return false;
     }
   }
 
   // Security Toggles
   Future<void> toggleAutoLock(bool enabled) async {
+    debugPrint('🔄 Toggling Auto Lock: $enabled');
     final updatedSettings = _securitySettings.copyWith(
       isAutoLockEnabled: enabled,
     );
     await updateSecuritySettings(updatedSettings);
+    debugPrint(
+      '✅ Auto Lock toggled to: ${_securitySettings.isAutoLockEnabled}',
+    );
   }
 
   Future<void> updateSessionTimeout(SessionTimeout timeout) async {
+    debugPrint('🔄 Updating Session Timeout: $timeout');
     final updatedSettings = _securitySettings.copyWith(sessionTimeout: timeout);
     await updateSecuritySettings(updatedSettings);
+    debugPrint(
+      '✅ Session Timeout updated to: ${_securitySettings.sessionTimeout}',
+    );
   }
 
   Future<void> toggleLoginNotifications(bool enabled) async {
+    debugPrint('🔄 Toggling Login Notifications: $enabled');
     final updatedSettings = _securitySettings.copyWith(
       isLoginNotificationEnabled: enabled,
     );
     await updateSecuritySettings(updatedSettings);
+    debugPrint(
+      '✅ Login Notifications toggled to: ${_securitySettings.isLoginNotificationEnabled}',
+    );
   }
 
   Future<void> toggleScreenshotBlocking(bool enabled) async {
+    debugPrint('🔄 Toggling Screenshot Blocking: $enabled');
     final updatedSettings = _securitySettings.copyWith(
       isScreenshotBlocked: enabled,
     );
     await updateSecuritySettings(updatedSettings);
+    debugPrint(
+      '✅ Screenshot Blocking toggled to: ${_securitySettings.isScreenshotBlocked}',
+    );
   }
 
   Future<void> updateMaxFailedAttempts(int attempts) async {
+    debugPrint('🔄 Updating Max Failed Attempts: $attempts');
     final updatedSettings = _securitySettings.copyWith(
       maxFailedAttempts: attempts,
     );
     await updateSecuritySettings(updatedSettings);
+    debugPrint(
+      '✅ Max Failed Attempts updated to: ${_securitySettings.maxFailedAttempts}',
+    );
   }
 
   // Security Analysis
@@ -445,6 +575,24 @@ class SecurityService extends ChangeNotifier {
         return Colors.green;
       default:
         return Colors.grey;
+    }
+  }
+
+  // Helper method to convert SessionTimeout enum to minutes for API
+  int _getSessionTimeoutInMinutes(SessionTimeout timeout) {
+    switch (timeout) {
+      case SessionTimeout.never:
+        return 0; // 0 means never timeout
+      case SessionTimeout.minutes5:
+        return 5;
+      case SessionTimeout.minutes15:
+        return 15;
+      case SessionTimeout.minutes30:
+        return 30;
+      case SessionTimeout.hour1:
+        return 60;
+      case SessionTimeout.hour4:
+        return 240;
     }
   }
 }

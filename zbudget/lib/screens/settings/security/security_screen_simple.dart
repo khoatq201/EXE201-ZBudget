@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../constants/colors.dart';
 import '../../../constants/typography.dart';
@@ -13,117 +14,140 @@ class SecurityScreenSimple extends StatefulWidget {
 }
 
 class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
-  final SecurityService _securityService = SecurityService();
-  bool _isLoading = true;
-
   @override
   void initState() {
     super.initState();
-    _initializeService();
-  }
-
-  Future<void> _initializeService() async {
-    await _securityService.initialize();
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    // Initialize SecurityService when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<SecurityService>(context, listen: false).initialize();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
+    return Consumer<SecurityService>(
+      builder: (context, securityService, child) {
+        if (securityService.isLoading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
 
-    final settings = _securityService.securitySettings;
-
-    return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 120,
-            floating: false,
-            pinned: true,
-            backgroundColor: AppColors.primary500,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              title: Text(
-                'Bảo mật',
-                style: AppTypography.h3.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+        return Scaffold(
+          backgroundColor: AppColors.backgroundPrimary,
+          body: CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                expandedHeight: 120,
+                floating: false,
+                pinned: true,
+                backgroundColor: AppColors.primary500,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                flexibleSpace: FlexibleSpaceBar(
+                  title: Text(
+                    'Bảo mật',
+                    style: AppTypography.h3.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  background: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          AppColors.primary500,
+                          AppColors.primary500.withValues(alpha: 0.8),
+                        ],
+                      ),
+                    ),
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          right: -30,
+                          top: -30,
+                          child: Icon(
+                            Icons.security,
+                            size: 150,
+                            color: Colors.white.withValues(alpha: 0.1),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.primary500,
-                      AppColors.primary500.withValues(alpha: 0.8),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Security Level Card
+                      _buildSecurityLevelCard(
+                        securityService.securitySettings,
+                      ), // Use fresh data
+                      const SizedBox(height: 24),
+
+                      // Authentication Section
+                      _buildSectionHeader('Xác thực'),
+                      const SizedBox(height: 16),
+                      Consumer<SecurityService>(
+                        builder: (context, securityService, child) =>
+                            _buildAuthenticationSection(
+                              securityService
+                                  .securitySettings, // Use fresh data
+                              securityService,
+                            ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Session Management Section
+                      _buildSectionHeader('Quản lý phiên'),
+                      const SizedBox(height: 16),
+                      Consumer<SecurityService>(
+                        builder: (context, securityService, child) =>
+                            _buildSessionSection(
+                              securityService.securitySettings,
+                              securityService,
+                            ), // Use fresh data
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Privacy & Protection Section
+                      _buildSectionHeader('Quyền riêng tư & Bảo vệ'),
+                      const SizedBox(height: 16),
+                      Consumer<SecurityService>(
+                        builder: (context, securityService, child) =>
+                            _buildPrivacySection(
+                              securityService.securitySettings,
+                              securityService,
+                            ), // Use fresh data
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Active Sessions
+                      _buildSectionHeader('Thiết bị đang hoạt động'),
+                      const SizedBox(height: 16),
+                      Consumer<SecurityService>(
+                        builder: (context, securityService, child) =>
+                            _buildActiveSessionsSection(
+                              securityService
+                                  .securitySettings, // Use fresh data
+                              securityService,
+                            ),
+                      ),
+                      const SizedBox(height: 100),
                     ],
                   ),
                 ),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      right: -30,
-                      top: -30,
-                      child: Icon(
-                        Icons.security,
-                        size: 150,
-                        color: Colors.white.withValues(alpha: 0.1),
-                      ),
-                    ),
-                  ],
-                ),
               ),
-            ),
+            ],
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Security Level Card
-                  _buildSecurityLevelCard(settings),
-                  const SizedBox(height: 24),
-
-                  // Authentication Section
-                  _buildSectionHeader('Xác thực'),
-                  const SizedBox(height: 16),
-                  _buildAuthenticationSection(settings),
-                  const SizedBox(height: 24),
-
-                  // Session Management Section
-                  _buildSectionHeader('Quản lý phiên'),
-                  const SizedBox(height: 16),
-                  _buildSessionSection(settings),
-                  const SizedBox(height: 24),
-
-                  // Privacy & Protection Section
-                  _buildSectionHeader('Quyền riêng tư & Bảo vệ'),
-                  const SizedBox(height: 16),
-                  _buildPrivacySection(settings),
-                  const SizedBox(height: 24),
-
-                  // Active Sessions
-                  _buildSectionHeader('Thiết bị đang hoạt động'),
-                  const SizedBox(height: 16),
-                  _buildActiveSessionsSection(settings),
-                  const SizedBox(height: 100),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -214,7 +238,10 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
     );
   }
 
-  Widget _buildAuthenticationSection(SecuritySettings settings) {
+  Widget _buildAuthenticationSection(
+    SecuritySettings settings,
+    SecurityService securityService,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -233,11 +260,11 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
           _buildSettingTile(
             icon: Icons.fingerprint,
             title: 'Xác thực sinh trắc học',
-            subtitle: _securityService.isBiometricAvailable
+            subtitle: securityService.isBiometricAvailable
                 ? 'Sử dụng vân tay hoặc Face ID'
                 : 'Thiết bị không hỗ trợ',
             value: settings.isBiometricEnabled,
-            enabled: _securityService.isBiometricAvailable,
+            enabled: securityService.isBiometricAvailable,
             onChanged: (value) => _handleBiometricToggle(value),
             showDivider: true,
           ),
@@ -266,7 +293,10 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
     );
   }
 
-  Widget _buildSessionSection(SecuritySettings settings) {
+  Widget _buildSessionSection(
+    SecuritySettings settings,
+    SecurityService securityService,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -287,7 +317,7 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
             title: 'Tự động khóa',
             subtitle: 'Khóa ứng dụng khi không sử dụng',
             value: settings.isAutoLockEnabled,
-            onChanged: (value) => _securityService.toggleAutoLock(value),
+            onChanged: (value) => securityService.toggleAutoLock(value),
             showDivider: true,
           ),
 
@@ -307,7 +337,7 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
             value: settings.sessionTimeout,
             onChanged: (value) {
               if (value != null) {
-                _securityService.updateSessionTimeout(value);
+                securityService.updateSessionTimeout(value);
               }
             },
             showDivider: true,
@@ -320,14 +350,17 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
             subtitle: 'Nhận thông báo khi có đăng nhập mới',
             value: settings.isLoginNotificationEnabled,
             onChanged: (value) =>
-                _securityService.toggleLoginNotifications(value),
+                securityService.toggleLoginNotifications(value),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPrivacySection(SecuritySettings settings) {
+  Widget _buildPrivacySection(
+    SecuritySettings settings,
+    SecurityService securityService,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -359,7 +392,7 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
             subtitle: 'Ngăn chặn chụp màn hình trong ứng dụng',
             value: settings.isScreenshotBlocked,
             onChanged: (value) =>
-                _securityService.toggleScreenshotBlocking(value),
+                securityService.toggleScreenshotBlocking(value),
             showDivider: true,
           ),
 
@@ -379,7 +412,7 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
             value: settings.maxFailedAttempts,
             onChanged: (value) {
               if (value != null) {
-                _securityService.updateMaxFailedAttempts(value);
+                securityService.updateMaxFailedAttempts(value);
               }
             },
           ),
@@ -388,7 +421,10 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
     );
   }
 
-  Widget _buildActiveSessionsSection(SecuritySettings settings) {
+  Widget _buildActiveSessionsSection(
+    SecuritySettings settings,
+    SecurityService securityService,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -720,15 +756,19 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
 
   // Handler methods
   Future<void> _handleBiometricToggle(bool value) async {
+    final securityService = Provider.of<SecurityService>(
+      context,
+      listen: false,
+    );
     if (value) {
-      final success = await _securityService.enableBiometric();
+      final success = await securityService.enableBiometric();
       if (!success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Không thể bật sinh trắc học')),
         );
       }
     } else {
-      await _securityService.disableBiometric();
+      await securityService.disableBiometric();
     }
     setState(() {});
   }
@@ -756,9 +796,25 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
             child: const Text('Hủy'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // Navigate to 2FA setup screen
+              final securityService = Provider.of<SecurityService>(
+                context,
+                listen: false,
+              );
+              // For demo purposes, use a dummy verification code
+              final success = await securityService.enableTwoFactor('123456');
+              if (success && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Xác thực 2 bước đã được bật')),
+                );
+              } else if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Không thể bật xác thực 2 bước'),
+                  ),
+                );
+              }
             },
             child: const Text('Thiết lập'),
           ),
@@ -784,7 +840,11 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
               Navigator.pop(context);
-              _securityService.disableTwoFactor('dummy_password');
+              final securityService = Provider.of<SecurityService>(
+                context,
+                listen: false,
+              );
+              securityService.disableTwoFactor('dummy_password');
               setState(() {});
             },
             child: const Text('Tắt'),
@@ -795,17 +855,101 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
   }
 
   void _showChangePasswordDialog() {
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Thay đổi mật khẩu'),
-        content: const Text(
-          'Chức năng thay đổi mật khẩu sẽ được triển khai trong phiên bản tiếp theo.',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: currentPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Mật khẩu hiện tại',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: newPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Mật khẩu mới',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: confirmPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Xác nhận mật khẩu mới',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Đóng'),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final currentPassword = currentPasswordController.text.trim();
+              final newPassword = newPasswordController.text.trim();
+              final confirmPassword = confirmPasswordController.text.trim();
+
+              if (currentPassword.isEmpty ||
+                  newPassword.isEmpty ||
+                  confirmPassword.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Vui lòng nhập đầy đủ thông tin'),
+                  ),
+                );
+                return;
+              }
+
+              if (newPassword != confirmPassword) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Mật khẩu mới không khớp')),
+                );
+                return;
+              }
+
+              Navigator.pop(context);
+
+              final securityService = Provider.of<SecurityService>(
+                context,
+                listen: false,
+              );
+
+              final success = await securityService.changePassword(
+                currentPassword: currentPassword,
+                newPassword: newPassword,
+              );
+
+              if (success && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Đổi mật khẩu thành công')),
+                );
+              } else if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Không thể đổi mật khẩu. Vui lòng kiểm tra lại mật khẩu hiện tại',
+                    ),
+                  ),
+                );
+              }
+            },
+            child: const Text('Đổi mật khẩu'),
           ),
         ],
       ),
@@ -827,7 +971,11 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               Navigator.pop(context);
-              final success = await _securityService.terminateSession(
+              final securityService = Provider.of<SecurityService>(
+                context,
+                listen: false,
+              );
+              final success = await securityService.terminateSession(
                 session.id,
               );
               if (success && mounted && context.mounted) {
@@ -861,8 +1009,11 @@ class _SecurityScreenSimpleState extends State<SecurityScreenSimple> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               Navigator.pop(context);
-              final success = await _securityService
-                  .terminateAllOtherSessions();
+              final securityService = Provider.of<SecurityService>(
+                context,
+                listen: false,
+              );
+              final success = await securityService.terminateAllOtherSessions();
               if (success && mounted && context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(

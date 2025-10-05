@@ -11,9 +11,11 @@ import 'services/profile_service.dart';
 import 'services/currency_service.dart';
 import 'services/dashboard_service.dart';
 import 'services/income_service.dart';
+import 'services/security_service.dart';
 import 'constants/colors.dart';
 import 'constants/typography.dart';
 import 'config/app_router.dart' as app_router;
+import 'widgets/activity_detector.dart';
 
 void main() {
   runApp(const ZBudgetApp());
@@ -36,36 +38,39 @@ class ZBudgetApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CurrencyService()),
         ChangeNotifierProvider(create: (_) => DashboardService()),
         ChangeNotifierProvider(create: (_) => IncomeService()),
+        ChangeNotifierProvider(create: (_) => SecurityService()),
       ],
       child: Consumer<AppProvider>(
         builder: (context, appProvider, child) {
-          return MaterialApp.router(
-            title: 'ZBudget',
-            debugShowCheckedModeBanner: false,
-            theme: ThemeData(
-              primarySwatch: Colors.green,
-              primaryColor: AppColors.primary500,
-              scaffoldBackgroundColor: AppColors.backgroundPrimary,
-              fontFamily: 'System',
-              textTheme: AppTypography.textTheme,
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: AppColors.primary500,
-                brightness: Brightness.light,
+          return ActivityDetector(
+            child: MaterialApp.router(
+              title: 'ZBudget',
+              debugShowCheckedModeBanner: false,
+              theme: ThemeData(
+                primarySwatch: Colors.green,
+                primaryColor: AppColors.primary500,
+                scaffoldBackgroundColor: AppColors.backgroundPrimary,
+                fontFamily: 'System',
+                textTheme: AppTypography.textTheme,
+                colorScheme: ColorScheme.fromSeed(
+                  seedColor: AppColors.primary500,
+                  brightness: Brightness.light,
+                ),
               ),
-            ),
-            darkTheme: ThemeData(
-              primarySwatch: Colors.green,
-              primaryColor: AppColors.primary400,
-              scaffoldBackgroundColor: AppColors.backgroundDark,
-              fontFamily: 'System',
-              textTheme: AppTypography.textTheme,
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: AppColors.primary400,
-                brightness: Brightness.dark,
+              darkTheme: ThemeData(
+                primarySwatch: Colors.green,
+                primaryColor: AppColors.primary400,
+                scaffoldBackgroundColor: AppColors.backgroundDark,
+                fontFamily: 'System',
+                textTheme: AppTypography.textTheme,
+                colorScheme: ColorScheme.fromSeed(
+                  seedColor: AppColors.primary400,
+                  brightness: Brightness.dark,
+                ),
               ),
+              themeMode: appProvider.themeMode,
+              routerConfig: app_router.router,
             ),
-            themeMode: appProvider.themeMode,
-            routerConfig: app_router.router,
           );
         },
       ),

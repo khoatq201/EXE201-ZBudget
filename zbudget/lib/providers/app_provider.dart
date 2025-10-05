@@ -8,6 +8,7 @@ import '../models/expense.dart';
 import '../models/budget.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
+import '../services/session_manager.dart';
 
 enum AppTheme { light, dark, system }
 
@@ -68,7 +69,7 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> login(User user) async {
+  Future<void> login(User user, BuildContext context) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('userToken', 'dummy-token');
@@ -76,6 +77,11 @@ class AppProvider extends ChangeNotifier {
 
       _user = user;
       _isAuthenticated = true;
+
+      // 🔐 Bắt đầu session tracking sau khi login thành công
+      SessionManager.instance.startSession(context);
+      debugPrint('🔐 Session tracking started for user: ${user.email}');
+
       notifyListeners();
     } catch (error) {
       debugPrint('Login failed: $error');
@@ -88,6 +94,10 @@ class AppProvider extends ChangeNotifier {
 
     try {
       _setLoading(true);
+
+      // 🔐 Dừng session tracking trước khi logout
+      SessionManager.instance.stopSession();
+      debugPrint('🔐 Session tracking stopped');
 
       // Use the provided AuthService instance from Provider (has tokens!)
       final authService = Provider.of<AuthService>(context, listen: false);

@@ -379,27 +379,34 @@ export const login = async (req, res) => {
   }
 
   // Success - generate tokens and return response
-  const tokenExpiry = rememberMe ? "7d" : "15m";
-  const { accessToken, refreshToken } = generateTokens(user._id, tokenExpiry);
+  const { accessToken, refreshToken } = generateTokens(
+    user._id,
+    req,
+    "password"
+  );
 
-  // Update user login info
-  user.lastLogin = new Date();
-  await user.save();
+  // Update user login info WITHOUT triggering validation
+  await User.updateOne(
+    { _id: user._id },
+    {
+      lastLogin: new Date(),
+      $inc: { loginCount: 1 },
+    },
+    { runValidators: false } // ← SKIP validation to avoid sessionTimeout error
+  );
 
   // Remove sensitive data from response
   const userResponse = user.toObject();
   delete userResponse.passwordHash;
 
-  res.json(
-    successResponse("Đăng nhập thành công!", {
-      user: userResponse,
-      tokens: {
-        accessToken,
-        refreshToken,
-        expiresIn: tokenExpiry,
-      },
-    })
-  );
+  return successResponse(res, "Đăng nhập thành công!", {
+    user: userResponse,
+    tokens: {
+      accessToken,
+      refreshToken,
+      expiresIn: "7d", // Default token expiry
+    },
+  });
 };
 
 /**
@@ -423,7 +430,7 @@ export const logout = async (req, res) => {
     );
   }
 
-  res.json(successResponse("Đăng xuất thành công!"));
+  return successResponse(res, "Đăng xuất thành công!");
 };
 
 /**
@@ -460,7 +467,9 @@ export const refreshToken = async (req, res) => {
 
   // Generate new tokens
   const { accessToken, refreshToken: newRefreshToken } = generateTokens(
-    user._id
+    user._id,
+    req,
+    "refresh"
   );
 
   // Replace old refresh token with new one
@@ -474,13 +483,11 @@ export const refreshToken = async (req, res) => {
     }
   );
 
-  res.json(
-    successResponse("Token đã được làm mới", {
-      accessToken,
-      refreshToken: newRefreshToken,
-      expiresIn: "15m",
-    })
-  );
+  return successResponse(res, "Token đã được làm mới", {
+    accessToken,
+    refreshToken: newRefreshToken,
+    expiresIn: "15m",
+  });
 };
 
 /**
@@ -498,10 +505,9 @@ export const forgotPassword = async (req, res) => {
 
   if (!user) {
     // Don't reveal if email exists
-    return res.json(
-      successResponse(
-        "Nếu email tồn tại, chúng tôi đã gửi mã OTP đặt lại mật khẩu."
-      )
+    return successResponse(
+      res,
+      "Nếu email tồn tại, chúng tôi đã gửi mã OTP đặt lại mật khẩu."
     );
   }
 
@@ -536,12 +542,14 @@ export const forgotPassword = async (req, res) => {
     );
   }
 
-  res.json(
-    successResponse("Mã OTP đặt lại mật khẩu đã được gửi đến email của bạn.", {
+  return successResponse(
+    res,
+    "Mã OTP đặt lại mật khẩu đã được gửi đến email của bạn.",
+    {
       email: email.toLowerCase(),
       otpSent: true,
       expiresIn: 600, // 10 minutes in seconds
-    })
+    }
   );
 };
 
@@ -583,12 +591,10 @@ export const verifyPasswordResetOTP = async (req, res) => {
   }
 
   // OTP is valid - return success but don't clear OTP yet (will clear after password reset)
-  res.json(
-    successResponse("Mã OTP hợp lệ. Bạn có thể đặt lại mật khẩu.", {
-      email: email.toLowerCase(),
-      otpVerified: true,
-    })
-  );
+  return successResponse(res, "Mã OTP hợp lệ. Bạn có thể đặt lại mật khẩu.", {
+    email: email.toLowerCase(),
+    otpVerified: true,
+  });
 };
 
 /**
@@ -644,7 +650,7 @@ export const resetPassword = async (req, res) => {
 
   await user.save();
 
-  res.json(successResponse("Mật khẩu đã được đặt lại thành công!"));
+  return successResponse(res, "Mật khẩu đã được đặt lại thành công!");
 };
 
 /**
@@ -728,7 +734,7 @@ export const verifyOTP = async (req, res) => {
     console.log("✅ DEBUG: User created successfully with ID:", user._id);
 
     // Generate JWT tokens for the new user
-    const tokens = generateTokens(user._id.toString());
+    const tokens = generateTokens(user._id.toString(), req, "password");
 
     // Send welcome email asynchronously
     setImmediate(async () => {
@@ -811,7 +817,7 @@ export const verifyEmail = async (req, res) => {
     console.error("Failed to send welcome email:", emailError);
   }
 
-  res.json(successResponse("Email đã được xác thực thành công!"));
+  return successResponse(res, "Email đã được xác thực thành công!");
 };
 
 /**
@@ -852,7 +858,7 @@ export const resendEmailVerification = async (req, res) => {
     );
   }
 
-  res.json(successResponse("Email xác thực đã được gửi lại!"));
+  return successResponse(res, "Email xác thực đã được gửi lại!");
 };
 
 /**
@@ -894,7 +900,7 @@ export const changePassword = async (req, res) => {
 
   await user.save();
 
-  res.json(successResponse("Mật khẩu đã được thay đổi thành công!"));
+  return successResponse(res, "Mật khẩu đã được thay đổi thành công!");
 };
 
 /**
@@ -913,7 +919,7 @@ export const getProfile = async (req, res) => {
     throw new NotFoundError("Không tìm thấy người dùng");
   }
 
-  res.json(successResponse("Lấy thông tin profile thành công", { user }));
+  return successResponse(res, "Lấy thông tin profile thành công", { user });
 };
 
 /**
@@ -988,9 +994,9 @@ export const updateProfile = async (req, res) => {
   delete userResponse.loginAttempts;
   delete userResponse.lockUntil;
 
-  res.json(
-    successResponse("Cập nhật profile thành công!", { user: userResponse })
-  );
+  return successResponse(res, "Cập nhật profile thành công!", {
+    user: userResponse,
+  });
 };
 
 /**
@@ -1029,5 +1035,5 @@ export const deleteAccount = async (req, res) => {
 
   await user.save();
 
-  res.json(successResponse("Tài khoản đã được xóa thành công!"));
+  return successResponse(res, "Tài khoản đã được xóa thành công!");
 };

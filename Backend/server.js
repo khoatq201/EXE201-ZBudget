@@ -6,12 +6,14 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import { connectDB } from "./models/index.js";
 import logger from "morgan";
+import sessionCleanupJob from "./services/SessionCleanupJob.js";
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
 import expenseRoutes from "./routes/expenseRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import incomeRoutes from "./routes/incomeRoutes.js";
+import securityRoutes from "./routes/securityRoutes.js";
 // import userRoutes from './routes/users.js';
 // import budgetRoutes from './routes/budgets.js';
 // import challengeRoutes from './routes/challenges.js';
@@ -163,6 +165,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/income", incomeRoutes);
+app.use("/api/security", securityRoutes);
 
 // Protected routes (will be added later)
 // app.use('/api/users', authenticate, userRoutes);
@@ -296,6 +299,10 @@ async function startServer() {
       console.log(`🏥 Health Check: http://localhost:${PORT}/api/health`);
       console.log(`📖 API Docs: http://localhost:${PORT}/api`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
+
+      // Start session cleanup job
+      sessionCleanupJob.start();
+      console.log("🧹 Session cleanup job started");
 
       if (process.env.NODE_ENV === "development") {
         console.log("\n🛠️  Development URLs:");

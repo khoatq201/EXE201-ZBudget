@@ -235,18 +235,18 @@ class SecuritySettings {
   }
 
   String get securityLevel {
-    if (!isSecure) return 'Cơ bản';
-    if (isTwoFactorEnabled && isBiometricEnabled) return 'Cao';
-    return 'Trung bình';
+    if (!isSecure) return 'low';
+    if (isTwoFactorEnabled && isBiometricEnabled) return 'high';
+    return 'medium';
   }
 
   Color get securityLevelColor {
     switch (securityLevel) {
-      case 'Cơ bản':
+      case 'low':
         return Colors.orange;
-      case 'Trung bình':
+      case 'medium':
         return Colors.blue;
-      case 'Cao':
+      case 'high':
         return Colors.green;
       default:
         return Colors.grey;
