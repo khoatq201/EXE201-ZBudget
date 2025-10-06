@@ -45,12 +45,12 @@ class HelpScreen extends StatelessWidget {
           ),
 
           // Quick Help Cards
-          _buildQuickHelpSection(),
+          _buildQuickHelpSection(context),
 
           const SizedBox(height: AppSpacing.sectionSpacing),
 
           // FAQ Section
-          _buildFAQSection(),
+          _buildFAQSection(context),
 
           const SizedBox(height: AppSpacing.sectionSpacing),
 
@@ -61,14 +61,14 @@ class HelpScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickHelpSection() {
+  Widget _buildQuickHelpSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Trợ giúp nhanh',
           style: AppTypography.h6.copyWith(
-            color: AppColors.textPrimary,
+            color: context.settingsItemTitleColor,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -77,6 +77,7 @@ class HelpScreen extends StatelessWidget {
           children: [
             Expanded(
               child: _buildQuickHelpCard(
+                context: context,
                 icon: Icons.account_balance_wallet,
                 title: 'Quản lý\nNgân sách',
                 color: AppColors.primary500,
@@ -85,6 +86,7 @@ class HelpScreen extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: _buildQuickHelpCard(
+                context: context,
                 icon: Icons.receipt_long,
                 title: 'Theo dõi\nChi tiêu',
                 color: AppColors.secondary500,
@@ -93,6 +95,7 @@ class HelpScreen extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: _buildQuickHelpCard(
+                context: context,
                 icon: Icons.savings,
                 title: 'Mục tiêu\nTiết kiệm',
                 color: AppColors.success,
@@ -105,6 +108,7 @@ class HelpScreen extends StatelessWidget {
   }
 
   Widget _buildQuickHelpCard({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required Color color,
@@ -112,9 +116,9 @@ class HelpScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Column(
         children: [
@@ -124,7 +128,7 @@ class HelpScreen extends StatelessWidget {
             title,
             textAlign: TextAlign.center,
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textPrimary,
+              color: context.settingsItemTitleColor,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -133,39 +137,44 @@ class HelpScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFAQSection() {
+  Widget _buildFAQSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Câu hỏi thường gặp',
           style: AppTypography.h6.copyWith(
-            color: AppColors.textPrimary,
+            color: context.settingsItemTitleColor,
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: AppSpacing.md),
         _buildFAQItem(
+          context: context,
           question: 'Làm thế nào để tạo ngân sách mới?',
           answer:
               'Bạn có thể tạo ngân sách mới bằng cách vào màn hình Ngân sách, nhấn nút "+" và điền các thông tin cần thiết như tên ngân sách, số tiền, thời gian.',
         ),
         _buildFAQItem(
+          context: context,
           question: 'Cách theo dõi chi tiêu hàng ngày?',
           answer:
               'Trên màn hình chính, nhấn nút "Thêm chi tiêu" để ghi lại mỗi khoản chi. Bạn có thể phân loại theo danh mục và xem báo cáo chi tiết.',
         ),
         _buildFAQItem(
+          context: context,
           question: 'Tôi quên mật khẩu, làm sao để đăng nhập?',
           answer:
               'Trên màn hình đăng nhập, nhấn "Quên mật khẩu" và làm theo hướng dẫn để đặt lại mật khẩu qua email.',
         ),
         _buildFAQItem(
+          context: context,
           question: 'Làm thế nào để xuất dữ liệu?',
           answer:
               'Vào Cài đặt > Sao lưu & Khôi phục > Xuất dữ liệu. Bạn có thể xuất dưới dạng Excel hoặc PDF.',
         ),
         _buildFAQItem(
+          context: context,
           question: 'Ứng dụng có tính phí không?',
           answer:
               'ZBudget hoàn toàn miễn phí. Một số tính năng nâng cao có thể yêu cầu đăng ký Premium.',
@@ -174,19 +183,23 @@ class HelpScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFAQItem({required String question, required String answer}) {
+  Widget _buildFAQItem({
+    required BuildContext context,
+    required String question,
+    required String answer,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: ExpansionTile(
         title: Text(
           question,
           style: AppTypography.body.copyWith(
-            color: AppColors.textPrimary,
+            color: context.settingsItemTitleColor,
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: AppColors.backgroundSecondary,
-        collapsedBackgroundColor: AppColors.backgroundSecondary,
+        backgroundColor: context.cardBackground,
+        collapsedBackgroundColor: context.cardBackground,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         collapsedShape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -197,7 +210,7 @@ class HelpScreen extends StatelessWidget {
             child: Text(
               answer,
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textSecondary,
+                color: context.settingsItemSubtitleColor,
                 height: 1.5,
               ),
             ),
@@ -214,31 +227,37 @@ class HelpScreen extends StatelessWidget {
         Text(
           'Liên hệ hỗ trợ',
           style: AppTypography.h6.copyWith(
-            color: AppColors.textPrimary,
+            color: context.settingsItemTitleColor,
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: AppSpacing.md),
         _buildContactCard(
+          context: context,
           icon: Icons.email,
           title: 'Email hỗ trợ',
           subtitle: 'support@zbudget.com',
+          color: context.colorScheme.primary,
           onTap: () {
             // Launch email
           },
         ),
         _buildContactCard(
+          context: context,
           icon: Icons.phone,
           title: 'Hotline',
           subtitle: '1900 1234 (8:00 - 22:00)',
+          color: context.colorScheme.primary,
           onTap: () {
             // Launch phone
           },
         ),
         _buildContactCard(
+          context: context,
           icon: Icons.chat,
           title: 'Chat trực tuyến',
           subtitle: 'Phản hồi trong 5 phút',
+          color: context.colorScheme.primary,
           onTap: () {
             // Open live chat
           },
@@ -248,15 +267,17 @@ class HelpScreen extends StatelessWidget {
   }
 
   Widget _buildContactCard({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
+    required Color color,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: Material(
-        color: AppColors.backgroundSecondary,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: onTap,
@@ -268,10 +289,10 @@ class HelpScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.primary500.withValues(alpha: 0.1),
+                    color: color.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(icon, color: AppColors.primary500, size: 24),
+                  child: Icon(icon, color: color, size: 24),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -281,7 +302,7 @@ class HelpScreen extends StatelessWidget {
                       Text(
                         title,
                         style: AppTypography.body.copyWith(
-                          color: AppColors.textPrimary,
+                          color: context.settingsItemTitleColor,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -289,7 +310,7 @@ class HelpScreen extends StatelessWidget {
                       Text(
                         subtitle,
                         style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
+                          color: context.settingsItemSubtitleColor,
                         ),
                       ),
                     ],
@@ -297,7 +318,7 @@ class HelpScreen extends StatelessWidget {
                 ),
                 Icon(
                   Icons.arrow_forward_ios,
-                  color: AppColors.textSecondary,
+                  color: context.settingsItemSubtitleColor,
                   size: 16,
                 ),
               ],

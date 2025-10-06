@@ -21,22 +21,22 @@ class AboutScreen extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.pagePadding),
         children: [
           // App Logo & Info
-          _buildAppInfoSection(),
+          _buildAppInfoSection(context),
 
           const SizedBox(height: AppSpacing.sectionSpacing),
 
           // App Description
-          _buildDescriptionSection(),
+          _buildDescriptionSection(context),
 
           const SizedBox(height: AppSpacing.sectionSpacing),
 
           // App Stats
-          _buildStatsSection(),
+          _buildStatsSection(context),
 
           const SizedBox(height: AppSpacing.sectionSpacing),
 
           // Developer Info
-          _buildDeveloperSection(),
+          _buildDeveloperSection(context),
 
           const SizedBox(height: AppSpacing.sectionSpacing),
 
@@ -51,20 +51,20 @@ class AboutScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.sectionSpacing),
 
           // Social Links
-          _buildSocialSection(),
+          _buildSocialSection(context),
         ],
       ),
     );
   }
 
-  Widget _buildAppInfoSection() {
+  Widget _buildAppInfoSection(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.primary500, AppColors.secondary500],
+          colors: [context.headerGradientStart, context.headerGradientEnd],
         ),
         borderRadius: BorderRadius.circular(16),
       ),
@@ -74,11 +74,11 @@ class AboutScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.textInverse,
+              color: context.colorScheme.onPrimary,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
+                  color: Colors.black.withOpacity(0.1),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -87,7 +87,7 @@ class AboutScreen extends StatelessWidget {
             child: Icon(
               Icons.account_balance_wallet,
               size: 48,
-              color: AppColors.primary500,
+              color: context.colorScheme.primary,
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -96,7 +96,7 @@ class AboutScreen extends StatelessWidget {
           Text(
             'ZBudget',
             style: AppTypography.h4.copyWith(
-              color: AppColors.textInverse,
+              color: context.colorScheme.onPrimary,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -106,7 +106,7 @@ class AboutScreen extends StatelessWidget {
           Text(
             'Quản lý tài chính thông minh',
             style: AppTypography.body.copyWith(
-              color: AppColors.textInverse.withValues(alpha: 0.9),
+              color: context.colorScheme.onPrimary.withOpacity(0.9),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -115,13 +115,13 @@ class AboutScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: AppColors.textInverse.withValues(alpha: 0.2),
+              color: context.colorScheme.onPrimary.withOpacity(0.2),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
               'Phiên bản 1.0.0',
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textInverse,
+                color: context.colorScheme.onPrimary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -131,11 +131,11 @@ class AboutScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDescriptionSection() {
+  Widget _buildDescriptionSection(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.backgroundSecondary,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -144,7 +144,7 @@ class AboutScreen extends StatelessWidget {
           Text(
             'Giới thiệu',
             style: AppTypography.h6.copyWith(
-              color: AppColors.textPrimary,
+              color: context.settingsItemTitleColor,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -152,7 +152,7 @@ class AboutScreen extends StatelessWidget {
           Text(
             'ZBudget là ứng dụng quản lý tài chính cá nhân được thiết kế dành riêng cho người Việt Nam. Với giao diện thân thiện và các tính năng thông minh, ZBudget giúp bạn theo dõi chi tiêu, lập ngân sách, và đạt được các mục tiêu tài chính một cách dễ dàng.',
             style: AppTypography.body.copyWith(
-              color: AppColors.textSecondary,
+              color: context.settingsItemSubtitleColor,
               height: 1.6,
             ),
           ),
@@ -165,17 +165,17 @@ class AboutScreen extends StatelessWidget {
               Text(
                 'Tính năng chính:',
                 style: AppTypography.body.copyWith(
-                  color: AppColors.textPrimary,
+                  color: context.settingsItemTitleColor,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              _buildFeatureItem('📊', 'Theo dõi chi tiêu hàng ngày'),
-              _buildFeatureItem('💰', 'Quản lý ngân sách thông minh'),
-              _buildFeatureItem('🎯', 'Đặt mục tiêu tiết kiệm'),
-              _buildFeatureItem('👥', 'Chia sẻ chi tiêu nhóm'),
-              _buildFeatureItem('📈', 'Báo cáo và phân tích chi tiết'),
-              _buildFeatureItem('🔒', 'Bảo mật thông tin tuyệt đối'),
+              _buildFeatureItem(context, '📊', 'Theo dõi chi tiêu hàng ngày'),
+              _buildFeatureItem(context, '💰', 'Quản lý ngân sách thông minh'),
+              _buildFeatureItem(context, '🎯', 'Đặt mục tiêu tiết kiệm'),
+              _buildFeatureItem(context, '👥', 'Chia sẻ chi tiêu nhóm'),
+              _buildFeatureItem(context, '📈', 'Báo cáo và phân tích chi tiết'),
+              _buildFeatureItem(context, '🔒', 'Bảo mật thông tin tuyệt đối'),
             ],
           ),
         ],
@@ -183,7 +183,7 @@ class AboutScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFeatureItem(String emoji, String text) {
+  Widget _buildFeatureItem(BuildContext context, String emoji, String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -194,7 +194,7 @@ class AboutScreen extends StatelessWidget {
             child: Text(
               text,
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textSecondary,
+                color: context.settingsItemSubtitleColor,
               ),
             ),
           ),
@@ -203,11 +203,11 @@ class AboutScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatsSection() {
+  Widget _buildStatsSection(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.backgroundSecondary,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -216,7 +216,7 @@ class AboutScreen extends StatelessWidget {
           Text(
             'Thống kê ứng dụng',
             style: AppTypography.h6.copyWith(
-              color: AppColors.textPrimary,
+              color: context.settingsItemTitleColor,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -225,6 +225,7 @@ class AboutScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildStatCard(
+                  context: context,
                   title: 'Người dùng',
                   value: '10,000+',
                   icon: Icons.people,
@@ -234,6 +235,7 @@ class AboutScreen extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildStatCard(
+                  context: context,
                   title: 'Đánh giá',
                   value: '4.8/5',
                   icon: Icons.star,
@@ -247,6 +249,7 @@ class AboutScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildStatCard(
+                  context: context,
                   title: 'Lượt tải',
                   value: '25,000+',
                   icon: Icons.download,
@@ -256,6 +259,7 @@ class AboutScreen extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildStatCard(
+                  context: context,
                   title: 'Cập nhật',
                   value: 'Tháng 9/2025',
                   icon: Icons.update,
@@ -270,6 +274,7 @@ class AboutScreen extends StatelessWidget {
   }
 
   Widget _buildStatCard({
+    required BuildContext context,
     required String title,
     required String value,
     required IconData icon,
@@ -278,9 +283,9 @@ class AboutScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Column(
         children: [
@@ -289,7 +294,7 @@ class AboutScreen extends StatelessWidget {
           Text(
             value,
             style: AppTypography.h6.copyWith(
-              color: AppColors.textPrimary,
+              color: context.settingsItemTitleColor,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -297,7 +302,7 @@ class AboutScreen extends StatelessWidget {
           Text(
             title,
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+              color: context.settingsItemSubtitleColor,
             ),
           ),
         ],
@@ -305,11 +310,11 @@ class AboutScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDeveloperSection() {
+  Widget _buildDeveloperSection(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.backgroundSecondary,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -318,7 +323,7 @@ class AboutScreen extends StatelessWidget {
           Text(
             'Nhà phát triển',
             style: AppTypography.h6.copyWith(
-              color: AppColors.textPrimary,
+              color: context.settingsItemTitleColor,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -327,11 +332,11 @@ class AboutScreen extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 30,
-                backgroundColor: AppColors.primary500,
+                backgroundColor: context.colorScheme.primary,
                 child: Text(
                   'ZT',
                   style: AppTypography.h6.copyWith(
-                    color: AppColors.textInverse,
+                    color: context.colorScheme.onPrimary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -344,7 +349,7 @@ class AboutScreen extends StatelessWidget {
                     Text(
                       'ZBudget Team',
                       style: AppTypography.body.copyWith(
-                        color: AppColors.textPrimary,
+                        color: context.settingsItemTitleColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -352,14 +357,14 @@ class AboutScreen extends StatelessWidget {
                     Text(
                       'Đội ngũ phát triển tại Việt Nam',
                       style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
+                        color: context.settingsItemSubtitleColor,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'contact@zbudget.com',
                       style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.primary500,
+                        color: context.colorScheme.primary,
                       ),
                     ),
                   ],
@@ -376,7 +381,7 @@ class AboutScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.backgroundSecondary,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -385,12 +390,13 @@ class AboutScreen extends StatelessWidget {
           Text(
             'Pháp lý & Chính sách',
             style: AppTypography.h6.copyWith(
-              color: AppColors.textPrimary,
+              color: context.settingsItemTitleColor,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: AppSpacing.md),
           _buildLegalItem(
+            context: context,
             icon: Icons.privacy_tip,
             title: 'Chính sách bảo mật',
             onTap: () {
@@ -398,6 +404,7 @@ class AboutScreen extends StatelessWidget {
             },
           ),
           _buildLegalItem(
+            context: context,
             icon: Icons.description,
             title: 'Điều khoản sử dụng',
             onTap: () {
@@ -405,6 +412,7 @@ class AboutScreen extends StatelessWidget {
             },
           ),
           _buildLegalItem(
+            context: context,
             icon: Icons.security,
             title: 'Chính sách bảo mật dữ liệu',
             onTap: () {
@@ -412,6 +420,7 @@ class AboutScreen extends StatelessWidget {
             },
           ),
           _buildLegalItem(
+            context: context,
             icon: Icons.gavel,
             title: 'Giấy phép mã nguồn mở',
             onTap: () {
@@ -424,6 +433,7 @@ class AboutScreen extends StatelessWidget {
   }
 
   Widget _buildLegalItem({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required VoidCallback onTap,
@@ -437,19 +447,19 @@ class AboutScreen extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Row(
             children: [
-              Icon(icon, color: AppColors.textSecondary, size: 20),
+              Icon(icon, color: context.settingsItemSubtitleColor, size: 20),
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
                   title,
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textPrimary,
+                    color: context.settingsItemTitleColor,
                   ),
                 ),
               ),
               Icon(
                 Icons.arrow_forward_ios,
-                color: AppColors.textSecondary,
+                color: context.settingsItemSubtitleColor,
                 size: 16,
               ),
             ],
@@ -463,7 +473,7 @@ class AboutScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.backgroundSecondary,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -472,16 +482,16 @@ class AboutScreen extends StatelessWidget {
           Text(
             'Thông tin phiên bản',
             style: AppTypography.h6.copyWith(
-              color: AppColors.textPrimary,
+              color: context.settingsItemTitleColor,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          _buildVersionItem('Phiên bản ứng dụng', '1.0.0'),
-          _buildVersionItem('Build số', '100'),
-          _buildVersionItem('Ngày phát hành', '24/09/2025'),
-          _buildVersionItem('Flutter SDK', '3.24.0'),
-          _buildVersionItem('Dart SDK', '3.5.0'),
+          _buildVersionItem(context, 'Phiên bản ứng dụng', '1.0.0'),
+          _buildVersionItem(context, 'Build số', '100'),
+          _buildVersionItem(context, 'Ngày phát hành', '24/09/2025'),
+          _buildVersionItem(context, 'Flutter SDK', '3.24.0'),
+          _buildVersionItem(context, 'Dart SDK', '3.5.0'),
 
           const SizedBox(height: AppSpacing.lg),
           SizedBox(
@@ -497,17 +507,18 @@ class AboutScreen extends StatelessWidget {
 
                 // Show copied message
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Đã sao chép thông tin phiên bản'),
-                    duration: Duration(seconds: 2),
+                  SnackBar(
+                    content: const Text('Đã sao chép thông tin phiên bản'),
+                    duration: const Duration(seconds: 2),
+                    backgroundColor: context.cardBackground,
                   ),
                 );
               },
               icon: const Icon(Icons.copy, size: 16),
               label: const Text('Sao chép thông tin'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary500,
-                side: BorderSide(color: AppColors.primary500),
+                foregroundColor: context.colorScheme.primary,
+                side: BorderSide(color: context.colorScheme.primary),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -519,7 +530,7 @@ class AboutScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildVersionItem(String label, String value) {
+  Widget _buildVersionItem(BuildContext context, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -528,13 +539,13 @@ class AboutScreen extends StatelessWidget {
           Text(
             label,
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+              color: context.settingsItemSubtitleColor,
             ),
           ),
           Text(
             value,
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textPrimary,
+              color: context.settingsItemTitleColor,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -543,11 +554,11 @@ class AboutScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSocialSection() {
+  Widget _buildSocialSection(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.backgroundSecondary,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -556,7 +567,7 @@ class AboutScreen extends StatelessWidget {
           Text(
             'Kết nối với chúng tôi',
             style: AppTypography.h6.copyWith(
-              color: AppColors.textPrimary,
+              color: context.settingsItemTitleColor,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -565,6 +576,7 @@ class AboutScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildSocialButton(
+                context: context,
                 icon: Icons.facebook,
                 label: 'Facebook',
                 color: const Color(0xFF1877F2),
@@ -573,17 +585,19 @@ class AboutScreen extends StatelessWidget {
                 },
               ),
               _buildSocialButton(
+                context: context,
                 icon: Icons.email,
                 label: 'Email',
-                color: AppColors.error,
+                color: context.colorScheme.error,
                 onTap: () {
                   // Open email
                 },
               ),
               _buildSocialButton(
+                context: context,
                 icon: Icons.web,
                 label: 'Website',
-                color: AppColors.primary500,
+                color: context.colorScheme.primary,
                 onTap: () {
                   // Open website
                 },
@@ -596,6 +610,7 @@ class AboutScreen extends StatelessWidget {
   }
 
   Widget _buildSocialButton({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required Color color,
@@ -608,9 +623,9 @@ class AboutScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
+              color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: color.withValues(alpha: 0.2)),
+              border: Border.all(color: color.withOpacity(0.2)),
             ),
             child: Icon(icon, color: color, size: 24),
           ),
@@ -618,7 +633,7 @@ class AboutScreen extends StatelessWidget {
           Text(
             label,
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+              color: context.settingsItemSubtitleColor,
             ),
           ),
         ],

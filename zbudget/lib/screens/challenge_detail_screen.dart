@@ -2,7 +2,7 @@
 import 'package:provider/provider.dart';
 import '../models/challenge.dart';
 import '../services/challenge_service.dart';
-import '../constants/colors.dart';
+import '../utils/theme_extensions.dart';
 
 class ChallengeDetailScreen extends StatefulWidget {
   final String challengeId;
@@ -46,7 +46,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
         );
 
         return Scaffold(
-          backgroundColor: Colors.grey[50],
+          backgroundColor: context.scaffoldBackground,
           body: CustomScrollView(
             slivers: [
               _buildSliverAppBar(challenge),
@@ -77,7 +77,8 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
     return SliverAppBar(
       expandedHeight: 200,
       pinned: true,
-      backgroundColor: AppColors.primary500,
+      backgroundColor: Colors.transparent,
+      foregroundColor: context.headerTextColor,
       flexibleSpace: FlexibleSpaceBar(
         title: Text(challenge.emoji, style: const TextStyle(fontSize: 32)),
         background: Container(
@@ -85,7 +86,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [AppColors.primary500, AppColors.primary600],
+              colors: [context.headerGradientStart, context.headerGradientEnd],
             ),
           ),
           child: Center(
@@ -104,10 +105,10 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
         children: [
           Text(
             challenge.title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: context.primaryTextColor,
             ),
           ),
           const SizedBox(height: 8),
@@ -129,15 +130,15 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
 
     switch (difficulty) {
       case ChallengeDifficulty.easy:
-        color = Colors.green;
+        color = context.incomeColor;
         text = 'Dễ';
         break;
       case ChallengeDifficulty.medium:
-        color = Colors.orange;
+        color = context.warningColor;
         text = 'Trung bình';
         break;
       case ChallengeDifficulty.hard:
-        color = Colors.red;
+        color = context.errorColor;
         text = 'Khó';
         break;
     }
@@ -145,9 +146,9 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Text(
         text,
@@ -166,13 +167,13 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.primary100,
+        color: context.headerGradientStart.withOpacity(0.12),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(
         text,
-        style: const TextStyle(
-          color: AppColors.primary700,
+        style: TextStyle(
+          color: context.primaryTextColor,
           fontWeight: FontWeight.w600,
           fontSize: 12,
         ),
@@ -204,11 +205,11 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.customCardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -244,17 +245,20 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
   }) {
     return Column(
       children: [
-        Icon(icon, color: AppColors.primary500, size: 24),
+        Icon(icon, color: context.incomeColor, size: 24),
         const SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: context.primaryTextColor,
           ),
         ),
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: context.secondaryTextColor),
+        ),
       ],
     );
   }
@@ -264,11 +268,11 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.customCardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -277,12 +281,12 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Mô tả thử thách',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: context.primaryTextColor,
             ),
           ),
           const SizedBox(height: 12),
@@ -290,7 +294,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
             challenge.description,
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey[700],
+              color: context.primaryTextColor.withOpacity(0.95),
               height: 1.5,
             ),
           ),
@@ -298,24 +302,24 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.primary50,
+              color: context.previewBackground,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
                 Icon(
                   Icons.monetization_on,
-                  color: AppColors.primary600,
+                  color: context.headerGradientEnd,
                   size: 24,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Mục tiêu tiết kiệm: ${_formatCurrency(challenge.amount)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.primary700,
+                      color: context.primaryTextColor,
                     ),
                   ),
                 ),
@@ -336,11 +340,11 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.customCardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -349,12 +353,12 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Mốc thành tích',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: context.primaryTextColor,
             ),
           ),
           const SizedBox(height: 16),
@@ -371,12 +375,14 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: milestone.isCompleted ? AppColors.primary50 : Colors.grey[50],
+        color: milestone.isCompleted
+            ? context.previewBackground
+            : context.customCardBackground,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: milestone.isCompleted
-              ? AppColors.primary200
-              : Colors.grey[300]!,
+              ? context.headerGradientStart.withOpacity(0.18)
+              : context.cardBorder,
         ),
       ),
       child: Row(
@@ -386,8 +392,8 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
                 ? Icons.check_circle
                 : Icons.radio_button_unchecked,
             color: milestone.isCompleted
-                ? AppColors.primary600
-                : Colors.grey[400],
+                ? context.headerGradientEnd
+                : context.tertiaryTextColor,
             size: 24,
           ),
           const SizedBox(width: 16),
@@ -397,15 +403,19 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
               children: [
                 Text(
                   'Ngày ${milestone.day}: ${milestone.description}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
+                    color: context.primaryTextColor,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Phần thưởng: ${milestone.reward}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: context.secondaryTextColor.withOpacity(0.95),
+                  ),
                 ),
               ],
             ),
@@ -420,11 +430,11 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.customCardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -435,18 +445,21 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
         children: [
           Row(
             children: [
-              const Text(
+              Text(
                 'Người tham gia',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: context.primaryTextColor,
                 ),
               ),
               const Spacer(),
               Text(
                 '${challenge.participants} người',
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: context.secondaryTextColor.withOpacity(0.95),
+                ),
               ),
             ],
           ),
@@ -460,15 +473,18 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
                   height: 40,
                   margin: EdgeInsets.only(left: index == 0 ? 0 : 8),
                   decoration: BoxDecoration(
-                    color: AppColors.primary100,
+                    color: context.headerGradientStart.withOpacity(0.15),
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+                    border: Border.all(
+                      color: context.scaffoldBackground,
+                      width: 2,
+                    ),
                   ),
                   child: Center(
                     child: Text(
                       String.fromCharCode(65 + index),
-                      style: const TextStyle(
-                        color: AppColors.primary700,
+                      style: TextStyle(
+                        color: context.primaryTextColor,
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
@@ -482,15 +498,18 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
                   height: 40,
                   margin: const EdgeInsets.only(left: 8),
                   decoration: BoxDecoration(
-                    color: Colors.grey[300],
+                    color: context.previewBackground,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+                    border: Border.all(
+                      color: context.scaffoldBackground,
+                      width: 2,
+                    ),
                   ),
                   child: Center(
                     child: Text(
                       '+${challenge.participants - 5}',
-                      style: const TextStyle(
-                        color: Colors.black54,
+                      style: TextStyle(
+                        color: context.secondaryTextColor.withOpacity(0.95),
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                       ),
@@ -518,9 +537,9 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
             : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: challenge.status == ChallengeStatus.available
-              ? AppColors.primary500
-              : Colors.grey,
-          foregroundColor: Colors.white,
+              ? context.primaryButtonBackground
+              : Theme.of(context).disabledColor,
+          foregroundColor: context.primaryButtonForeground,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -566,8 +585,8 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
     ChallengeService service,
   ) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: context.customCardBackground,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: const EdgeInsets.all(24),
@@ -578,14 +597,18 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey[300],
+              color: context.previewBackground,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
           const SizedBox(height: 24),
           Text(
             '🎯 Sẵn sàng tham gia?',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: context.primaryTextColor,
+            ),
           ),
           const SizedBox(height: 16),
           Text(
@@ -593,7 +616,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey[700],
+              color: context.secondaryTextColor.withOpacity(0.95),
               height: 1.4,
             ),
           ),
@@ -601,19 +624,19 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.primary50,
+              color: context.previewBackground,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
-                Icon(Icons.lightbulb_outline, color: AppColors.primary600),
+                Icon(Icons.lightbulb_outline, color: context.headerGradientEnd),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Bạn sẽ nhận được ${challenge.points} điểm khi hoàn thành!',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: AppColors.primary700,
+                      color: context.primaryTextColor,
                     ),
                   ),
                 ),
@@ -628,14 +651,16 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
                   onPressed: () => Navigator.pop(context),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: BorderSide(color: Colors.grey[300]!),
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Hủy',
-                    style: TextStyle(color: Colors.black54),
+                    style: TextStyle(color: context.secondaryTextColor),
                   ),
                 ),
               ),
@@ -647,16 +672,19 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
                     await _joinChallenge(context, challenge.id, service);
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary500,
-                    foregroundColor: Colors.white,
+                    backgroundColor: context.primaryButtonBackground,
+                    foregroundColor: context.primaryButtonForeground,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Tham gia',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: context.primaryButtonForeground,
+                    ),
                   ),
                 ),
               ),
@@ -682,7 +710,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
         SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.celebration, color: Colors.white),
+              Icon(Icons.celebration, color: context.primaryButtonForeground),
               const SizedBox(width: 12),
               const Expanded(
                 child: Text('🎉 Đã tham gia thử thách thành công!'),

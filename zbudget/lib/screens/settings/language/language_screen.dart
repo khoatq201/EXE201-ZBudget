@@ -155,11 +155,11 @@ class _LanguageScreenState extends State<LanguageScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -172,7 +172,7 @@ class _LanguageScreenState extends State<LanguageScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.primary500.withValues(alpha: 0.1),
+                  color: context.settingsItemIconBackground,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -189,14 +189,14 @@ class _LanguageScreenState extends State<LanguageScreen>
                       _languageService.currentLanguageName,
                       style: AppTypography.h4.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                        color: context.settingsItemTitleColor,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _languageService.currentLanguage.englishName,
                       style: AppTypography.body.copyWith(
-                        color: AppColors.textSecondary,
+                        color: context.settingsItemSubtitleColor,
                       ),
                     ),
                   ],
@@ -208,13 +208,13 @@ class _LanguageScreenState extends State<LanguageScreen>
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.primary500.withValues(alpha: 0.1),
+                  color: context.settingsItemIconBackground,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   stats['currentRegion'],
                   style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.primary500,
+                    color: context.colorScheme.primary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -242,19 +242,21 @@ class _LanguageScreenState extends State<LanguageScreen>
   Widget _buildStatItem(String label, String value, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: AppColors.primary500, size: 20),
+        Icon(icon, color: context.colorScheme.primary, size: 20),
         const SizedBox(height: 4),
         Text(
           value,
           style: AppTypography.body.copyWith(
-            color: AppColors.textPrimary,
+            color: context.settingsItemTitleColor,
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 2),
         Text(
           label,
-          style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+          style: AppTypography.caption.copyWith(
+            color: context.settingsItemSubtitleColor,
+          ),
         ),
       ],
     );
@@ -263,11 +265,11 @@ class _LanguageScreenState extends State<LanguageScreen>
   Widget _buildAutoDetectSection() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -278,19 +280,19 @@ class _LanguageScreenState extends State<LanguageScreen>
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.primary500.withValues(alpha: 0.1),
+            color: context.settingsItemIconBackground,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
             Icons.auto_awesome,
-            color: AppColors.primary500,
+            color: context.colorScheme.primary,
             size: 20,
           ),
         ),
         title: Text(
           'Tự động phát hiện ngôn ngữ',
           style: AppTypography.body.copyWith(
-            color: AppColors.textPrimary,
+            color: context.settingsItemTitleColor,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -299,12 +301,12 @@ class _LanguageScreenState extends State<LanguageScreen>
               ? 'Sử dụng ngôn ngữ của hệ thống'
               : 'Chọn ngôn ngữ thủ công',
           style: AppTypography.bodySmall.copyWith(
-            color: AppColors.textSecondary,
+            color: context.settingsItemSubtitleColor,
           ),
         ),
         trailing: Switch(
           value: _languageService.languageSettings.autoDetectLanguage,
-          activeThumbColor: AppColors.primary500,
+          activeThumbColor: context.colorScheme.primary,
           onChanged: (value) {
             _languageService.toggleAutoDetectLanguage(value);
             setState(() {});
@@ -317,11 +319,11 @@ class _LanguageScreenState extends State<LanguageScreen>
   Widget _buildLanguageSearchBar() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -335,13 +337,16 @@ class _LanguageScreenState extends State<LanguageScreen>
         },
         decoration: InputDecoration(
           hintText: 'Tìm kiếm ngôn ngữ...',
-          prefixIcon: Icon(Icons.search, color: AppColors.textSecondary),
+          prefixIcon: Icon(
+            Icons.search,
+            color: context.settingsItemSubtitleColor,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: context.inputFieldBackground,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 12,
@@ -360,17 +365,21 @@ class _LanguageScreenState extends State<LanguageScreen>
       return Container(
         padding: const EdgeInsets.all(40),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardBackground,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           children: [
-            Icon(Icons.search_off, size: 48, color: AppColors.textSecondary),
+            Icon(
+              Icons.search_off,
+              size: 48,
+              color: context.settingsItemSubtitleColor,
+            ),
             const SizedBox(height: 16),
             Text(
               'Không tìm thấy ngôn ngữ',
               style: AppTypography.body.copyWith(
-                color: AppColors.textSecondary,
+                color: context.settingsItemSubtitleColor,
               ),
             ),
           ],
@@ -398,11 +407,11 @@ class _LanguageScreenState extends State<LanguageScreen>
   Widget _buildLanguageGroup(String title, List<AppLanguage> languages) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -416,7 +425,7 @@ class _LanguageScreenState extends State<LanguageScreen>
             child: Text(
               title,
               style: AppTypography.body.copyWith(
-                color: AppColors.textSecondary,
+                color: context.settingsItemSubtitleColor,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -440,8 +449,8 @@ class _LanguageScreenState extends State<LanguageScreen>
                     height: 40,
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? AppColors.primary500.withValues(alpha: 0.1)
-                          : AppColors.textSecondary.withValues(alpha: 0.1),
+                          ? context.settingsItemIconBackground
+                          : context.settingsItemIconBackground.withOpacity(0.4),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Center(
@@ -454,20 +463,20 @@ class _LanguageScreenState extends State<LanguageScreen>
                   title: Text(
                     language.nativeName,
                     style: AppTypography.body.copyWith(
-                      color: AppColors.textPrimary,
+                      color: context.settingsItemTitleColor,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   subtitle: Text(
                     language.englishName,
                     style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
+                      color: context.settingsItemSubtitleColor,
                     ),
                   ),
                   trailing: Radio<AppLanguage>(
                     value: language,
                     groupValue: _languageService.currentLanguage,
-                    activeColor: AppColors.primary500,
+                    activeColor: context.colorScheme.primary,
                     onChanged: (value) {
                       if (value != null) {
                         _languageService.updateLanguage(value);
@@ -493,11 +502,11 @@ class _LanguageScreenState extends State<LanguageScreen>
   Widget _buildFormatSettingsSection() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -574,15 +583,15 @@ class _LanguageScreenState extends State<LanguageScreen>
           leading: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.primary500.withValues(alpha: 0.1),
+              color: context.settingsItemIconBackground,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: AppColors.primary500, size: 20),
+            child: Icon(icon, color: context.colorScheme.primary, size: 20),
           ),
           title: Text(
             title,
             style: AppTypography.body.copyWith(
-              color: AppColors.textPrimary,
+              color: context.settingsItemTitleColor,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -592,14 +601,14 @@ class _LanguageScreenState extends State<LanguageScreen>
               Text(
                 subtitle,
                 style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
+                  color: context.settingsItemSubtitleColor,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 'Ví dụ: $example',
                 style: AppTypography.caption.copyWith(
-                  color: AppColors.primary500,
+                  color: context.colorScheme.primary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -608,7 +617,10 @@ class _LanguageScreenState extends State<LanguageScreen>
           trailing:
               trailing ??
               (onTap != null
-                  ? Icon(Icons.chevron_right, color: AppColors.textSecondary)
+                  ? Icon(
+                      Icons.chevron_right,
+                      color: context.settingsItemSubtitleColor,
+                    )
                   : null),
           onTap: onTap,
         ),
@@ -620,11 +632,11 @@ class _LanguageScreenState extends State<LanguageScreen>
   Widget _buildPreviewSection() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -638,22 +650,18 @@ class _LanguageScreenState extends State<LanguageScreen>
             Text(
               'Xem trước định dạng',
               style: AppTypography.body.copyWith(
-                color: AppColors.textSecondary,
+                color: context.settingsItemSubtitleColor,
               ),
             ),
             const SizedBox(height: 16),
 
             // Preview card
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.primary500.withValues(alpha: 0.1),
+                color: context.inputFieldBackground,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.primary500.withValues(alpha: 0.3),
-                ),
               ),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -669,6 +677,7 @@ class _LanguageScreenState extends State<LanguageScreen>
                           _languageService.currentLanguageName,
                           style: AppTypography.h4.copyWith(
                             fontWeight: FontWeight.bold,
+                            color: context.settingsItemTitleColor,
                           ),
                         ),
                       ),
@@ -719,7 +728,7 @@ class _LanguageScreenState extends State<LanguageScreen>
             child: Text(
               label,
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textSecondary,
+                color: context.settingsItemSubtitleColor,
               ),
             ),
           ),
@@ -727,7 +736,7 @@ class _LanguageScreenState extends State<LanguageScreen>
             child: Text(
               value,
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textPrimary,
+                color: context.settingsItemTitleColor,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -742,7 +751,7 @@ class _LanguageScreenState extends State<LanguageScreen>
       title,
       style: AppTypography.h4.copyWith(
         fontWeight: FontWeight.bold,
-        color: AppColors.textPrimary,
+        color: context.settingsItemTitleColor,
       ),
     );
   }
