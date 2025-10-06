@@ -100,7 +100,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          Icon(Icons.error_outline, size: 64, color: context.colorScheme.error),
           const SizedBox(height: 16),
           Text(
             'Có lỗi xảy ra',
@@ -166,13 +166,13 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
               Text(
                 'Xin chào! 👋',
                 style: AppTypography.h3.copyWith(
-                  color: context.colorScheme.onPrimary,
+                  color: context.headerTextColor,
                 ),
               ),
               Text(
                 authService.currentUser?.email ?? '',
                 style: AppTypography.bodySmall.copyWith(
-                  color: context.colorScheme.onPrimary.withOpacity(0.7),
+                  color: context.headerSubtitleColor,
                 ),
               ),
             ],
@@ -221,14 +221,14 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
           Text(
             'Số dư hiện tại',
             style: AppTypography.bodyMedium.copyWith(
-              color: context.colorScheme.onPrimary.withOpacity(0.7),
+              color: context.headerSubtitleColor,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             data.currentBalance.toVND(),
             style: AppTypography.h1.copyWith(
-              color: context.colorScheme.onPrimary,
+              color: context.headerTextColor,
               fontSize: 32,
               fontWeight: FontWeight.bold,
             ),
@@ -247,7 +247,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                 Text(
                   'Thống kê $periodLabel',
                   style: AppTypography.bodySmall.copyWith(
-                    color: context.colorScheme.onPrimary.withOpacity(0.7),
+                    color: context.headerSubtitleColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -261,16 +261,14 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                         Text(
                           'Thu nhập',
                           style: AppTypography.bodySmall.copyWith(
-                            color: context.colorScheme.onPrimary.withOpacity(
-                              0.7,
-                            ),
+                            color: context.headerSubtitleColor,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           data.period.income.toVND(),
                           style: AppTypography.bodyMedium.copyWith(
-                            color: context.colorScheme.onPrimary,
+                            color: context.headerTextColor,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -282,16 +280,14 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                         Text(
                           'Chi tiêu',
                           style: AppTypography.bodySmall.copyWith(
-                            color: context.colorScheme.onPrimary.withOpacity(
-                              0.7,
-                            ),
+                            color: context.headerSubtitleColor,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           data.period.expense.toVND(),
                           style: AppTypography.bodyMedium.copyWith(
-                            color: context.colorScheme.onPrimary,
+                            color: context.headerTextColor,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -308,8 +304,8 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                           ? Icons.trending_up
                           : Icons.trending_down,
                       color: periodBalance >= 0
-                          ? Colors.greenAccent
-                          : Colors.redAccent,
+                          ? context.incomeColor
+                          : context.colorScheme.error,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
@@ -320,7 +316,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                               periodBalance.abs(),
                             ),
                       style: AppTypography.bodyLarge.copyWith(
-                        color: context.colorScheme.onPrimary,
+                        color: context.headerTextColor,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -338,13 +334,13 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                 'Tổng thu',
                 data.totalIncome,
                 Icons.arrow_downward,
-                Colors.green,
+                context.incomeColor,
               ),
               _buildBalanceItem(
                 'Tổng chi',
                 data.totalExpenses,
                 Icons.arrow_upward,
-                Colors.red,
+                context.colorScheme.error,
               ),
             ],
           ),
@@ -376,16 +372,12 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
       children: [
         Row(
           children: [
-            Icon(
-              icon,
-              size: 16,
-              color: context.colorScheme.onPrimary.withOpacity(0.7),
-            ),
+            Icon(icon, size: 16, color: context.headerSubtitleColor),
             const SizedBox(width: 4),
             Text(
               label,
               style: AppTypography.bodySmall.copyWith(
-                color: context.colorScheme.onPrimary.withOpacity(0.7),
+                color: context.headerSubtitleColor,
               ),
             ),
           ],
@@ -394,7 +386,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
         Text(
           amount.toVND(),
           style: AppTypography.bodyLarge.copyWith(
-            color: context.colorScheme.onPrimary,
+            color: context.headerTextColor,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -424,20 +416,20 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
 
     switch (insight.type) {
       case 'success':
-        bgColor = Colors.green.shade50;
-        textColor = Colors.green.shade700;
+        bgColor = context.infoRowBackground;
+        textColor = context.incomeColor.withOpacity(0.95);
         break;
       case 'warning':
-        bgColor = Colors.orange.shade50;
-        textColor = Colors.orange.shade700;
+        bgColor = context.infoRowBackground;
+        textColor = context.colorScheme.secondary;
         break;
       case 'alert':
-        bgColor = Colors.red.shade50;
-        textColor = Colors.red.shade700;
+        bgColor = context.infoRowBackground;
+        textColor = context.colorScheme.error;
         break;
       default:
-        bgColor = Colors.blue.shade50;
-        textColor = Colors.blue.shade700;
+        bgColor = context.infoRowBackground;
+        textColor = context.colorScheme.primary;
     }
 
     return Container(
@@ -526,7 +518,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(context.isDarkTheme ? 0.25 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -543,7 +535,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                 '${budget.spentPercentage}%',
                 style: AppTypography.h3.copyWith(
                   color: budget.isOverBudget
-                      ? Colors.red
+                      ? context.colorScheme.error
                       : context.colorScheme.primary,
                 ),
               ),
@@ -552,9 +544,11 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
           const SizedBox(height: 12),
           LinearProgressIndicator(
             value: budget.spentPercentage / 100,
-            backgroundColor: Colors.grey.shade200,
+            backgroundColor: context.colorScheme.surfaceVariant,
             valueColor: AlwaysStoppedAnimation<Color>(
-              budget.isOverBudget ? Colors.red : context.colorScheme.primary,
+              budget.isOverBudget
+                  ? context.colorScheme.error
+                  : context.colorScheme.primary,
             ),
             minHeight: 8,
             borderRadius: BorderRadius.circular(4),
@@ -579,7 +573,9 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
           const SizedBox(height: 8),
           Text(
             'Ngân sách hàng ngày: ${budget.dailyBudget.toVND()}',
-            style: AppTypography.bodySmall.copyWith(color: Colors.grey),
+            style: AppTypography.bodySmall.copyWith(
+              color: context.settingsItemSubtitleColor,
+            ),
           ),
         ],
       ),
@@ -596,7 +592,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
               'Level',
               data.userStats.level.toString(),
               Icons.star,
-              Colors.amber,
+              context.colorScheme.secondaryContainer, // accent for stat icon
             ),
           ),
           const SizedBox(width: 12),
@@ -605,7 +601,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
               'Streak',
               '${data.userStats.currentStreak} ngày',
               Icons.local_fire_department,
-              Colors.orange,
+              context.colorScheme.tertiaryContainer,
             ),
           ),
         ],
@@ -626,7 +622,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(context.isDarkTheme ? 0.25 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -639,7 +635,9 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
           Text(value, style: AppTypography.h3),
           Text(
             label,
-            style: AppTypography.bodySmall.copyWith(color: Colors.grey),
+            style: AppTypography.bodySmall.copyWith(
+              color: context.settingsItemSubtitleColor,
+            ),
           ),
         ],
       ),
@@ -651,7 +649,6 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
     double totalExpense,
   ) {
     if (categories.isEmpty) return const SizedBox.shrink();
-
     return Container(
       margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(20),
@@ -660,7 +657,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(context.isDarkTheme ? 0.25 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -669,8 +666,8 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Biểu đồ chi tiêu', style: AppTypography.h3),
-          const SizedBox(height: 20),
+          Text('Chi tiêu theo danh mục', style: AppTypography.h3),
+          const SizedBox(height: 12),
           SizedBox(
             height: 200,
             child: Row(
@@ -688,7 +685,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                           titleStyle: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: context.colorScheme.onPrimary,
+                            color: context.colorScheme.onSurface,
                           ),
                         );
                       }).toList(),
@@ -749,7 +746,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
       'utilities': Color(0xFFFB5607),
       'other': Color(0xFF6C757D),
     };
-    return categoryColors[category] ?? Colors.grey;
+    return categoryColors[category] ?? context.colorScheme.onSurfaceVariant;
   }
 
   Widget _buildCategoryBreakdown(List<CategoryBreakdown> categories) {
@@ -790,7 +787,9 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                 ),
                 Text(
                   '${category.count} giao dịch',
-                  style: AppTypography.bodySmall.copyWith(color: Colors.grey),
+                  style: AppTypography.bodySmall.copyWith(
+                    color: context.settingsItemSubtitleColor,
+                  ),
                 ),
               ],
             ),
@@ -865,13 +864,15 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: transaction.isIncome
-                  ? Colors.green.shade50
-                  : Colors.red.shade50,
+                  ? context.incomeColor.withOpacity(0.12)
+                  : context.infoRowBackground,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               transaction.isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-              color: transaction.isIncome ? Colors.green : Colors.red,
+              color: transaction.isIncome
+                  ? context.incomeColor
+                  : context.colorScheme.error,
             ),
           ),
           const SizedBox(width: 12),
@@ -887,7 +888,9 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                 ),
                 Text(
                   '${transaction.date.day.toString().padLeft(2, '0')}/${transaction.date.month.toString().padLeft(2, '0')}/${transaction.date.year}',
-                  style: AppTypography.bodySmall.copyWith(color: Colors.grey),
+                  style: AppTypography.bodySmall.copyWith(
+                    color: context.settingsItemSubtitleColor,
+                  ),
                 ),
               ],
             ),
@@ -897,7 +900,9 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                 ? CurrencyFormatter.formatIncome(transaction.amount)
                 : CurrencyFormatter.formatExpense(transaction.amount),
             style: AppTypography.bodyMedium.copyWith(
-              color: transaction.isIncome ? Colors.green : Colors.red,
+              color: transaction.isIncome
+                  ? context.incomeColor
+                  : context.colorScheme.error,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -921,6 +926,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                   'Thêm chi tiêu',
                   Icons.add,
                   context.colorScheme.primary,
+                  context.primaryTextColor,
                   () async {
                     final result = await context.push('/add-expense');
                     // Refresh dashboard if expense was created successfully
@@ -935,7 +941,8 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                 child: _buildQuickActionButton(
                   'Thu nhập',
                   Icons.trending_up,
-                  Colors.green,
+                  context.incomeColor,
+                  context.primaryTextColor,
                   () => context.push('/add-income'),
                 ),
               ),
@@ -944,7 +951,8 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                 child: _buildQuickActionButton(
                   'Ngân sách',
                   Icons.pie_chart,
-                  Colors.blue,
+                  context.colorScheme.primary,
+                  context.primaryTextColor,
                   () => context.go('/budget'),
                 ),
               ),
@@ -959,6 +967,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
     String title,
     IconData icon,
     Color color,
+    Color iconColor,
     VoidCallback onTap,
   ) {
     return GestureDetector(
@@ -980,19 +989,29 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
-                color: color.withAlpha(25),
+                color: color.withOpacity(context.isDarkTheme ? 0.20 : 0.10),
                 borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(
+                      context.isDarkTheme ? 0.25 : 0.04,
+                    ),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              child: Icon(icon, color: color, size: 20),
+              child: Center(child: Icon(icon, color: iconColor, size: 22)),
             ),
             const SizedBox(height: 8),
             Text(
               title,
               style: AppTypography.bodySmall.copyWith(
                 fontWeight: FontWeight.w600,
+                color: context.primaryTextColor,
               ),
               textAlign: TextAlign.center,
               maxLines: 2,

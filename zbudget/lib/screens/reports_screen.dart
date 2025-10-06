@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../constants/colors.dart';
+import '../utils/theme_extensions.dart';
 import '../constants/typography.dart';
 import '../services/report_service.dart';
 import '../utils/formatters.dart';
@@ -48,23 +48,54 @@ class _ReportsScreenState extends State<ReportsScreen>
         onRefresh: _loadReports,
         child: CustomScrollView(
           slivers: [
-            // App Bar
+            // App Bar (use same header style as Dashboard)
             SliverAppBar(
               expandedHeight: 100,
               floating: false,
               pinned: true,
               flexibleSpace: FlexibleSpaceBar(
-                title: const Text('Báo cáo chi tiêu'),
+                titlePadding: EdgeInsets.zero,
+                title: null,
                 background: Container(
+                  padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        Theme.of(context).colorScheme.primary,
-                        Theme.of(context).colorScheme.primary.withAlpha(220),
+                        context.headerGradientStart,
+                        context.headerGradientEnd,
                       ],
                     ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Báo cáo chi tiêu',
+                            style: AppTypography.h3.copyWith(
+                              color: context.colorScheme.onPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: context.colorScheme.onPrimary.withOpacity(
+                            0.24,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.notifications_outlined,
+                          color: context.colorScheme.onPrimary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -90,9 +121,9 @@ class _ReportsScreenState extends State<ReportsScreen>
             SliverToBoxAdapter(
               child: TabBar(
                 controller: _tabController,
-                labelColor: AppColors.primary500,
-                unselectedLabelColor: AppColors.textSecondary,
-                indicatorColor: AppColors.primary500,
+                labelColor: context.colorScheme.primary,
+                unselectedLabelColor: context.settingsItemSubtitleColor,
+                indicatorColor: context.colorScheme.primary,
                 tabs: const [
                   Tab(text: 'Tổng quan'),
                   Tab(text: 'Danh mục'),
@@ -114,7 +145,11 @@ class _ReportsScreenState extends State<ReportsScreen>
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                          const Icon(
+                            Icons.error_outline,
+                            size: 48,
+                            color: Colors.red,
+                          ),
                           const SizedBox(height: 16),
                           Text('Lỗi: ${reportService.error}'),
                           const SizedBox(height: 16),
@@ -155,9 +190,16 @@ class _ReportsScreenState extends State<ReportsScreen>
           _loadReports();
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: isSelected ? AppColors.primary500 : Colors.white,
-          foregroundColor: isSelected ? Colors.white : AppColors.textPrimary,
+          backgroundColor: isSelected
+              ? context.headerGradientStart
+              : context.cardBackground,
+          foregroundColor: isSelected
+              ? context.colorScheme.onPrimary
+              : context.settingsItemTitleColor,
           elevation: isSelected ? 4 : 1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
         child: Text(label),
       ),
@@ -209,16 +251,16 @@ class _ReportsScreenState extends State<ReportsScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isPositive
-            ? [const Color(0xFF4CAF50), const Color(0xFF66BB6A)]
-            : [const Color(0xFFFF5252), const Color(0xFFFF7043)],
+              ? [context.colorScheme.primary, context.headerGradientEnd]
+              : [Colors.red.shade400, Colors.deepOrange.shade300],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: (isPositive ? Colors.green : Colors.red).withAlpha(60),
-            blurRadius: 12,
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 10,
             offset: const Offset(0, 6),
           ),
         ],
@@ -231,12 +273,12 @@ class _ReportsScreenState extends State<ReportsScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(40),
+                  color: context.colorScheme.onPrimary.withOpacity(0.18),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   isPositive ? Icons.trending_up : Icons.trending_down,
-                  color: Colors.white,
+                  color: context.colorScheme.onPrimary,
                   size: 28,
                 ),
               ),
@@ -247,8 +289,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                   children: [
                     Text(
                       isPositive ? '💰 Tài chính tích cực' : '⚠️ Cần chú ý',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: context.colorScheme.onPrimary,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -257,7 +299,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     Text(
                       'Trong kỳ báo cáo này',
                       style: TextStyle(
-                        color: Colors.white.withAlpha(200),
+                        color: context.colorScheme.onPrimary.withOpacity(0.9),
                         fontSize: 12,
                       ),
                     ),
@@ -273,9 +315,13 @@ class _ReportsScreenState extends State<ReportsScreen>
             children: [
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(30),
+                    // Use cardBackground with subtle opacity so it adapts to dark/light themes
+                    color: context.cardBackground.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
@@ -283,12 +329,20 @@ class _ReportsScreenState extends State<ReportsScreen>
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.arrow_upward, color: Colors.white.withAlpha(200), size: 16),
+                          Icon(
+                            Icons.arrow_upward,
+                            color: context.colorScheme.onPrimary.withOpacity(
+                              0.9,
+                            ),
+                            size: 16,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             'Tổng thu',
                             style: TextStyle(
-                              color: Colors.white.withAlpha(200),
+                              color: context.colorScheme.onPrimary.withOpacity(
+                                0.9,
+                              ),
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -301,8 +355,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                         alignment: Alignment.centerLeft,
                         child: Text(
                           CurrencyFormatter.formatCompact(income),
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: context.colorScheme.onPrimary,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
@@ -315,9 +369,13 @@ class _ReportsScreenState extends State<ReportsScreen>
               const SizedBox(width: 12),
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(30),
+                    // Use cardBackground with subtle opacity so it adapts to dark/light themes
+                    color: context.cardBackground.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
@@ -325,12 +383,20 @@ class _ReportsScreenState extends State<ReportsScreen>
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.arrow_downward, color: Colors.white.withAlpha(200), size: 16),
+                          Icon(
+                            Icons.arrow_downward,
+                            color: context.colorScheme.onPrimary.withOpacity(
+                              0.9,
+                            ),
+                            size: 16,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             'Tổng chi',
                             style: TextStyle(
-                              color: Colors.white.withAlpha(200),
+                              color: context.colorScheme.onPrimary.withOpacity(
+                                0.9,
+                              ),
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -343,8 +409,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                         alignment: Alignment.centerLeft,
                         child: Text(
                           CurrencyFormatter.formatCompact(expense),
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: context.colorScheme.onPrimary,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
@@ -363,7 +429,8 @@ class _ReportsScreenState extends State<ReportsScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha(30),
+              // Slightly lighter card background for the balance row so it adapts with theme
+              color: context.cardBackground.withOpacity(0.06),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -374,12 +441,20 @@ class _ReportsScreenState extends State<ReportsScreen>
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.account_balance_wallet, color: Colors.white.withAlpha(200), size: 16),
+                        Icon(
+                          Icons.account_balance_wallet,
+                          color: context.settingsItemTitleColor.withOpacity(
+                            0.9,
+                          ),
+                          size: 16,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           'Số dư',
                           style: TextStyle(
-                            color: Colors.white.withAlpha(200),
+                            color: context.settingsItemTitleColor.withOpacity(
+                              0.9,
+                            ),
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -392,8 +467,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                       alignment: Alignment.centerLeft,
                       child: Text(
                         CurrencyFormatter.formatCompact(balance),
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: context.settingsItemTitleColor,
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
                         ),
@@ -406,7 +481,10 @@ class _ReportsScreenState extends State<ReportsScreen>
           ),
 
           const SizedBox(height: 16),
-          Divider(color: Colors.white.withAlpha(60), thickness: 1),
+          Divider(
+            color: context.sectionHeaderColor.withOpacity(0.12),
+            thickness: 1,
+          ),
           const SizedBox(height: 16),
 
           // Savings Rate with Badge and Advice
@@ -415,10 +493,14 @@ class _ReportsScreenState extends State<ReportsScreen>
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(40),
+                  color: context.colorScheme.onSurface.withOpacity(0.06),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.savings, color: Colors.white, size: 32),
+                child: Icon(
+                  Icons.savings,
+                  color: context.settingsItemTitleColor,
+                  size: 32,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -428,7 +510,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     Text(
                       'Tỷ lệ tiết kiệm',
                       style: TextStyle(
-                        color: Colors.white.withAlpha(200),
+                        color: context.settingsItemSubtitleColor,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -438,35 +520,46 @@ class _ReportsScreenState extends State<ReportsScreen>
                       children: [
                         Text(
                           '${savingsRate.toStringAsFixed(1)}%',
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: context.settingsItemTitleColor,
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(width: 12),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
                           decoration: BoxDecoration(
                             color: savingsRate >= 20
-                                ? Colors.green.withAlpha(200)
+                                ? context.incomeColor.withOpacity(0.85)
                                 : savingsRate >= 10
-                                    ? Colors.orange.withAlpha(200)
-                                    : Colors.red.withAlpha(200),
+                                ? Colors.orange.withOpacity(0.85)
+                                : context.expenseColor.withOpacity(0.85),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                savingsRate >= 20 ? '🎉' : savingsRate >= 10 ? '👍' : '⚠️',
+                                savingsRate >= 20
+                                    ? '🎉'
+                                    : savingsRate >= 10
+                                    ? '👍'
+                                    : '⚠️',
                                 style: const TextStyle(fontSize: 12),
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                savingsRate >= 20 ? 'Xuất sắc!' : savingsRate >= 10 ? 'Tốt' : 'Cần cải thiện',
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                savingsRate >= 20
+                                    ? 'Xuất sắc!'
+                                    : savingsRate >= 10
+                                    ? 'Tốt'
+                                    : 'Cần cải thiện',
+                                style: TextStyle(
+                                  color: context.colorScheme.onPrimary,
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -481,10 +574,10 @@ class _ReportsScreenState extends State<ReportsScreen>
                       savingsRate >= 20
                           ? 'Bạn đang tiết kiệm rất tốt!'
                           : savingsRate >= 10
-                              ? 'Cố gắng tiết kiệm thêm một chút'
-                              : 'Hãy cân nhắc giảm chi tiêu không cần thiết',
+                          ? 'Cố gắng tiết kiệm thêm một chút'
+                          : 'Hãy cân nhắc giảm chi tiêu không cần thiết',
                       style: TextStyle(
-                        color: Colors.white.withAlpha(180),
+                        color: context.colorScheme.onPrimary.withAlpha(180),
                         fontSize: 11,
                       ),
                     ),
@@ -503,15 +596,22 @@ class _ReportsScreenState extends State<ReportsScreen>
       return Container(
         padding: const EdgeInsets.all(32),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardBackground,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Center(
           child: Column(
             children: [
-              Icon(Icons.trending_up, size: 48, color: Colors.grey[300]),
+              Icon(
+                Icons.trending_up,
+                size: 48,
+                color: context.settingsItemSubtitleColor.withOpacity(0.6),
+              ),
               const SizedBox(height: 16),
-              Text('Chưa có dữ liệu biến động số dư', style: TextStyle(color: Colors.grey[600])),
+              Text(
+                'Chưa có dữ liệu biến động số dư',
+                style: TextStyle(color: context.settingsItemSubtitleColor),
+              ),
             ],
           ),
         ),
@@ -530,7 +630,10 @@ class _ReportsScreenState extends State<ReportsScreen>
         : balanceChanges.where((c) => c >= 0).reduce((a, b) => a > b ? a : b);
     final maxNegative = balanceChanges.where((c) => c < 0).isEmpty
         ? 0.0
-        : balanceChanges.where((c) => c < 0).reduce((a, b) => a < b ? a : b).abs();
+        : balanceChanges
+              .where((c) => c < 0)
+              .reduce((a, b) => a < b ? a : b)
+              .abs();
 
     final absMaxChange = maxPositive > maxNegative ? maxPositive : maxNegative;
     final padding = absMaxChange * 0.2;
@@ -538,7 +641,7 @@ class _ReportsScreenState extends State<ReportsScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -553,7 +656,11 @@ class _ReportsScreenState extends State<ReportsScreen>
         children: [
           Row(
             children: [
-              const Icon(Icons.trending_up, color: AppColors.primary500, size: 20),
+              Icon(
+                Icons.trending_up,
+                color: context.colorScheme.primary,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -563,23 +670,35 @@ class _ReportsScreenState extends State<ReportsScreen>
                     const SizedBox(height: 4),
                     Text(
                       'So với đầu kỳ: ${CurrencyFormatter.formatCompact(startingBalance)}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.settingsItemSubtitleColor,
+                      ),
                     ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: balanceChanges.last >= 0 ? Colors.green.withAlpha(26) : Colors.red.withAlpha(26),
+                  color: balanceChanges.last >= 0
+                      ? context.incomeColor.withOpacity(0.12)
+                      : context.expenseColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
                   children: [
                     Icon(
-                      balanceChanges.last >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
+                      balanceChanges.last >= 0
+                          ? Icons.arrow_upward
+                          : Icons.arrow_downward,
                       size: 14,
-                      color: balanceChanges.last >= 0 ? Colors.green : Colors.red,
+                      color: balanceChanges.last >= 0
+                          ? context.incomeColor
+                          : context.expenseColor,
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -587,7 +706,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: balanceChanges.last >= 0 ? Colors.green : Colors.red,
+                        color: balanceChanges.last >= 0
+                            ? context.incomeColor
+                            : context.expenseColor,
                       ),
                     ),
                   ],
@@ -604,16 +725,22 @@ class _ReportsScreenState extends State<ReportsScreen>
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  horizontalInterval: absMaxChange > 0 ? (absMaxChange * 2 + padding * 2) / 4 : 1000000,
+                  horizontalInterval: absMaxChange > 0
+                      ? (absMaxChange * 2 + padding * 2) / 4
+                      : 1000000,
                   getDrawingHorizontalLine: (value) {
                     if (value == 0) {
                       return FlLine(
-                        color: Colors.grey.withAlpha(128),
+                        color: context.settingsItemSubtitleColor.withOpacity(
+                          0.9,
+                        ),
                         strokeWidth: 2,
                       );
                     }
                     return FlLine(
-                      color: Colors.grey.withAlpha(25),
+                      color: context.settingsItemSubtitleColor.withOpacity(
+                        0.18,
+                      ),
                       strokeWidth: 1,
                       dashArray: [5, 5],
                     );
@@ -633,8 +760,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                       interval: trend.trendData.length <= 5
                           ? 1.0
                           : trend.trendData.length <= 10
-                              ? 2.0
-                              : 3.0,
+                          ? 2.0
+                          : 3.0,
                       getTitlesWidget: (value, meta) {
                         final index = value.toInt();
                         if (index >= 0 && index < trend.trendData.length) {
@@ -645,9 +772,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                               padding: const EdgeInsets.only(top: 8),
                               child: Text(
                                 '${parts[2]}/${parts[1]}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.black87,
+                                  color: context.settingsItemTitleColor,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -664,7 +791,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                     sideTitles: SideTitles(
                       showTitles: true,
                       reservedSize: 60,
-                      interval: absMaxChange > 0 ? (absMaxChange * 2 + padding * 2) / 4 : 1000000,
+                      interval: absMaxChange > 0
+                          ? (absMaxChange * 2 + padding * 2) / 4
+                          : 1000000,
                       getTitlesWidget: (value, meta) {
                         // Skip label at zero to avoid clutter
                         if (value.abs() < 0.01) {
@@ -679,7 +808,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                                 : CurrencyFormatter.formatCompact(value),
                             style: TextStyle(
                               fontSize: 13,
-                              color: value >= 0 ? Colors.green[700] : Colors.red[700],
+                              color: value >= 0
+                                  ? context.incomeColor
+                                  : context.expenseColor,
                               fontWeight: FontWeight.bold,
                             ),
                             textAlign: TextAlign.right,
@@ -700,8 +831,14 @@ class _ReportsScreenState extends State<ReportsScreen>
                 borderData: FlBorderData(
                   show: true,
                   border: Border(
-                    bottom: BorderSide(color: Colors.grey.withAlpha(51), width: 1),
-                    left: BorderSide(color: Colors.grey.withAlpha(51), width: 1),
+                    bottom: BorderSide(
+                      color: context.settingsItemSubtitleColor.withAlpha(51),
+                      width: 1,
+                    ),
+                    left: BorderSide(
+                      color: context.settingsItemSubtitleColor.withAlpha(51),
+                      width: 1,
+                    ),
                   ),
                 ),
 
@@ -711,7 +848,10 @@ class _ReportsScreenState extends State<ReportsScreen>
                   touchTooltipData: LineTouchTooltipData(
                     getTooltipColor: (touchedSpot) => Colors.black87,
                     tooltipRoundedRadius: 8,
-                    tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    tooltipPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     fitInsideHorizontally: true,
                     fitInsideVertically: true,
                     tooltipMargin: 8,
@@ -724,12 +864,14 @@ class _ReportsScreenState extends State<ReportsScreen>
 
                         // Format date
                         final parts = date.split('-');
-                        final formattedDate = parts.length >= 3 ? '${parts[2]}/${parts[1]}' : date;
+                        final formattedDate = parts.length >= 3
+                            ? '${parts[2]}/${parts[1]}'
+                            : date;
 
                         return LineTooltipItem(
                           'Biến động: ${change >= 0 ? "+" : ""}${CurrencyFormatter.formatCompact(change)}\nSố dư: ${CurrencyFormatter.formatCompact(currentBalance)}\n$formattedDate',
-                          const TextStyle(
-                            color: Colors.white,
+                          TextStyle(
+                            color: context.colorScheme.onPrimary,
                             fontWeight: FontWeight.w600,
                             fontSize: 11,
                             height: 1.4,
@@ -743,7 +885,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                     return spotIndexes.map((index) {
                       return TouchedSpotIndicatorData(
                         FlLine(
-                          color: Colors.grey.withAlpha(128),
+                          color: context.settingsItemSubtitleColor.withOpacity(
+                            0.9,
+                          ),
                           strokeWidth: 2,
                           dashArray: [5, 5],
                         ),
@@ -752,9 +896,10 @@ class _ReportsScreenState extends State<ReportsScreen>
                           getDotPainter: (spot, percent, barData, index) {
                             return FlDotCirclePainter(
                               radius: 6,
-                              color: barData.color ?? Colors.blue,
+                              color:
+                                  barData.color ?? context.colorScheme.primary,
                               strokeWidth: 2,
-                              strokeColor: Colors.white,
+                              strokeColor: context.cardBackground,
                             );
                           },
                         ),
@@ -773,7 +918,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                         .toList(),
                     isCurved: true,
                     curveSmoothness: 0.35,
-                    color: balanceChanges.last >= 0 ? Colors.green : Colors.red,
+                    color: balanceChanges.last >= 0
+                        ? context.incomeColor
+                        : context.expenseColor,
                     barWidth: 3,
                     dotData: FlDotData(
                       show: true,
@@ -781,16 +928,18 @@ class _ReportsScreenState extends State<ReportsScreen>
                         final change = balanceChanges[index];
                         return FlDotCirclePainter(
                           radius: 5,
-                          color: change >= 0 ? Colors.green : Colors.red,
+                          color: change >= 0
+                              ? context.incomeColor
+                              : context.expenseColor,
                           strokeWidth: 2,
-                          strokeColor: Colors.white,
+                          strokeColor: context.cardBackground,
                         );
                       },
                     ),
                     belowBarData: BarAreaData(
                       show: true,
                       color: balanceChanges.last >= 0
-                          ? Colors.green.withAlpha(20)
+                          ? context.incomeColor.withOpacity(0.08)
                           : Colors.transparent,
                       cutOffY: 0,
                       applyCutOffY: true,
@@ -799,7 +948,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                       show: true,
                       color: balanceChanges.last >= 0
                           ? Colors.transparent
-                          : Colors.red.withAlpha(20),
+                          : context.expenseColor.withOpacity(0.08),
                       cutOffY: 0,
                       applyCutOffY: true,
                     ),
@@ -812,19 +961,41 @@ class _ReportsScreenState extends State<ReportsScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.grey[50],
+              color: context.infoRowBackground,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildBalanceChangeStat('Số dư đầu kỳ', startingBalance, Colors.blue),
-                Container(width: 1, height: 40, color: Colors.grey[300]),
-                _buildBalanceChangeStat('Số dư hiện tại', trend.trendData.last.balance,
-                  balanceChanges.last >= 0 ? Colors.green : Colors.red),
-                Container(width: 1, height: 40, color: Colors.grey[300]),
-                _buildBalanceChangeStat('Thay đổi', balanceChanges.last,
-                  balanceChanges.last >= 0 ? Colors.green : Colors.red),
+                _buildBalanceChangeStat(
+                  'Số dư đầu kỳ',
+                  startingBalance,
+                  context.colorScheme.primary,
+                ),
+                Container(
+                  width: 1,
+                  height: 40,
+                  color: context.cardBorder.withOpacity(0.6),
+                ),
+                _buildBalanceChangeStat(
+                  'Số dư hiện tại',
+                  trend.trendData.last.balance,
+                  balanceChanges.last >= 0
+                      ? context.incomeColor
+                      : context.expenseColor,
+                ),
+                Container(
+                  width: 1,
+                  height: 40,
+                  color: context.cardBorder.withOpacity(0.6),
+                ),
+                _buildBalanceChangeStat(
+                  'Thay đổi',
+                  balanceChanges.last,
+                  balanceChanges.last >= 0
+                      ? context.incomeColor
+                      : context.expenseColor,
+                ),
               ],
             ),
           ),
@@ -840,7 +1011,7 @@ class _ReportsScreenState extends State<ReportsScreen>
           label,
           style: TextStyle(
             fontSize: 11,
-            color: Colors.grey[600],
+            color: context.settingsItemSubtitleColor,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -862,15 +1033,22 @@ class _ReportsScreenState extends State<ReportsScreen>
       return Container(
         padding: const EdgeInsets.all(32),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardBackground,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Center(
           child: Column(
             children: [
-              Icon(Icons.insights, size: 48, color: Colors.grey[300]),
+              Icon(
+                Icons.insights,
+                size: 48,
+                color: context.settingsItemSubtitleColor.withOpacity(0.6),
+              ),
               const SizedBox(height: 16),
-              Text('Chưa có dữ liệu xu hướng', style: TextStyle(color: Colors.grey[600])),
+              Text(
+                'Chưa có dữ liệu xu hướng',
+                style: TextStyle(color: context.settingsItemSubtitleColor),
+              ),
             ],
           ),
         ),
@@ -889,7 +1067,7 @@ class _ReportsScreenState extends State<ReportsScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -915,14 +1093,18 @@ class _ReportsScreenState extends State<ReportsScreen>
                   horizontalInterval: (maxValue - minValue) / 4,
                   getDrawingHorizontalLine: (value) {
                     return FlLine(
-                      color: Colors.grey.withAlpha(25),
+                      color: context.settingsItemSubtitleColor.withOpacity(
+                        0.12,
+                      ),
                       strokeWidth: 1,
                       dashArray: [5, 5],
                     );
                   },
                   getDrawingVerticalLine: (value) {
                     return FlLine(
-                      color: Colors.grey.withAlpha(25),
+                      color: context.settingsItemSubtitleColor.withOpacity(
+                        0.12,
+                      ),
                       strokeWidth: 1,
                       dashArray: [5, 5],
                     );
@@ -951,15 +1133,18 @@ class _ReportsScreenState extends State<ReportsScreen>
                               padding: const EdgeInsets.only(top: 8),
                               child: Text(
                                 '${parts[2]}/${parts[1]}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 10,
-                                  color: Colors.black54,
+                                  color: context.settingsItemSubtitleColor,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
                             );
                           }
-                          return Text(date.split('-').last, style: const TextStyle(fontSize: 10));
+                          return Text(
+                            date.split('-').last,
+                            style: const TextStyle(fontSize: 10),
+                          );
                         }
                         return const Text('');
                       },
@@ -977,9 +1162,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                           padding: const EdgeInsets.only(right: 8),
                           child: Text(
                             CurrencyFormatter.formatCompact(value),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10,
-                              color: Colors.black54,
+                              color: context.settingsItemSubtitleColor,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -999,8 +1184,14 @@ class _ReportsScreenState extends State<ReportsScreen>
                 borderData: FlBorderData(
                   show: true,
                   border: Border(
-                    bottom: BorderSide(color: Colors.grey.withAlpha(51), width: 1),
-                    left: BorderSide(color: Colors.grey.withAlpha(51), width: 1),
+                    bottom: BorderSide(
+                      color: context.settingsItemSubtitleColor.withOpacity(0.2),
+                      width: 1,
+                    ),
+                    left: BorderSide(
+                      color: context.settingsItemSubtitleColor.withOpacity(0.2),
+                      width: 1,
+                    ),
                   ),
                 ),
 
@@ -1017,7 +1208,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                         final date = trend.trendData[index].date;
                         final isIncome = spot.barIndex == 0;
                         final label = isIncome ? 'Thu' : 'Chi';
-                        final color = isIncome ? Colors.green : Colors.red;
+                        final color = isIncome
+                            ? context.incomeColor
+                            : context.expenseColor;
 
                         return LineTooltipItem(
                           '$label: ${CurrencyFormatter.format(spot.y)}\n$date',
@@ -1035,7 +1228,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                     return spotIndexes.map((index) {
                       return TouchedSpotIndicatorData(
                         FlLine(
-                          color: Colors.grey.withAlpha(128),
+                          color: context.settingsItemSubtitleColor.withOpacity(
+                            0.9,
+                          ),
                           strokeWidth: 2,
                           dashArray: [5, 5],
                         ),
@@ -1044,9 +1239,10 @@ class _ReportsScreenState extends State<ReportsScreen>
                           getDotPainter: (spot, percent, barData, index) {
                             return FlDotCirclePainter(
                               radius: 6,
-                              color: barData.color ?? Colors.blue,
+                              color:
+                                  barData.color ?? context.colorScheme.primary,
                               strokeWidth: 2,
-                              strokeColor: Colors.white,
+                              strokeColor: context.cardBackground,
                             );
                           },
                         ),
@@ -1065,22 +1261,22 @@ class _ReportsScreenState extends State<ReportsScreen>
                         .toList(),
                     isCurved: true,
                     curveSmoothness: 0.3,
-                    color: Colors.green,
+                    color: context.incomeColor,
                     barWidth: 3,
                     dotData: FlDotData(
                       show: true,
                       getDotPainter: (spot, percent, barData, index) {
                         return FlDotCirclePainter(
                           radius: 4,
-                          color: Colors.green,
+                          color: context.incomeColor,
                           strokeWidth: 2,
-                          strokeColor: Colors.white,
+                          strokeColor: context.cardBackground,
                         );
                       },
                     ),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: Colors.green.withAlpha(13),
+                      color: context.incomeColor.withOpacity(0.06),
                     ),
                   ),
 
@@ -1093,22 +1289,22 @@ class _ReportsScreenState extends State<ReportsScreen>
                         .toList(),
                     isCurved: true,
                     curveSmoothness: 0.3,
-                    color: Colors.red,
+                    color: context.expenseColor,
                     barWidth: 3,
                     dotData: FlDotData(
                       show: true,
                       getDotPainter: (spot, percent, barData, index) {
                         return FlDotCirclePainter(
                           radius: 4,
-                          color: Colors.red,
+                          color: context.expenseColor,
                           strokeWidth: 2,
-                          strokeColor: Colors.white,
+                          strokeColor: context.cardBackground,
                         );
                       },
                     ),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: Colors.red.withAlpha(13),
+                      color: context.expenseColor.withOpacity(0.06),
                     ),
                   ),
                 ],
@@ -1119,9 +1315,9 @@ class _ReportsScreenState extends State<ReportsScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildLegend('Thu nhập', Colors.green),
+              _buildLegend('Thu nhập', context.incomeColor),
               const SizedBox(width: 24),
-              _buildLegend('Chi tiêu', Colors.red),
+              _buildLegend('Chi tiêu', context.expenseColor),
             ],
           ),
         ],
@@ -1211,7 +1407,21 @@ class _ReportsScreenState extends State<ReportsScreen>
     String formatPeriodLabel(String period) {
       final parts = period.split('-');
       if (parts.length == 2) {
-        final months = ['', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'];
+        final months = [
+          '',
+          'T1',
+          'T2',
+          'T3',
+          'T4',
+          'T5',
+          'T6',
+          'T7',
+          'T8',
+          'T9',
+          'T10',
+          'T11',
+          'T12',
+        ];
         final monthIndex = int.tryParse(parts[1]) ?? 0;
         return monthIndex > 0 && monthIndex <= 12 ? months[monthIndex] : period;
       }
@@ -1221,7 +1431,7 @@ class _ReportsScreenState extends State<ReportsScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -1236,7 +1446,11 @@ class _ReportsScreenState extends State<ReportsScreen>
         children: [
           Row(
             children: [
-              const Icon(Icons.compare_arrows, color: AppColors.primary500, size: 20),
+              Icon(
+                Icons.compare_arrows,
+                color: context.colorScheme.primary,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Text('So sánh theo thời gian', style: AppTypography.h3),
             ],
@@ -1247,23 +1461,36 @@ class _ReportsScreenState extends State<ReportsScreen>
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: period.isCurrent ? AppColors.primary50 : AppColors.backgroundSecondary,
+                color: period.isCurrent
+                    ? context.headerGradientEnd.withOpacity(0.08)
+                    : context.infoRowBackground,
                 borderRadius: BorderRadius.circular(8),
-                border: period.isCurrent ? Border.all(color: AppColors.primary500, width: 2) : null,
+                border: period.isCurrent
+                    ? Border.all(color: context.headerGradientEnd, width: 2)
+                    : null,
               ),
               child: Row(
                 children: [
                   Container(
                     width: 50,
-                    padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 6,
+                      horizontal: 8,
+                    ),
                     decoration: BoxDecoration(
-                      color: period.isCurrent ? AppColors.primary500 : Colors.grey[300],
+                      color: period.isCurrent
+                          ? context.headerGradientStart
+                          : (context.isDarkTheme
+                                ? context.cardBackground.withOpacity(0.6)
+                                : context.cardBackground.withOpacity(0.95)),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       formatPeriodLabel(period.period),
                       style: TextStyle(
-                        color: period.isCurrent ? Colors.white : Colors.black87,
+                        color: period.isCurrent
+                            ? context.colorScheme.onPrimary
+                            : context.settingsItemTitleColor,
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1280,18 +1507,42 @@ class _ReportsScreenState extends State<ReportsScreen>
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.arrow_upward, size: 12, color: Colors.green),
+                                const Icon(
+                                  Icons.arrow_upward,
+                                  size: 12,
+                                  color: Colors.green,
+                                ),
                                 const SizedBox(width: 4),
-                                Text(CurrencyFormatter.formatCompact(period.income),
-                                  style: const TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.bold)),
+                                Text(
+                                  CurrencyFormatter.formatCompact(
+                                    period.income,
+                                  ),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ],
                             ),
                             Row(
                               children: [
-                                const Icon(Icons.arrow_downward, size: 12, color: Colors.red),
+                                const Icon(
+                                  Icons.arrow_downward,
+                                  size: 12,
+                                  color: Colors.red,
+                                ),
                                 const SizedBox(width: 4),
-                                Text(CurrencyFormatter.formatCompact(period.expense),
-                                  style: const TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.bold)),
+                                Text(
+                                  CurrencyFormatter.formatCompact(
+                                    period.expense,
+                                  ),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ],
                             ),
                           ],
@@ -1306,7 +1557,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
-                                color: period.savingsRate >= 0 ? Colors.green : Colors.red,
+                                color: period.savingsRate >= 0
+                                    ? Colors.green
+                                    : Colors.red,
                               ),
                             ),
                           ],
@@ -1338,7 +1591,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardBackground,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -1346,9 +1599,16 @@ class _ReportsScreenState extends State<ReportsScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Tổng ${category.type == "expense" ? "chi" : "thu"}:', style: AppTypography.bodyMedium),
-                  Text(CurrencyFormatter.formatVND(category.summary.grandTotal),
-                    style: AppTypography.h3.copyWith(fontWeight: FontWeight.bold)),
+                  Text(
+                    'Tổng ${category.type == "expense" ? "chi" : "thu"}:',
+                    style: AppTypography.bodyMedium,
+                  ),
+                  Text(
+                    CurrencyFormatter.formatVND(category.summary.grandTotal),
+                    style: AppTypography.h3.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
@@ -1400,7 +1660,7 @@ class _ReportsScreenState extends State<ReportsScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -1425,7 +1685,11 @@ class _ReportsScreenState extends State<ReportsScreen>
                     title: '${cat.percentage.toStringAsFixed(0)}%',
                     color: colors[index % colors.length],
                     radius: 80,
-                    titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                    titleStyle: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: context.colorScheme.onPrimary,
+                    ),
                   );
                 }).toList(),
                 centerSpaceRadius: 0,
@@ -1483,7 +1747,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -1492,19 +1756,35 @@ class _ReportsScreenState extends State<ReportsScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(categoryNames[cat.category] ?? cat.category, style: AppTypography.bodyMedium),
+                Text(
+                  categoryNames[cat.category] ?? cat.category,
+                  style: AppTypography.bodyMedium,
+                ),
                 const SizedBox(height: 4),
-                Text('${cat.count} giao dịch • TB: ${CurrencyFormatter.formatCompact(cat.avgAmount)}',
-                  style: AppTypography.caption.copyWith(color: AppColors.textSecondary)),
+                Text(
+                  '${cat.count} giao dịch • TB: ${CurrencyFormatter.formatCompact(cat.avgAmount)}',
+                  style: AppTypography.caption.copyWith(
+                    color: context.settingsItemSubtitleColor,
+                  ),
+                ),
               ],
             ),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(CurrencyFormatter.formatVND(cat.total), style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold)),
-              Text('${cat.percentage.toStringAsFixed(1)}%',
-                style: AppTypography.caption.copyWith(color: AppColors.primary500)),
+              Text(
+                CurrencyFormatter.formatVND(cat.total),
+                style: AppTypography.bodyMedium.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                '${cat.percentage.toStringAsFixed(1)}%',
+                style: AppTypography.caption.copyWith(
+                  color: context.colorScheme.primary,
+                ),
+              ),
             ],
           ),
         ],
@@ -1522,9 +1802,16 @@ class _ReportsScreenState extends State<ReportsScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.trending_up, size: 64, color: Colors.grey[300]),
+            Icon(
+              Icons.trending_up,
+              size: 64,
+              color: context.settingsItemSubtitleColor.withOpacity(0.6),
+            ),
             const SizedBox(height: 16),
-            Text('Chưa có dữ liệu xu hướng', style: TextStyle(color: Colors.grey[600])),
+            Text(
+              'Chưa có dữ liệu xu hướng',
+              style: TextStyle(color: context.settingsItemSubtitleColor),
+            ),
           ],
         ),
       );
@@ -1552,7 +1839,7 @@ class _ReportsScreenState extends State<ReportsScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -1567,7 +1854,11 @@ class _ReportsScreenState extends State<ReportsScreen>
         children: [
           Row(
             children: [
-              const Icon(Icons.psychology, color: AppColors.primary500, size: 20),
+              Icon(
+                Icons.psychology,
+                color: context.colorScheme.primary,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Text('Thói quen chi tiêu', style: AppTypography.h3),
             ],
@@ -1578,16 +1869,26 @@ class _ReportsScreenState extends State<ReportsScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.primary50,
+              // Use header gradient end as a subtle background to match header theme
+              color: context.headerGradientEnd.withOpacity(0.08),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
               children: [
-                _buildInsightRow('📅 Ngày chi nhiều nhất', patterns.insights.mostExpensiveDay),
+                _buildInsightRow(
+                  '📅 Ngày chi nhiều nhất',
+                  patterns.insights.mostExpensiveDay,
+                ),
                 const Divider(height: 16),
-                _buildInsightRow('🔄 Ngày giao dịch nhiều nhất', patterns.insights.mostFrequentDay),
+                _buildInsightRow(
+                  '🔄 Ngày giao dịch nhiều nhất',
+                  patterns.insights.mostFrequentDay,
+                ),
                 const Divider(height: 16),
-                _buildInsightRow('💳 Phương thức thanh toán ưa thích', patterns.insights.preferredPaymentMethod),
+                _buildInsightRow(
+                  '💳 Phương thức thanh toán ưa thích',
+                  patterns.insights.preferredPaymentMethod,
+                ),
               ],
             ),
           ),
@@ -1595,10 +1896,17 @@ class _ReportsScreenState extends State<ReportsScreen>
           const SizedBox(height: 20),
 
           // Day of week chart
-          Text('Chi tiêu theo ngày trong tuần', style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            'Chi tiêu theo ngày trong tuần',
+            style: AppTypography.bodyMedium.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 12),
           ...patterns.patterns.dayOfWeek.map((day) {
-            final maxTotal = patterns.patterns.dayOfWeek.map((d) => d.total).reduce((a, b) => a > b ? a : b);
+            final maxTotal = patterns.patterns.dayOfWeek
+                .map((d) => d.total)
+                .reduce((a, b) => a > b ? a : b);
             final percentage = day.total / maxTotal;
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -1606,7 +1914,10 @@ class _ReportsScreenState extends State<ReportsScreen>
                 children: [
                   SizedBox(
                     width: 80,
-                    child: Text(day.dayName, style: const TextStyle(fontSize: 12)),
+                    child: Text(
+                      day.dayName,
+                      style: const TextStyle(fontSize: 12),
+                    ),
                   ),
                   Expanded(
                     child: Stack(
@@ -1614,7 +1925,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                         Container(
                           height: 24,
                           decoration: BoxDecoration(
-                            color: AppColors.backgroundSecondary,
+                            color: context.infoRowBackground,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -1623,7 +1934,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                           child: Container(
                             height: 24,
                             decoration: BoxDecoration(
-                              color: AppColors.primary500,
+                              color: context.colorScheme.primary,
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),
@@ -1656,7 +1967,12 @@ class _ReportsScreenState extends State<ReportsScreen>
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: AppTypography.bodySmall),
-          Text(value, style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            value,
+            style: AppTypography.bodySmall.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
@@ -1667,8 +1983,21 @@ class _ReportsScreenState extends State<ReportsScreen>
     String formatMonthLabel(String month) {
       final parts = month.split('-');
       if (parts.length == 2) {
-        final months = ['', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
-                        'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+        final months = [
+          '',
+          'Tháng 1',
+          'Tháng 2',
+          'Tháng 3',
+          'Tháng 4',
+          'Tháng 5',
+          'Tháng 6',
+          'Tháng 7',
+          'Tháng 8',
+          'Tháng 9',
+          'Tháng 10',
+          'Tháng 11',
+          'Tháng 12',
+        ];
         final monthIndex = int.tryParse(parts[1]) ?? 0;
         if (monthIndex > 0 && monthIndex <= 12) {
           return '${months[monthIndex]} ${parts[0]}';
@@ -1680,7 +2009,7 @@ class _ReportsScreenState extends State<ReportsScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -1689,7 +2018,10 @@ class _ReportsScreenState extends State<ReportsScreen>
             offset: const Offset(0, 2),
           ),
         ],
-        border: Border.all(color: AppColors.primary500.withOpacity(0.2), width: 2),
+        border: Border.all(
+          color: context.headerGradientEnd.withOpacity(0.2),
+          width: 2,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1699,10 +2031,14 @@ class _ReportsScreenState extends State<ReportsScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.primary50,
+                  color: context.headerGradientEnd.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.auto_graph, color: AppColors.primary500, size: 24),
+                child: Icon(
+                  Icons.auto_graph,
+                  color: context.headerGradientStart,
+                  size: 24,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1712,9 +2048,19 @@ class _ReportsScreenState extends State<ReportsScreen>
                     Text('Dự báo tài chính', style: AppTypography.h3),
                     const SizedBox(height: 4),
                     Text(
-                      'Thu: ${forecast.trends.incomeTrend == "increasing" ? "📈 Tăng" : forecast.trends.incomeTrend == "decreasing" ? "📉 Giảm" : "➡️ Ổn định"} • '
-                      'Chi: ${forecast.trends.expenseTrend == "increasing" ? "📈 Tăng" : forecast.trends.expenseTrend == "decreasing" ? "📉 Giảm" : "➡️ Ổn định"}',
-                      style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+                      'Thu: ${forecast.trends.incomeTrend == "increasing"
+                          ? "📈 Tăng"
+                          : forecast.trends.incomeTrend == "decreasing"
+                          ? "📉 Giảm"
+                          : "➡️ Ổn định"} • '
+                      'Chi: ${forecast.trends.expenseTrend == "increasing"
+                          ? "📈 Tăng"
+                          : forecast.trends.expenseTrend == "decreasing"
+                          ? "📉 Giảm"
+                          : "➡️ Ổn định"}',
+                      style: AppTypography.caption.copyWith(
+                        color: context.settingsItemSubtitleColor,
+                      ),
                     ),
                   ],
                 ),
@@ -1729,9 +2075,9 @@ class _ReportsScreenState extends State<ReportsScreen>
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.backgroundSecondary,
+                color: context.infoRowBackground,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey[200]!),
+                border: Border.all(color: context.cardBorder),
               ),
               child: Row(
                 children: [
@@ -1739,15 +2085,27 @@ class _ReportsScreenState extends State<ReportsScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(formatMonthLabel(f.month),
-                          style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold)),
+                        Text(
+                          formatMonthLabel(f.month),
+                          style: AppTypography.bodyMedium.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 6),
                         Row(
                           children: [
-                            Icon(Icons.offline_bolt, size: 14, color: Colors.grey[600]),
+                            Icon(
+                              Icons.offline_bolt,
+                              size: 14,
+                              color: Colors.grey[600],
+                            ),
                             const SizedBox(width: 4),
-                            Text('Độ tin cậy: ${f.confidence.toStringAsFixed(0)}%',
-                              style: AppTypography.caption.copyWith(color: AppColors.textSecondary)),
+                            Text(
+                              'Độ tin cậy: ${f.confidence.toStringAsFixed(0)}%',
+                              style: AppTypography.caption.copyWith(
+                                color: context.settingsItemSubtitleColor,
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -1761,7 +2119,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: f.forecastBalance >= 0 ? Colors.green : Colors.red,
+                          color: f.forecastBalance >= 0
+                              ? Colors.green
+                              : Colors.red,
                         ),
                       ),
                       const SizedBox(height: 4),

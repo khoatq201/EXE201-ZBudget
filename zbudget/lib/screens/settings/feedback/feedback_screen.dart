@@ -59,10 +59,10 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
+      backgroundColor: context.colorScheme.background,
       appBar: AppBar(
-        backgroundColor: AppColors.primary500,
-        foregroundColor: AppColors.textInverse,
+        backgroundColor: context.headerGradientStart,
+        foregroundColor: context.colorScheme.onPrimary,
         elevation: 0,
         title: const Text('Gửi phản hồi'),
       ),
@@ -76,18 +76,24 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               padding: const EdgeInsets.all(AppSpacing.lg),
               margin: const EdgeInsets.only(bottom: AppSpacing.sectionSpacing),
               decoration: BoxDecoration(
-                color: AppColors.primary50,
+                color: context.colorScheme.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primary200),
+                border: Border.all(
+                  color: context.colorScheme.primary.withOpacity(0.2),
+                ),
               ),
               child: Column(
                 children: [
-                  Icon(Icons.feedback, size: 48, color: AppColors.primary500),
+                  Icon(
+                    Icons.feedback,
+                    size: 48,
+                    color: context.colorScheme.primary,
+                  ),
                   const SizedBox(height: AppSpacing.md),
                   Text(
                     'Ý kiến của bạn rất quan trọng!',
                     style: AppTypography.h6.copyWith(
-                      color: AppColors.textPrimary,
+                      color: context.settingsItemTitleColor,
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
@@ -96,7 +102,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                   Text(
                     'Hãy chia sẻ trải nghiệm của bạn để chúng tôi cải thiện ứng dụng tốt hơn.',
                     style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
+                      color: context.settingsItemSubtitleColor,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -170,7 +176,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         Text(
           'Loại phản hồi',
           style: AppTypography.h6.copyWith(
-            color: AppColors.textPrimary,
+            color: context.settingsItemTitleColor,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -199,11 +205,13 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? type['color'].withValues(alpha: 0.1)
-                      : AppColors.backgroundSecondary,
+                      ? (type['color'] as Color).withOpacity(0.1)
+                      : context.cardBackground,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isSelected ? type['color'] : AppColors.dark200,
+                    color: isSelected
+                        ? (type['color'] as Color)
+                        : context.cardBorder,
                     width: isSelected ? 2 : 1,
                   ),
                 ),
@@ -213,8 +221,8 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     Icon(
                       type['icon'],
                       color: isSelected
-                          ? type['color']
-                          : AppColors.textSecondary,
+                          ? (type['color'] as Color)
+                          : context.settingsItemSubtitleColor,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
@@ -223,8 +231,8 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                         type['label'],
                         style: AppTypography.bodySmall.copyWith(
                           color: isSelected
-                              ? type['color']
-                              : AppColors.textSecondary,
+                              ? (type['color'] as Color)
+                              : context.settingsItemSubtitleColor,
                           fontWeight: isSelected
                               ? FontWeight.w600
                               : FontWeight.normal,
@@ -249,7 +257,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         Text(
           'Đánh giá trải nghiệm',
           style: AppTypography.h6.copyWith(
-            color: AppColors.textPrimary,
+            color: context.settingsItemTitleColor,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -257,7 +265,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         Container(
           padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
-            color: AppColors.backgroundSecondary,
+            color: context.cardBackground,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -265,7 +273,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               Text(
                 'Bạn cảm thấy thế nào về ứng dụng?',
                 style: AppTypography.body.copyWith(
-                  color: AppColors.textPrimary,
+                  color: context.settingsItemTitleColor,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -283,8 +291,8 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     child: Icon(
                       starIndex <= _rating ? Icons.star : Icons.star_border,
                       color: starIndex <= _rating
-                          ? AppColors.warning
-                          : AppColors.textSecondary,
+                          ? context.colorScheme.secondary
+                          : context.settingsItemSubtitleColor,
                       size: 36,
                     ),
                   );
@@ -295,7 +303,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 Text(
                   _getRatingText(_rating),
                   style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.settingsItemSubtitleColor,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -314,7 +322,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         Text(
           'Thông tin liên hệ',
           style: AppTypography.h6.copyWith(
-            color: AppColors.textPrimary,
+            color: context.settingsItemTitleColor,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -327,7 +335,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             prefixIcon: const Icon(Icons.person),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             filled: true,
-            fillColor: AppColors.backgroundSecondary,
+            fillColor: context.inputFieldBackground,
           ),
           validator: (value) {
             if (value == null || value.isEmpty) {
@@ -346,7 +354,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             prefixIcon: const Icon(Icons.email),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             filled: true,
-            fillColor: AppColors.backgroundSecondary,
+            fillColor: context.inputFieldBackground,
           ),
           validator: (value) {
             if (value == null || value.isEmpty) {
@@ -369,7 +377,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         Text(
           'Nội dung phản hồi',
           style: AppTypography.h6.copyWith(
-            color: AppColors.textPrimary,
+            color: context.settingsItemTitleColor,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -381,7 +389,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             hintText: 'Chia sẻ chi tiết về trải nghiệm của bạn...',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             filled: true,
-            fillColor: AppColors.backgroundSecondary,
+            fillColor: context.inputFieldBackground,
             alignLabelWithHint: true,
           ),
           validator: (value) {
@@ -422,9 +430,9 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
     if (_rating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng đánh giá trải nghiệm của bạn'),
-          backgroundColor: AppColors.warning,
+        SnackBar(
+          content: const Text('Vui lòng đánh giá trải nghiệm của bạn'),
+          backgroundColor: context.colorScheme.secondary,
         ),
       );
       return;
@@ -450,12 +458,16 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.check_circle, color: AppColors.success, size: 64),
+                Icon(
+                  Icons.check_circle,
+                  color: context.colorScheme.secondary,
+                  size: 64,
+                ),
                 const SizedBox(height: AppSpacing.lg),
                 Text(
                   'Cảm ơn bạn!',
                   style: AppTypography.h6.copyWith(
-                    color: AppColors.textPrimary,
+                    color: context.settingsItemTitleColor,
                     fontWeight: FontWeight.bold,
                   ),
                   textAlign: TextAlign.center,
@@ -464,7 +476,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 Text(
                   'Phản hồi của bạn đã được gửi thành công. Chúng tôi sẽ xem xét và phản hồi sớm nhất có thể.',
                   style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.settingsItemSubtitleColor,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -479,8 +491,8 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     Navigator.of(context).pop(); // Go back to settings
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    foregroundColor: AppColors.textInverse,
+                    backgroundColor: context.colorScheme.secondary,
+                    foregroundColor: context.colorScheme.onPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),

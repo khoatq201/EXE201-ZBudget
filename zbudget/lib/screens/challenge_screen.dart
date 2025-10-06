@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../services/challenge_service.dart';
 import '../models/challenge.dart';
 import '../constants/colors.dart';
+import '../utils/theme_extensions.dart';
 import '../constants/typography.dart';
 import '../constants/spacing.dart';
 import 'challenge_detail_screen.dart';
@@ -63,7 +64,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
+      backgroundColor: context.scaffoldBackground,
       body: CustomScrollView(
         slivers: [
           // Creative Animated Header
@@ -71,22 +72,21 @@ class _ChallengeScreenState extends State<ChallengeScreen>
             expandedHeight: 280,
             floating: false,
             pinned: true,
-            backgroundColor: AppColors.primary500,
-            foregroundColor: AppColors.textInverse,
+            backgroundColor: Colors.transparent,
+            foregroundColor: context.headerTextColor,
             elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
               background: AnimatedBuilder(
                 animation: _headerAnimation,
-                builder: (context, child) {
+                builder: (ctx, child) {
                   return Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          AppColors.primary500,
-                          AppColors.secondary500,
-                          AppColors.primary600,
+                          ctx.headerGradientStart,
+                          ctx.headerGradientEnd,
                         ],
                       ),
                     ),
@@ -103,9 +103,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                               height: 120,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: AppColors.textInverse.withValues(
-                                  alpha: 0.1,
-                                ),
+                                color: ctx.headerTextColor.withOpacity(0.10),
                               ),
                             ),
                           ),
@@ -120,9 +118,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                               height: 80,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(20),
-                                color: AppColors.textInverse.withValues(
-                                  alpha: 0.08,
-                                ),
+                                color: ctx.headerTextColor.withOpacity(0.08),
                               ),
                             ),
                           ),
@@ -148,15 +144,15 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                                       Container(
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
-                                          color: AppColors.textInverse
-                                              .withValues(alpha: 0.15),
+                                          color: ctx.headerTextColor
+                                              .withOpacity(0.15),
                                           borderRadius: BorderRadius.circular(
                                             16,
                                           ),
                                         ),
                                         child: Icon(
                                           Icons.emoji_events,
-                                          color: AppColors.textInverse,
+                                          color: ctx.headerTextColor,
                                           size: 32,
                                         ),
                                       ),
@@ -169,7 +165,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                                             Text(
                                               'Thử Thách',
                                               style: AppTypography.h4.copyWith(
-                                                color: AppColors.textInverse,
+                                                color: ctx.headerTextColor,
                                                 fontWeight: FontWeight.bold,
                                               ),
                                             ),
@@ -177,8 +173,8 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                                               'Thành tựu tài chính của bạn',
                                               style: AppTypography.body
                                                   .copyWith(
-                                                    color: AppColors.textInverse
-                                                        .withValues(alpha: 0.9),
+                                                    color:
+                                                        ctx.headerSubtitleColor,
                                                   ),
                                             ),
                                           ],
@@ -259,8 +255,8 @@ class _ChallengeScreenState extends State<ChallengeScreen>
             scale: _cardAnimation.value,
             child: FloatingActionButton.extended(
               onPressed: _showCreateChallengeDialog,
-              backgroundColor: AppColors.secondary500,
-              foregroundColor: AppColors.textInverse,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
               icon: const Icon(Icons.add),
               label: const Text('Tạo thử thách'),
             ),
@@ -318,25 +314,27 @@ class _ChallengeScreenState extends State<ChallengeScreen>
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.textInverse.withValues(alpha: 0.15),
+        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.12),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.textInverse.withValues(alpha: 0.2)),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.22),
+        ),
       ),
       child: Column(
         children: [
-          Icon(icon, color: AppColors.textInverse, size: 20),
+          Icon(icon, color: Theme.of(context).colorScheme.onSurface, size: 20),
           const SizedBox(height: 4),
           Text(
             value,
             style: AppTypography.h6.copyWith(
-              color: AppColors.textInverse,
+              color: Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.bold,
             ),
           ),
           Text(
             title,
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textInverse.withValues(alpha: 0.8),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.9),
             ),
             textAlign: TextAlign.center,
           ),
@@ -349,11 +347,9 @@ class _ChallengeScreenState extends State<ChallengeScreen>
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.primary50, AppColors.secondary50],
-        ),
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary200),
+        border: Border.all(color: context.cardBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -361,7 +357,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
           Text(
             'Hành động nhanh',
             style: AppTypography.h6.copyWith(
-              color: AppColors.textPrimary,
+              color: Theme.of(context).textTheme.bodyLarge?.color,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -372,7 +368,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                 child: _buildQuickActionButton(
                   icon: Icons.trending_up,
                   title: 'Thống kê',
-                  color: AppColors.primary500,
+                  color: Theme.of(context).colorScheme.primary,
                   onTap: () => _showStatsDialog(),
                 ),
               ),
@@ -381,7 +377,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                 child: _buildQuickActionButton(
                   icon: Icons.history,
                   title: 'Lịch sử',
-                  color: AppColors.secondary500,
+                  color: Theme.of(context).colorScheme.secondary,
                   onTap: () => _showHistoryDialog(),
                 ),
               ),
@@ -390,7 +386,8 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                 child: _buildQuickActionButton(
                   icon: Icons.leaderboard,
                   title: 'Xếp hạng',
-                  color: AppColors.success,
+                  // Use a stronger primary color for better contrast on light backgrounds
+                  color: Theme.of(context).colorScheme.primary,
                   onTap: () => _showLeaderboardDialog(),
                 ),
               ),
@@ -415,9 +412,24 @@ class _ChallengeScreenState extends State<ChallengeScreen>
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
+            color: context.isDarkTheme
+                ? color.withOpacity(0.10)
+                : color.withOpacity(0.20),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withValues(alpha: 0.3)),
+            border: Border.all(
+              color: context.isDarkTheme
+                  ? color.withOpacity(0.22)
+                  : color.withOpacity(0.32),
+            ),
+            boxShadow: !context.isDarkTheme
+                ? [
+                    BoxShadow(
+                      color: color.withOpacity(0.06),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
           child: Column(
             children: [
@@ -441,7 +453,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
   Widget _buildCategoryTabs() {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.backgroundSecondary,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: SingleChildScrollView(
@@ -476,15 +488,43 @@ class _ChallengeScreenState extends State<ChallengeScreen>
               vertical: AppSpacing.sm,
             ),
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.primary500 : Colors.transparent,
+              color: isSelected
+                  ? (context.isDarkTheme
+                        ? context.headerGradientStart.withOpacity(0.20)
+                        : Theme.of(
+                            context,
+                          ).colorScheme.primary.withOpacity(0.12))
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
+              border: isSelected
+                  ? Border.all(
+                      color: context.isDarkTheme
+                          ? context.headerGradientStart.withOpacity(0.40)
+                          : Theme.of(
+                              context,
+                            ).colorScheme.primary.withOpacity(0.30),
+                    )
+                  : null,
+              boxShadow: isSelected && !context.isDarkTheme
+                  ? [
+                      BoxShadow(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withOpacity(0.06),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
             ),
             child: Text(
               title,
               style: AppTypography.bodySmall.copyWith(
                 color: isSelected
-                    ? AppColors.textInverse
-                    : AppColors.textSecondary,
+                    ? (context.isDarkTheme
+                          ? Colors.white
+                          : Theme.of(context).colorScheme.primary)
+                    : context.primaryTextColor,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -501,21 +541,14 @@ class _ChallengeScreenState extends State<ChallengeScreen>
       margin: const EdgeInsets.only(bottom: AppSpacing.lg),
       child: Material(
         elevation: 8,
-        shadowColor: statusConfig['color'].withValues(alpha: 0.3),
+        shadowColor: (statusConfig['color'] as Color).withOpacity(0.26),
         borderRadius: BorderRadius.circular(20),
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                AppColors.backgroundPrimary,
-                statusConfig['color'].withValues(alpha: 0.05),
-              ],
-            ),
+            color: Theme.of(context).colorScheme.surface,
             border: Border.all(
-              color: statusConfig['color'].withValues(alpha: 0.2),
+              color: (statusConfig['color'] as Color).withOpacity(0.18),
               width: 1.5,
             ),
           ),
@@ -530,7 +563,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                   height: 80,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: statusConfig['color'].withValues(alpha: 0.1),
+                    color: (statusConfig['color'] as Color).withOpacity(0.10),
                   ),
                 ),
               ),
@@ -547,8 +580,8 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: statusConfig['color'].withValues(
-                              alpha: 0.15,
+                            color: (statusConfig['color'] as Color).withOpacity(
+                              0.15,
                             ),
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -566,7 +599,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                               Text(
                                 challenge.title,
                                 style: AppTypography.h6.copyWith(
-                                  color: AppColors.textPrimary,
+                                  color: context.primaryTextColor,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -602,7 +635,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                     Text(
                       challenge.description,
                       style: AppTypography.body.copyWith(
-                        color: AppColors.textSecondary,
+                        color: context.primaryTextColor.withOpacity(0.85),
                         height: 1.5,
                       ),
                     ),
@@ -648,26 +681,26 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                             Icon(
                               Icons.access_time,
                               size: 16,
-                              color: AppColors.textSecondary,
+                              color: context.secondaryTextColor,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               '30 ngày',
                               style: AppTypography.bodySmall.copyWith(
-                                color: AppColors.textSecondary,
+                                color: context.secondaryTextColor,
                               ),
                             ),
                             const SizedBox(width: AppSpacing.md),
                             Icon(
                               Icons.star,
                               size: 16,
-                              color: AppColors.warning,
+                              color: Theme.of(context).colorScheme.secondary,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               '${challenge.points} điểm',
                               style: AppTypography.bodySmall.copyWith(
-                                color: AppColors.textSecondary,
+                                color: context.secondaryTextColor,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -691,7 +724,9 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                               child: Text(
                                 _getButtonText(challenge.status),
                                 style: AppTypography.bodySmall.copyWith(
-                                  color: AppColors.textInverse,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
