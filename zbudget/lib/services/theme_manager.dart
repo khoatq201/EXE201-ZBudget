@@ -27,7 +27,7 @@ class ThemeManager extends ChangeNotifier {
   Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
     final savedTheme = _prefs?.getString(_themeKey);
-    
+
     if (savedTheme != null) {
       switch (savedTheme) {
         case 'light':
@@ -41,7 +41,7 @@ class ThemeManager extends ChangeNotifier {
           break;
       }
     }
-    
+
     debugPrint('🎨 ThemeManager initialized: $_currentTheme');
     notifyListeners();
   }
@@ -50,7 +50,7 @@ class ThemeManager extends ChangeNotifier {
   Future<void> setTheme(AppTheme theme) async {
     _currentTheme = theme;
     await _prefs?.setString(_themeKey, theme.name);
-    
+
     debugPrint('🎨 Theme changed to: $theme');
     notifyListeners();
   }
@@ -60,22 +60,25 @@ class ThemeManager extends ChangeNotifier {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.primary500,
-        brightness: Brightness.light,
-      ),
+      colorScheme:
+          ColorScheme.fromSeed(
+            seedColor: AppColors.primary500,
+            brightness: Brightness.light,
+          ).copyWith(
+            primary: AppColors.primary500,
+            secondary: AppColors.secondary500,
+            error: AppColors.error500,
+          ),
       scaffoldBackgroundColor: const Color(0xFFF5F5F5),
-      
+
       // Card theme
       cardTheme: CardThemeData(
         color: Colors.white,
         elevation: 2,
         shadowColor: Colors.black.withOpacity(0.1),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      
+
       // AppBar theme
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.primary500,
@@ -83,7 +86,7 @@ class ThemeManager extends ChangeNotifier {
         elevation: 0,
         centerTitle: true,
       ),
-      
+
       // Text theme
       textTheme: const TextTheme(
         displayLarge: TextStyle(color: Color(0xFF212121)),
@@ -110,22 +113,25 @@ class ThemeManager extends ChangeNotifier {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.primary400,
-        brightness: Brightness.dark,
-      ),
+      colorScheme:
+          ColorScheme.fromSeed(
+            seedColor: AppColors.primary400,
+            brightness: Brightness.dark,
+          ).copyWith(
+            primary: AppColors.primary400,
+            secondary: AppColors.secondary400,
+            error: AppColors.error600,
+          ),
       scaffoldBackgroundColor: const Color(0xFF121212),
-      
+
       // Card theme
       cardTheme: CardThemeData(
         color: const Color(0xFF1E1E1E),
         elevation: 2,
         shadowColor: Colors.black.withOpacity(0.3),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      
+
       // AppBar theme
       appBarTheme: AppBarTheme(
         backgroundColor: const Color(0xFF1E1E1E),
@@ -133,7 +139,7 @@ class ThemeManager extends ChangeNotifier {
         elevation: 0,
         centerTitle: true,
       ),
-      
+
       // Text theme
       textTheme: const TextTheme(
         displayLarge: TextStyle(color: Color(0xFFE0E0E0)),
@@ -166,7 +172,7 @@ class AppThemeColors {
   static const lightTextSecondary = Color(0xFF757575);
   static const lightIncomeColor = Color(0xFF4CAF50);
   static const lightExpenseColor = Color(0xFFF44336);
-  
+
   // Dark theme colors
   static const darkGradientStart = AppColors.primary400;
   static const darkGradientEnd = AppColors.primary500;

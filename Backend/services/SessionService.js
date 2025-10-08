@@ -164,6 +164,7 @@ class SessionService {
   }
 
   // Create new session với enhanced device detection
+
   static async createSession(
     userId,
     jwtTokenId,
@@ -185,7 +186,36 @@ class SessionService {
       // Use jwtTokenId as sessionId for easy comparison
       const sessionId = jwtTokenId;
 
-      // Create session object
+      // ✅ CHECK EXISTING DEVICE: Check if session already exists with same device fingerprint
+      const deviceFingerprint = deviceInfo.deviceFingerprint;
+      const existingSession = await Session.findOne({
+        userId,
+        "deviceInfo.deviceFingerprint": deviceFingerprint,
+        isActive: true,
+      });
+
+      if (existingSession) {
+        // Update existing session instead of creating new one
+        existingSession.sessionId = sessionId;
+        existingSession.jwtTokenId = jwtTokenId;
+        existingSession.lastActiveTime = new Date();
+        existingSession.expiresAt = expiresAt;
+        existingSession.location = location; // Update location in case IP changed
+        existingSession.loginTime = new Date(); // Update login time
+
+        await existingSession.save();
+
+        logger.info("Session updated for existing device", {
+          userId,
+          sessionId,
+          deviceName: deviceInfo.deviceName,
+          location: `${location.city}, ${location.country}`,
+        });
+
+        return existingSession;
+      }
+
+      // Create session object (only if no existing device found)
       const sessionData = {
         userId,
         sessionId,
@@ -193,7 +223,7 @@ class SessionService {
         deviceInfo,
         location,
         isActive: true,
-        expiresAt: expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days default
+        expiresAt: expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         metadata: {
           loginMethod,
           securityLevel: "medium",
@@ -349,6 +379,37 @@ class SessionService {
         error: error.message,
       });
       return null;
+    }
+  }
+  static async cleanupExpiredSessions() {
+    try {
+      const now = new Date();
+
+      // Find and deactivate expired sessions
+      const result = await Session.updateMany(
+        {
+          isActive: true,
+          expiresAt: { $lt: now },
+        },
+        {
+          isActive: false,
+          terminatedAt: new Date(),
+          terminatedReason: "expired",
+        }
+      );
+
+      logger.info("Expired sessions cleaned up", {
+        cleanedCount: result.modifiedCount,
+        timestamp: now,
+      });
+
+      return result.modifiedCount;
+    } catch (error) {
+      logger.error("Failed to cleanup expired sessions:", {
+        error: error.message,
+        stack: error.stack,
+      });
+      throw error;
     }
   }
 }

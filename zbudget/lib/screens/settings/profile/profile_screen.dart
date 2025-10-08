@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../services/profile_service.dart';
+import '../../../services/image_upload_service.dart';
 import '../../../models/settings/user_profile.dart';
 import '../../../services/profile_share_service.dart';
 import '../../../services/qr_code_service.dart';
@@ -25,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  bool _isUploadingAvatar = false;
 
   @override
   void initState() {
@@ -218,35 +221,54 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ],
           ),
-          child: CircleAvatar(
-            radius: 50,
-            backgroundColor: context.colorScheme.primaryContainer,
-            backgroundImage:
-                profile.avatar != null && profile.avatar!.isNotEmpty
-                ? NetworkImage(
-                    profile.avatar!,
-                  ) // Use NetworkImage for API avatar
-                : null,
-            child: profile.avatar == null || profile.avatar!.isEmpty
-                ? Text(
-                    _getInitials(profile.name),
-                    style: AppTypography.h2.copyWith(
-                      color: context.colorScheme.onPrimaryContainer,
-                      fontWeight: FontWeight.bold,
+          child: _isUploadingAvatar
+              ? Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.black.withOpacity(0.5),
+                  ),
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
                     ),
-                  )
-                : null,
-          ),
+                  ),
+                )
+              : CircleAvatar(
+                  radius: 50,
+                  backgroundColor: context.colorScheme.primaryContainer,
+                  backgroundImage:
+                      profile.avatar != null && profile.avatar!.isNotEmpty
+                      ? NetworkImage(
+                          profile.avatar!,
+                        ) // Use NetworkImage for API avatar
+                      : null,
+                  child: profile.avatar == null || profile.avatar!.isEmpty
+                      ? Text(
+                          _getInitials(profile.name),
+                          style: AppTypography.h2.copyWith(
+                            color: context.colorScheme.onPrimaryContainer,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
+                ),
         ),
         Positioned(
           bottom: 0,
           right: 0,
           child: GestureDetector(
-            onTap: () => _showAvatarOptions(context),
+            onTap: _isUploadingAvatar
+                ? null
+                : () => _showAvatarOptions(context),
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: context.colorScheme.secondary,
+                color: _isUploadingAvatar
+                    ? Colors.grey
+                    : context.colorScheme.secondary,
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: context.colorScheme.onPrimary,
@@ -254,7 +276,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ),
               ),
               child: Icon(
-                Icons.camera_alt,
+                _isUploadingAvatar ? Icons.hourglass_empty : Icons.camera_alt,
                 color: context.colorScheme.onSecondary,
                 size: 16,
               ),
@@ -905,7 +927,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               title: const Text('Chụp ảnh'),
               onTap: () {
                 Navigator.pop(context);
-                _changeAvatar();
+                _changeAvatar(ImageSource.camera);
               },
             ),
             ListTile(
@@ -916,7 +938,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               title: const Text('Chọn từ thư viện'),
               onTap: () {
                 Navigator.pop(context);
-                _changeAvatar();
+                _changeAvatar(ImageSource.gallery);
               },
             ),
             ListTile(
@@ -934,13 +956,128 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  void _changeAvatar() async {
-    // TODO: Implement avatar change with image picker
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Tính năng thay đổi ảnh đại diện đang được phát triển'),
-      ),
-    );
+  void _changeAvatar(ImageSource source) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 80,
+      );
+
+      if (image != null) {
+        // Set loading state instead of showing dialog
+        setState(() {
+          _isUploadingAvatar = true;
+        });
+
+        try {
+          // Upload avatar using ImageUploadService
+          final File imageFile = File(image.path);
+          print('🔄 Starting avatar upload...');
+          print('📤 File path: ${imageFile.path}');
+          print('📤 File size: ${await imageFile.length()} bytes');
+
+          final uploadResult = await ImageUploadService.uploadAvatar(imageFile);
+          print('📤 Upload result: $uploadResult');
+
+          if (uploadResult != null && uploadResult['success'] == true) {
+            // Update profile with new avatar URL
+            final profileService = Provider.of<ProfileService>(
+              context,
+              listen: false,
+            );
+            final currentProfile = profileService.currentProfile;
+
+            print('🔄 Before update - isLoading: ${profileService.isLoading}');
+
+            if (currentProfile != null) {
+              // Lấy avatar URL từ nested data object - sửa key từ 'avatarUrl' thành 'avatar'
+              final avatarUrl = uploadResult['data']?['avatar'] as String?;
+              print('🔄 Avatar URL from response: $avatarUrl');
+
+              if (avatarUrl != null) {
+                await profileService.updateProfile(
+                  currentProfile.copyWith(avatar: avatarUrl),
+                  syncToServer: false, // Tạm thời disable sync để test
+                );
+
+                print(
+                  '🔄 Profile updated, isLoading: ${profileService.isLoading}',
+                );
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Cập nhật ảnh đại diện thành công!'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                }
+              } else {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Không thể lấy URL ảnh từ server!'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                }
+              }
+            } else {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Không thể cập nhật profile!'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              }
+            }
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text(
+                    'Không thể tải ảnh lên. Vui lòng thử lại!',
+                  ),
+                  backgroundColor: AppColors.error,
+                ),
+              );
+            }
+          }
+        } catch (e) {
+          print('❌ Avatar upload error: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Lỗi upload: ${e.toString()}'),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          }
+        } finally {
+          // Always reset loading state
+          if (mounted) {
+            setState(() {
+              _isUploadingAvatar = false;
+            });
+            print('🔄 Avatar upload process completed, loading state reset');
+          }
+        }
+      }
+    } catch (e) {
+      print('❌ Image picker error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi chọn ảnh: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   void _removeAvatar() async {
