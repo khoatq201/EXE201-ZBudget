@@ -1,3 +1,43 @@
+class IncomeAllocation {
+  final String type; // 'budget', 'savings', 'unassigned'
+  final String? targetId; // Budget ID or SavingsGoal ID
+  final String? targetModel; // 'Budget' or 'SavingsGoal'
+  final double amount;
+  final String? categoryAllocationId; // For budget category allocation
+  final String? note;
+
+  IncomeAllocation({
+    required this.type,
+    this.targetId,
+    this.targetModel,
+    required this.amount,
+    this.categoryAllocationId,
+    this.note,
+  });
+
+  factory IncomeAllocation.fromJson(Map<String, dynamic> json) {
+    return IncomeAllocation(
+      type: json['type'] as String,
+      targetId: json['targetId'] as String?,
+      targetModel: json['targetModel'] as String?,
+      amount: (json['amount'] is num) ? (json['amount'] as num).toDouble() : 0.0,
+      categoryAllocationId: json['categoryAllocationId'] as String?,
+      note: json['note'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type,
+      if (targetId != null) 'targetId': targetId,
+      if (targetModel != null) 'targetModel': targetModel,
+      'amount': amount,
+      if (categoryAllocationId != null) 'categoryAllocationId': categoryAllocationId,
+      if (note != null) 'note': note,
+    };
+  }
+}
+
 class Income {
   final String id;
   final String userId;
@@ -12,6 +52,13 @@ class Income {
   final bool isRecurring;
   final RecurringDetails? recurringDetails;
   final TaxInfo? taxInfo;
+
+  // YNAB fields
+  final List<IncomeAllocation> allocations;
+  final double totalAllocated;
+  final double unallocated;
+  final bool isFullyAllocated;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -29,6 +76,10 @@ class Income {
     required this.isRecurring,
     this.recurringDetails,
     this.taxInfo,
+    this.allocations = const [],
+    this.totalAllocated = 0,
+    this.unallocated = 0,
+    this.isFullyAllocated = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -53,6 +104,18 @@ class Income {
       taxInfo: json['taxInfo'] != null
           ? TaxInfo.fromJson(json['taxInfo'] as Map<String, dynamic>)
           : null,
+      allocations: json['allocations'] != null
+          ? (json['allocations'] as List)
+              .map((a) => IncomeAllocation.fromJson(a as Map<String, dynamic>))
+              .toList()
+          : [],
+      totalAllocated: json['totalAllocated'] != null
+          ? (json['totalAllocated'] as num).toDouble()
+          : 0.0,
+      unallocated: json['unallocated'] != null
+          ? (json['unallocated'] as num).toDouble()
+          : 0.0,
+      isFullyAllocated: json['isFullyAllocated'] as bool? ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
@@ -73,6 +136,10 @@ class Income {
       'isRecurring': isRecurring,
       'recurringDetails': recurringDetails?.toJson(),
       'taxInfo': taxInfo?.toJson(),
+      'allocations': allocations.map((a) => a.toJson()).toList(),
+      'totalAllocated': totalAllocated,
+      'unallocated': unallocated,
+      'isFullyAllocated': isFullyAllocated,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };

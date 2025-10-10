@@ -9,7 +9,7 @@ import '../../constants/spacing.dart';
 import '../../widgets/welcome_banner.dart';
 import 'add_expense_screen.dart';
 import 'add_income_screen.dart';
-import '../budget/budget_list_screen.dart';
+import '../budget/budget_list_screen_ynab.dart';
 
 class NewDashboardScreen extends StatefulWidget {
   const NewDashboardScreen({super.key});
@@ -542,7 +542,7 @@ class _NewDashboardScreenState extends State<NewDashboardScreen>
                 () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const BudgetListScreen(),
+                    builder: (context) => const BudgetListScreenYNAB(),
                   ),
                 ),
               ),

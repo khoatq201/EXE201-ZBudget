@@ -6,6 +6,8 @@ import {
   updateIncome,
   deleteIncome,
   getIncomeStats,
+  assignReadyToAssign,
+  getReadyToAssign,
 } from "../controllers/incomeController.js";
 import { authenticate, rateLimitGeneral } from "../middleware/auth.js";
 
@@ -19,8 +21,9 @@ router.use(rateLimitGeneral());
 
 /**
  * @route   POST /api/income
- * @desc    Create new income
+ * @desc    Create new income with optional YNAB-style allocations
  * @access  Private
+ * @body    { title, amount, category, date, paymentMethod, allocations: [{ type, targetId, amount, categoryAllocationId, note }] }
  */
 router.post("/", createIncome);
 
@@ -38,6 +41,21 @@ router.get("/", getIncomes);
  * @access  Private
  */
 router.get("/stats", getIncomeStats);
+
+/**
+ * @route   POST /api/income/assign
+ * @desc    Assign from Ready to Assign pool to budgets/savings
+ * @access  Private
+ * @body    { assignments: [{ type, targetId, amount, categoryAllocationId, note }] }
+ */
+router.post("/assign", assignReadyToAssign);
+
+/**
+ * @route   GET /api/income/ready-to-assign
+ * @desc    Get current Ready to Assign amount
+ * @access  Private
+ */
+router.get("/ready-to-assign", getReadyToAssign);
 
 /**
  * @route   GET /api/income/:id

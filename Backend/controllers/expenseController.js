@@ -135,9 +135,7 @@ export const createExpense = async (req, res) => {
     });
 
     console.log('✅ Sending success response');
-    res
-      .status(201)
-      .json(successResponse("Tạo chi tiêu thành công!", { expense }));
+    return successResponse(res, "Tạo chi tiêu thành công!", { expense }, 201);
   } catch (error) {
     console.error('❌ Create expense error:', error);
 
@@ -265,22 +263,20 @@ export const getExpenses = async (req, res) => {
     hasFilters: Object.keys(query).length > 1,
   });
 
-  res.json(
-    successResponse("Lấy danh sách chi tiêu thành công", {
-      expenses,
-      pagination,
-      totalAmount: totalAmount[0]?.total || 0,
-      filters: {
-        startDate,
-        endDate,
-        category,
-        subcategory,
-        paymentMethod,
-        tags,
-        search,
-      },
-    })
-  );
+  return successResponse(res, "Lấy danh sách chi tiêu thành công", {
+    expenses,
+    pagination,
+    totalAmount: totalAmount[0]?.total || 0,
+    filters: {
+      startDate,
+      endDate,
+      category,
+      subcategory,
+      paymentMethod,
+      tags,
+      search,
+    },
+  });
 };
 
 /**
@@ -662,20 +658,18 @@ export const getExpenseStats = async (req, res) => {
     resultCount: stats.length,
   });
 
-  res.json(
-    successResponse("Lấy thống kê chi tiêu thành công", {
-      stats,
-      summary: summary[0] || {
-        totalAmount: 0,
-        totalCount: 0,
-        avgAmount: 0,
-        maxAmount: 0,
-        minAmount: 0,
-      },
-      groupBy,
-      period: { startDate, endDate },
-    })
-  );
+  return successResponse(res, "Lấy thống kê chi tiêu thành công", {
+    stats,
+    summary: summary[0] || {
+      totalAmount: 0,
+      totalCount: 0,
+      avgAmount: 0,
+      maxAmount: 0,
+      minAmount: 0,
+    },
+    groupBy,
+    period: { startDate, endDate },
+  });
 };
 
 /**
@@ -741,12 +735,10 @@ export const getExpensesByCategory = async (req, res) => {
 
   const categories = await Expense.aggregate(pipeline);
 
-  res.json(
-    successResponse("Lấy chi tiêu theo danh mục thành công", {
-      categories,
-      includeSubcategories,
-    })
-  );
+  return successResponse(res, "Lấy chi tiêu theo danh mục thành công", {
+    categories,
+    includeSubcategories,
+  });
 };
 
 /**
@@ -805,13 +797,11 @@ export const getExpensesByDateRange = async (req, res) => {
     { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1, "_id.week": 1 } },
   ]);
 
-  res.json(
-    successResponse("Lấy chi tiêu theo thời gian thành công", {
-      expenses,
-      groupBy,
-      period: { startDate, endDate },
-    })
-  );
+  return successResponse(res, "Lấy chi tiêu theo thời gian thành công", {
+    expenses,
+    groupBy,
+    period: { startDate, endDate },
+  });
 };
 
 /**
@@ -883,13 +873,11 @@ export const exportExpenses = async (req, res) => {
     res.send("\uFEFF" + csvContent); // Add BOM for UTF-8
   } else {
     // For Excel format, return JSON that frontend can convert
-    res.json(
-      successResponse("Xuất dữ liệu thành công", {
-        data: exportData,
-        format,
-        total: exportData.length,
-      })
-    );
+    return successResponse(res, "Xuất dữ liệu thành công", {
+      data: exportData,
+      format,
+      total: exportData.length,
+    });
   }
 };
 
@@ -995,11 +983,9 @@ export const bulkDeleteExpenses = async (req, res) => {
       expenseIds,
     });
 
-    res.json(
-      successResponse(`Xóa thành công ${result.deletedCount} chi tiêu!`, {
-        deletedCount: result.deletedCount,
-      })
-    );
+    return successResponse(res, `Xóa thành công ${result.deletedCount} chi tiêu!`, {
+      deletedCount: result.deletedCount,
+    });
   } catch (error) {
     await session.abortTransaction();
     throw error;
@@ -1046,11 +1032,7 @@ export const duplicateExpense = async (req, res) => {
 
   res.locals.expenseId = duplicatedExpense._id;
 
-  res
-    .status(201)
-    .json(
-      successResponse("Nhân bản chi tiêu thành công!", {
-        expense: duplicatedExpense,
-      })
-    );
+  return successResponse(res, "Nhân bản chi tiêu thành công!", {
+    expense: duplicatedExpense,
+  }, 201);
 };

@@ -26,7 +26,11 @@ class DashboardService extends ChangeNotifier {
 
   /// Get dashboard summary data
   /// [period] can be 'month', 'week', or 'year'
-  Future<void> getDashboardSummary({String period = 'month'}) async {
+  /// [budgetId] optional budget ID to display specific budget info
+  Future<void> getDashboardSummary({
+    String period = 'month',
+    String? budgetId,
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -39,10 +43,18 @@ class DashboardService extends ChangeNotifier {
         throw Exception('No access token found. Please login again.');
       }
 
-      debugPrint('🎯 Fetching dashboard summary for period: $period');
+      debugPrint('🎯 Fetching dashboard summary for period: $period, budgetId: $budgetId');
+
+      // Build query parameters
+      final queryParams = {'period': period};
+      if (budgetId != null) {
+        queryParams['budgetId'] = budgetId;
+      }
+
+      final uri = Uri.parse('$baseUrl/summary').replace(queryParameters: queryParams);
 
       final response = await http.get(
-        Uri.parse('$baseUrl/summary?period=$period'),
+        uri,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',

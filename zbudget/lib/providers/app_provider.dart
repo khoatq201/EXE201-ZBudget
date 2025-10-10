@@ -4,9 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import '../models/user.dart';
-import '../models/expense.dart';
-import '../models/budget.dart';
-import '../services/storage_service.dart';
 import '../services/auth_service.dart';
 import '../services/session_manager.dart';
 
@@ -149,85 +146,6 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
     } catch (error) {
       debugPrint('Error updating theme: $error');
-      rethrow;
-    }
-  }
-
-  // Data management methods
-  Future<void> addExpense(Expense expense) async {
-    try {
-      await StorageService.addExpense(expense);
-    } catch (error) {
-      debugPrint('Error adding expense: $error');
-      rethrow;
-    }
-  }
-
-  Future<List<Expense>> getExpenses() async {
-    try {
-      return await StorageService.getExpenses();
-    } catch (error) {
-      debugPrint('Error getting expenses: $error');
-      return [];
-    }
-  }
-
-  Future<void> updateExpense(
-    String expenseId,
-    Map<String, dynamic> updates,
-  ) async {
-    try {
-      await StorageService.updateExpense(expenseId, updates);
-    } catch (error) {
-      debugPrint('Error updating expense: $error');
-      rethrow;
-    }
-  }
-
-  Future<void> deleteExpense(String expenseId) async {
-    try {
-      await StorageService.deleteExpense(expenseId);
-    } catch (error) {
-      debugPrint('Error deleting expense: $error');
-      rethrow;
-    }
-  }
-
-  Future<void> addBudget(Budget budget) async {
-    try {
-      await StorageService.addBudget(budget);
-    } catch (error) {
-      debugPrint('Error adding budget: $error');
-      rethrow;
-    }
-  }
-
-  Future<List<Budget>> getBudgets() async {
-    try {
-      return await StorageService.getBudgets();
-    } catch (error) {
-      debugPrint('Error getting budgets: $error');
-      return [];
-    }
-  }
-
-  Future<void> updateBudget(
-    String budgetId,
-    Map<String, dynamic> updates,
-  ) async {
-    try {
-      await StorageService.updateBudget(budgetId, updates);
-    } catch (error) {
-      debugPrint('Error updating budget: $error');
-      rethrow;
-    }
-  }
-
-  Future<void> deleteBudget(String budgetId) async {
-    try {
-      await StorageService.deleteBudget(budgetId);
-    } catch (error) {
-      debugPrint('Error deleting budget: $error');
       rethrow;
     }
   }

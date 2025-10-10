@@ -16,10 +16,11 @@ class _MainNavigatorState extends State<MainNavigator> {
     final String location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/home')) return 0;
     if (location.startsWith('/budget')) return 1;
-    if (location.startsWith('/groups')) return 2;
-    if (location.startsWith('/challenges')) return 3;
-    if (location.startsWith('/reports')) return 4;
-    if (location.startsWith('/settings')) return 5;
+    if (location.startsWith('/savings')) return 2;
+    if (location.startsWith('/groups')) return 3;
+    if (location.startsWith('/challenges')) return 4;
+    if (location.startsWith('/reports')) return 5;
+    if (location.startsWith('/settings')) return 6;
     return 0;
   }
 
@@ -32,15 +33,18 @@ class _MainNavigatorState extends State<MainNavigator> {
         context.go('/budget');
         break;
       case 2:
-        context.go('/groups');
+        context.go('/savings');
         break;
       case 3:
-        context.go('/challenges');
+        context.go('/groups');
         break;
       case 4:
-        context.go('/reports');
+        context.go('/challenges');
         break;
       case 5:
+        context.go('/reports');
+        break;
+      case 6:
         context.go('/settings');
         break;
     }
@@ -62,6 +66,10 @@ class _MainNavigatorState extends State<MainNavigator> {
           BottomNavigationBarItem(
             icon: Icon(Icons.account_balance_wallet),
             label: 'Ngân sách',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.savings_outlined),
+            label: 'Tiết kiệm',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.groups), label: 'Nhóm'),
           BottomNavigationBarItem(

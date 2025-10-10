@@ -10,6 +10,7 @@ import UserChallenge from "./UserChallenge.js";
 import Group from "./Group.js";
 import Notification from "./Notification.js";
 import Session from "./Session.js";
+import SavingsGoal from "./SavingsGoal.js";
 
 // Database connection configuration
 const connectDB = async () => {
@@ -95,6 +96,7 @@ const dbUtils = {
       UserChallenge,
       Group,
       Notification,
+      SavingsGoal,
     ];
 
     for (const model of models) {
@@ -352,6 +354,7 @@ export {
   Group,
   Notification,
   Session,
+  SavingsGoal,
 
   // Database utilities
   connectDB,
@@ -374,6 +377,7 @@ export default {
   Group,
   Notification,
   Session,
+  SavingsGoal,
   connectDB,
   dbUtils,
   validateModels,

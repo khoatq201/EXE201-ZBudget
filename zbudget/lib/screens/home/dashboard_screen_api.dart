@@ -5,7 +5,9 @@ import 'package:fl_chart/fl_chart.dart';
 
 import '../../services/dashboard_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/budget_service.dart';
 import '../../models/dashboard.dart';
+import '../../models/budget.dart';
 import '../../constants/typography.dart';
 import '../../utils/formatters.dart';
 import '../../utils/theme_extensions.dart';
@@ -20,6 +22,9 @@ class DashboardScreenApi extends StatefulWidget {
 class _DashboardScreenApiState extends State<DashboardScreenApi>
     with AutomaticKeepAliveClientMixin {
   DateTime? _lastLoadTime;
+  Budget? _selectedBudget;
+  List<Budget> _activeBudgets = [];
+  bool _loadingBudgets = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -27,9 +32,10 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
   @override
   void initState() {
     super.initState();
-    // Load dashboard data when screen loads
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadDashboardData();
+    // Load budgets first, then dashboard data
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadActiveBudgets();
+      await _loadDashboardData();
     });
   }
 
@@ -45,6 +51,29 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
     }
   }
 
+  Future<void> _loadActiveBudgets() async {
+    setState(() => _loadingBudgets = true);
+    try {
+      final budgetService = Provider.of<BudgetService>(context, listen: false);
+      await budgetService.getBudgets(status: 'active');
+      if (mounted) {
+        setState(() {
+          _activeBudgets = budgetService.budgets;
+          // Auto-select first budget if available and no budget selected
+          if (_selectedBudget == null && _activeBudgets.isNotEmpty) {
+            _selectedBudget = _activeBudgets.first;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading budgets: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _loadingBudgets = false);
+      }
+    }
+  }
+
   Future<void> _loadDashboardData() async {
     _lastLoadTime = DateTime.now();
     final dashboardService = Provider.of<DashboardService>(
@@ -52,7 +81,10 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
       listen: false,
     );
     try {
-      await dashboardService.getDashboardSummary(period: 'month');
+      await dashboardService.getDashboardSummary(
+        period: 'month',
+        budgetId: _selectedBudget?.id,
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -132,6 +164,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
         children: [
           _buildHeader(authService),
           _buildBalanceCard(data),
+          _buildBudgetSelector(),
           _buildInsights(data.insights),
           _buildBudgetCard(data.budget),
           _buildQuickStats(data),
@@ -391,6 +424,121 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildBudgetSelector() {
+    // Don't show selector if still loading or no budgets available
+    if (_loadingBudgets || _activeBudgets.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Also check if _selectedBudget is valid
+    // If selectedBudget is not null but not in the list, reset it
+    if (_selectedBudget != null &&
+        !_activeBudgets.any((b) => b.id == _selectedBudget!.id)) {
+      _selectedBudget = null;
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: context.colorScheme.primary.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.account_balance_wallet,
+                size: 20,
+                color: context.colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Ngân sách hiển thị',
+                style: AppTypography.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: context.settingsItemTitleColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: context.colorScheme.outline),
+              borderRadius: BorderRadius.circular(12),
+              color: context.colorScheme.surfaceContainerHighest,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedBudget?.id ?? 'none',
+                isExpanded: true,
+                items: [
+                  DropdownMenuItem<String>(
+                    value: 'none',
+                    child: Text(
+                      'Không hiển thị ngân sách',
+                      style: AppTypography.body.copyWith(
+                        color: context.settingsItemSubtitleColor,
+                      ),
+                    ),
+                  ),
+                  ..._activeBudgets.map((budget) {
+                    return DropdownMenuItem<String>(
+                      value: budget.id,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              budget.name,
+                              style: AppTypography.body.copyWith(
+                                color: context.settingsItemTitleColor,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            budget.totalAmount.toVND(),
+                            style: AppTypography.bodySmall.copyWith(
+                              color: context.colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+                onChanged: (String? newBudgetId) {
+                  setState(() {
+                    if (newBudgetId == null || newBudgetId == 'none') {
+                      _selectedBudget = null;
+                    } else {
+                      _selectedBudget = _activeBudgets.firstWhere(
+                        (b) => b.id == newBudgetId,
+                        orElse: () => _activeBudgets.first,
+                      );
+                    }
+                  });
+                  _loadDashboardData(); // Reload dashboard with new budget
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

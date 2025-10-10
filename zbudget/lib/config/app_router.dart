@@ -12,13 +12,17 @@ import '../screens/home/dashboard_screen_api.dart';
 import '../screens/home/add_expense_screen.dart';
 import '../screens/home/add_income_screen.dart';
 import '../screens/home/all_transactions_screen.dart';
-import '../screens/budget/budget_list_screen.dart';
+import '../screens/budget/budget_list_screen_ynab.dart';
+import '../screens/budget/budget_detail_screen.dart';
 import '../screens/budget/create_budget_screen.dart';
 import '../screens/group/group_list_screen.dart';
 import '../screens/group/create_group_screen.dart';
 import '../screens/challenge_screen.dart';
 import '../screens/challenge_detail_screen.dart';
 import '../screens/reports_screen.dart';
+import '../screens/savings/savings_list_screen.dart';
+import '../screens/savings/create_savings_screen.dart';
+import '../screens/savings/savings_detail_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/settings/profile/profile_screen.dart';
 import '../screens/settings/profile/edit_profile_screen.dart';
@@ -111,7 +115,7 @@ final router = GoRouter(
         ),
         GoRoute(
           path: '/budget',
-          builder: (context, state) => const BudgetListScreen(),
+          builder: (context, state) => const BudgetListScreenYNAB(),
           redirect: AuthGuard.checkAuthentication, // ✅ Route protection
         ),
         GoRoute(
@@ -150,8 +154,44 @@ final router = GoRouter(
           redirect: AuthGuard.checkAuthentication,
         ),
         GoRoute(
-          path: '/create-budget',
+          path: '/budget/create',
           builder: (context, state) => const CreateBudgetScreen(),
+          redirect: AuthGuard.checkAuthentication,
+        ),
+        GoRoute(
+          path: '/budget/:id',
+          builder: (context, state) {
+            final id = state.pathParameters['id'];
+            return BudgetDetailScreen(budgetId: id ?? '');
+          },
+          redirect: AuthGuard.checkAuthentication,
+        ),
+        // Savings routes
+        GoRoute(
+          path: '/savings',
+          builder: (context, state) => const SavingsListScreen(),
+          redirect: AuthGuard.checkAuthentication,
+        ),
+        GoRoute(
+          path: '/savings/create',
+          builder: (context, state) => const CreateSavingsScreen(),
+          redirect: AuthGuard.checkAuthentication,
+        ),
+        GoRoute(
+          path: '/savings/:id',
+          builder: (context, state) {
+            final id = state.pathParameters['id'];
+            return SavingsDetailScreen(goalId: id ?? '');
+          },
+          redirect: AuthGuard.checkAuthentication,
+        ),
+        GoRoute(
+          path: '/savings/edit/:id',
+          builder: (context, state) {
+            final id = state.pathParameters['id'];
+            return CreateSavingsScreen(goalId: id);
+          },
+          redirect: AuthGuard.checkAuthentication,
         ),
         GoRoute(
           path: '/create-group',

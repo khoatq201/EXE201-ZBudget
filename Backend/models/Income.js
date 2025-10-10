@@ -70,6 +70,49 @@ const TaxInfoSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// YNAB-style Income Allocation Schema
+const AllocationSchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      enum: ["budget", "savings", "unassigned"],
+      required: [true, "Loại phân bổ là bắt buộc"],
+    },
+    targetId: {
+      type: mongoose.Schema.Types.ObjectId,
+      refPath: "allocations.targetModel",
+    },
+    targetModel: {
+      type: String,
+      enum: ["Budget", "SavingsGoal"],
+    },
+    amount: {
+      type: mongoose.Schema.Types.Decimal128,
+      required: [true, "Số tiền phân bổ là bắt buộc"],
+      validate: {
+        validator: function (v) {
+          const num = parseFloat(v.toString());
+          return num > 0;
+        },
+        message: "Số tiền phân bổ phải lớn hơn 0",
+      },
+    },
+    categoryAllocationId: {
+      type: String,
+      description: "Category ID trong budget (nếu type = 'budget')",
+    },
+    note: {
+      type: String,
+      maxlength: [200, "Ghi chú phân bổ không được vượt quá 200 ký tự"],
+    },
+    allocatedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: true }
+);
+
 // Main Income Schema
 const IncomeSchema = new mongoose.Schema(
   {
@@ -197,6 +240,32 @@ const IncomeSchema = new mongoose.Schema(
     notes: {
       type: String,
       maxlength: [500, "Ghi chú không được vượt quá 500 ký tự"],
+    },
+
+    // YNAB-style Budget Allocations
+    allocations: {
+      type: [AllocationSchema],
+      default: [],
+      description: "Danh sách phân bổ thu nhập vào budgets/savings",
+    },
+
+    // Allocation Tracking
+    totalAllocated: {
+      type: mongoose.Schema.Types.Decimal128,
+      default: 0,
+      description: "Tổng số tiền đã phân bổ",
+    },
+
+    unallocated: {
+      type: mongoose.Schema.Types.Decimal128,
+      default: 0,
+      description: "Số tiền chưa phân bổ (Ready to Assign)",
+    },
+
+    isFullyAllocated: {
+      type: Boolean,
+      default: false,
+      description: "Đã phân bổ hết thu nhập chưa",
     },
 
     // Metadata
@@ -405,6 +474,25 @@ IncomeSchema.pre("save", function (next) {
   // Set next occurrence for recurring income
   if (this.isRecurring && this.recurringDetails && !this.recurringDetails.nextOccurrence) {
     this.recurringDetails.nextOccurrence = this.calculateNextOccurrence();
+  }
+
+  // Calculate allocation totals
+  if (this.allocations && this.allocations.length > 0) {
+    const totalAllocated = this.allocations.reduce((sum, alloc) => {
+      return sum + parseFloat(alloc.amount.toString());
+    }, 0);
+
+    const incomeAmount = parseFloat(this.amount.toString());
+    const unallocatedAmount = incomeAmount - totalAllocated;
+
+    this.totalAllocated = mongoose.Types.Decimal128.fromString(totalAllocated.toString());
+    this.unallocated = mongoose.Types.Decimal128.fromString(unallocatedAmount.toString());
+    this.isFullyAllocated = unallocatedAmount <= 0;
+  } else {
+    // No allocations, all income is unallocated
+    this.totalAllocated = mongoose.Types.Decimal128.fromString("0");
+    this.unallocated = this.amount;
+    this.isFullyAllocated = false;
   }
 
   next();

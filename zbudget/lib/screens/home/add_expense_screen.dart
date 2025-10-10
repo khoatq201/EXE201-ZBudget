@@ -5,7 +5,9 @@ import '../../constants/colors.dart';
 import '../../constants/typography.dart';
 import '../../widgets/scan_receipt_modal.dart';
 import '../../models/expense.dart';
+import '../../models/budget.dart';
 import '../../services/expense_service.dart';
+import '../../services/budget_service.dart';
 import '../../utils/formatters.dart';
 
 class CategoryOption {
@@ -54,6 +56,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
   PaymentMethodOption? _selectedPaymentMethod;
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
+
+  Budget? _selectedBudget;
+  List<Budget> _activeBudgets = [];
+  bool _loadingBudgets = false;
 
   late AnimationController _slideController;
   late AnimationController _fadeController;
@@ -182,6 +188,26 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
 
     _slideController.forward();
     _fadeController.forward();
+    _loadActiveBudgets();
+  }
+
+  Future<void> _loadActiveBudgets() async {
+    setState(() => _loadingBudgets = true);
+    try {
+      final budgetService = Provider.of<BudgetService>(context, listen: false);
+      await budgetService.getBudgets(status: 'active');
+      if (mounted) {
+        setState(() {
+          _activeBudgets = budgetService.budgets;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading budgets: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _loadingBudgets = false);
+      }
+    }
   }
 
   @override
@@ -223,6 +249,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                         _buildPaymentMethodSelection(),
                         const SizedBox(height: 24),
                         _buildDateSelection(),
+                        const SizedBox(height: 24),
+                        _buildBudgetSelection(),
                         const SizedBox(height: 24),
                         _buildNoteInput(),
                         const SizedBox(height: 32),
@@ -696,6 +724,172 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
     );
   }
 
+  Widget _buildBudgetSelection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'Ngân sách',
+              style: AppTypography.h4.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.primary100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Tùy chọn',
+                style: AppTypography.caption.copyWith(
+                  color: AppColors.primary500,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.dark200),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: _loadingBudgets
+              ? const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(
+                    child: SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                )
+              : _activeBudgets.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline, color: AppColors.textTertiary, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Chưa có ngân sách nào. Chi tiêu sẽ không được link với ngân sách.',
+                              style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : DropdownButton<Budget>(
+                      value: _selectedBudget,
+                      isExpanded: true,
+                      hint: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        child: Text(
+                          'Chọn ngân sách (không bắt buộc)',
+                          style: AppTypography.body.copyWith(color: AppColors.textTertiary),
+                        ),
+                      ),
+                      underline: const SizedBox(),
+                      items: _activeBudgets.map((budget) {
+                        return DropdownMenuItem<Budget>(
+                          value: budget,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  budget.name,
+                                  style: AppTypography.body.copyWith(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                if (_selectedCategory != null) ...[
+                                  const SizedBox(height: 4),
+                                  _buildCategoryAvailableInfo(budget),
+                                ],
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (Budget? budget) {
+                        setState(() {
+                          _selectedBudget = budget;
+                        });
+                      },
+                    ),
+        ),
+        if (_selectedBudget != null && _selectedCategory != null) ...[
+          const SizedBox(height: 12),
+          _buildSelectedBudgetInfo(),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCategoryAvailableInfo(Budget budget) {
+    final categoryStr = _selectedCategory.toString().split('.').last;
+    final allocation = budget.categoryAllocations.firstWhere(
+      (a) => a.category.value == categoryStr,
+      orElse: () => budget.categoryAllocations.first,
+    );
+
+    return Text(
+      'Có sẵn: ${CurrencyFormatter.formatVND(allocation.available)}',
+      style: AppTypography.caption.copyWith(
+        color: allocation.available > 0 ? AppColors.success : AppColors.error,
+        fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+
+  Widget _buildSelectedBudgetInfo() {
+    final categoryStr = _selectedCategory.toString().split('.').last;
+    final allocation = _selectedBudget!.categoryAllocations.firstWhere(
+      (a) => a.category.value == categoryStr,
+      orElse: () => _selectedBudget!.categoryAllocations.first,
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primary50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, color: AppColors.primary500, size: 16),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Chi tiêu sẽ trừ từ "${_selectedBudget!.name}". Có sẵn: ${CurrencyFormatter.formatVND(allocation.available)}',
+              style: AppTypography.caption.copyWith(color: AppColors.primary700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildNoteInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -885,6 +1079,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
       debugPrint('   - Category: $categoryStr');
       debugPrint('   - Payment: $paymentMethodStr');
       debugPrint('   - Date: $_selectedDate');
+      debugPrint('   - Budget: ${_selectedBudget?.name ?? "None"}');
 
       // Create expense via API
       debugPrint('🌐 [ADD_EXPENSE] Calling API...');
@@ -895,6 +1090,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
         category: categoryStr,
         paymentMethod: paymentMethodStr,
         date: _selectedDate,
+        budgetId: _selectedBudget?.id,
       );
 
       debugPrint('✅ [ADD_EXPENSE] API call successful!');

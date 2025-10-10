@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:google_sign_in/google_sign_in.dart';
 
 class GoogleSignInTestScreen extends StatefulWidget {
-  const GoogleSignInTestScreen({Key? key}) : super(key: key);
+  const GoogleSignInTestScreen({super.key});
 
   @override
   State<GoogleSignInTestScreen> createState() => _GoogleSignInTestScreenState();
@@ -17,7 +17,7 @@ class _GoogleSignInTestScreenState extends State<GoogleSignInTestScreen> {
     // Remove clientId for Android - it should use google-services.json
   );
 
-  List<String> _logs = [];
+  final List<String> _logs = [];
   bool _isLoading = false;
 
   void _log(String message) {

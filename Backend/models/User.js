@@ -315,6 +315,28 @@ const FinancialSummarySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Decimal128,
       default: 0,
     },
+
+    // YNAB-style Budget Fields
+    readyToAssign: {
+      type: mongoose.Schema.Types.Decimal128,
+      default: 0,
+      description: "Số tiền thu nhập chưa được phân bổ vào budget/savings (Ready to Assign)",
+    },
+    totalAssigned: {
+      type: mongoose.Schema.Types.Decimal128,
+      default: 0,
+      description: "Tổng số tiền đã phân bổ vào budgets",
+    },
+    totalSaved: {
+      type: mongoose.Schema.Types.Decimal128,
+      default: 0,
+      description: "Tổng số tiền đã gửi vào savings goals",
+    },
+    lastAssignmentDate: {
+      type: Date,
+      description: "Lần cuối cùng user phân bổ thu nhập",
+    },
+
     lastUpdated: {
       type: Date,
       default: Date.now,

@@ -52,6 +52,20 @@ const CategoryAllocationSchema = new mongoose.Schema(
         message: "Số tiền phân bổ phải >= 0",
       },
     },
+
+    // YNAB-style Funding
+    funded: {
+      type: mongoose.Schema.Types.Decimal128,
+      default: 0,
+      description: "Số tiền thực tế đã được assign từ income",
+      validate: {
+        validator: function (v) {
+          return parseFloat(v.toString()) >= 0;
+        },
+        message: "Số tiền funded phải >= 0",
+      },
+    },
+
     spent: {
       type: mongoose.Schema.Types.Decimal128,
       default: 0,
@@ -62,6 +76,14 @@ const CategoryAllocationSchema = new mongoose.Schema(
         message: "Số tiền đã chi phải >= 0",
       },
     },
+
+    // Available = funded - spent (YNAB concept)
+    available: {
+      type: mongoose.Schema.Types.Decimal128,
+      default: 0,
+      description: "Số tiền còn lại để chi (funded - spent)",
+    },
+
     remaining: {
       type: mongoose.Schema.Types.Decimal128,
       default: function () {
@@ -280,6 +302,32 @@ const BudgetSchema = new mongoose.Schema(
       default: () => ({}),
     },
 
+    // YNAB-style Funding Status
+    fundingStatus: {
+      totalFunded: {
+        type: mongoose.Schema.Types.Decimal128,
+        default: 0,
+        description: "Tổng tiền đã được fund từ income",
+      },
+      overfunded: {
+        type: Boolean,
+        default: false,
+        description: "Funded > Allocated (user assigned more than planned)",
+      },
+      underfunded: {
+        type: Boolean,
+        default: false,
+        description: "Funded < Allocated (user needs to assign more)",
+      },
+      fundingPercentage: {
+        type: Number,
+        min: 0,
+        max: 200,
+        default: 0,
+        description: "Percentage of allocated amount that is funded",
+      },
+    },
+
     // Status
     isActive: {
       type: Boolean,
@@ -304,7 +352,11 @@ const BudgetSchema = new mongoose.Schema(
           ret.categoryAllocations.forEach((cat) => {
             if (cat.allocated)
               cat.allocated = parseFloat(cat.allocated.toString());
+            if (cat.funded)
+              cat.funded = parseFloat(cat.funded.toString());
             if (cat.spent) cat.spent = parseFloat(cat.spent.toString());
+            if (cat.available)
+              cat.available = parseFloat(cat.available.toString());
             if (cat.remaining)
               cat.remaining = parseFloat(cat.remaining.toString());
           });
@@ -335,6 +387,13 @@ const BudgetSchema = new mongoose.Schema(
           );
         }
 
+        // Convert funding status
+        if (ret.fundingStatus && ret.fundingStatus.totalFunded) {
+          ret.fundingStatus.totalFunded = parseFloat(
+            ret.fundingStatus.totalFunded.toString()
+          );
+        }
+
         return ret;
       },
     },
@@ -347,6 +406,49 @@ BudgetSchema.index({ userId: 1, "period.startDate": 1, "period.endDate": 1 });
 BudgetSchema.index({ "period.endDate": 1 }); // For cleanup tasks
 
 // Instance Methods
+// YNAB-style: Fund a category from income
+BudgetSchema.methods.fundCategory = function (category, amount) {
+  const categoryAllocation = this.categoryAllocations.find(
+    (cat) => cat.category === category
+  );
+
+  if (!categoryAllocation) {
+    throw new Error(`Không tìm thấy phân bổ cho danh mục: ${category}`);
+  }
+
+  // Increase funded amount
+  const currentFunded = parseFloat(categoryAllocation.funded?.toString() || "0");
+  const newFunded = currentFunded + amount;
+
+  categoryAllocation.funded = mongoose.Types.Decimal128.fromString(newFunded.toFixed(2));
+
+  // Update available (funded - spent)
+  const spent = parseFloat(categoryAllocation.spent?.toString() || "0");
+  categoryAllocation.available = mongoose.Types.Decimal128.fromString(
+    (newFunded - spent).toFixed(2)
+  );
+
+  categoryAllocation.lastUpdated = new Date();
+
+  // Update budget's total funding
+  const currentTotalFunded = parseFloat(this.fundingStatus.totalFunded?.toString() || "0");
+  this.fundingStatus.totalFunded = mongoose.Types.Decimal128.fromString(
+    (currentTotalFunded + amount).toFixed(2)
+  );
+
+  // Calculate funding percentage
+  const totalAllocated = parseFloat(this.totalAmount.toString());
+  if (totalAllocated > 0) {
+    this.fundingStatus.fundingPercentage = Math.round(
+      ((currentTotalFunded + amount) / totalAllocated) * 100
+    );
+    this.fundingStatus.underfunded = (currentTotalFunded + amount) < totalAllocated;
+    this.fundingStatus.overfunded = (currentTotalFunded + amount) > totalAllocated;
+  }
+
+  return categoryAllocation;
+};
+
 BudgetSchema.methods.addExpense = function (amount, category) {
   // Find category allocation
   const categoryAllocation = this.categoryAllocations.find(
@@ -362,6 +464,14 @@ BudgetSchema.methods.addExpense = function (amount, category) {
   categoryAllocation.spent = mongoose.Types.Decimal128.fromString(
     (parseFloat(categoryAllocation.spent.toString()) + amount).toFixed(2)
   );
+
+  // Update available (YNAB: funded - spent)
+  const funded = parseFloat(categoryAllocation.funded?.toString() || "0");
+  const newSpent = parseFloat(categoryAllocation.spent.toString());
+  categoryAllocation.available = mongoose.Types.Decimal128.fromString(
+    (funded - newSpent).toFixed(2)
+  );
+
   categoryAllocation.remaining = mongoose.Types.Decimal128.fromString(
     (
       parseFloat(categoryAllocation.allocated.toString()) -
@@ -477,8 +587,8 @@ BudgetSchema.methods.getCategoryStatus = function (category) {
 
 // Pre-save middleware
 BudgetSchema.pre("save", function (next) {
-  // Update status before saving
-  if (this.isModified("categoryAllocations")) {
+  // Update status before saving - ALWAYS for new budgets, or when categoryAllocations change
+  if (this.isNew || this.isModified("categoryAllocations")) {
     this.updateStatus();
   }
 

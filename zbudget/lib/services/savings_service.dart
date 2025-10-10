@@ -1,232 +1,389 @@
-import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/savings_models.dart';
 
 class SavingsService extends ChangeNotifier {
-  final List<SavingsGoal> _savingsGoals = [
-    // Sample data
-    SavingsGoal(
-      id: '1',
-      name: 'Quỹ khẩn cấp',
-      description: 'Tiết kiệm cho các tình huống khẩn cấp',
-      targetAmount: 50000000,
-      currentAmount: 15000000,
-      targetDate: DateTime.now().add(const Duration(days: 365)),
-      createdAt: DateTime.now().subtract(const Duration(days: 90)),
-      category: SavingsCategory.emergency,
-      priority: SavingsPriority.high,
-      color: Colors.red.shade400,
-      autoSaveEnabled: true,
-      monthlyContribution: 2000000,
-    ),
-    SavingsGoal(
-      id: '2',
-      name: 'Du lịch Đà Lạt',
-      description: 'Chuyến du lịch gia đình cuối năm',
-      targetAmount: 20000000,
-      currentAmount: 8500000,
-      targetDate: DateTime.now().add(const Duration(days: 180)),
-      createdAt: DateTime.now().subtract(const Duration(days: 60)),
-      category: SavingsCategory.travel,
-      priority: SavingsPriority.medium,
-      color: Colors.blue.shade400,
-      autoSaveEnabled: false,
-      monthlyContribution: 1500000,
-    ),
-    SavingsGoal(
-      id: '3',
-      name: 'Mua laptop mới',
-      description: 'Laptop cho công việc và học tập',
-      targetAmount: 30000000,
-      currentAmount: 12000000,
-      targetDate: DateTime.now().add(const Duration(days: 120)),
-      createdAt: DateTime.now().subtract(const Duration(days: 45)),
-      category: SavingsCategory.purchase,
-      priority: SavingsPriority.medium,
-      color: Colors.green.shade400,
-      autoSaveEnabled: true,
-      monthlyContribution: 3000000,
-    ),
-  ];
+  // Base URL - different for web and mobile
+  static String get baseUrl {
+    if (kIsWeb) {
+      return 'http://localhost:3000/api/savings';
+    } else {
+      return 'http://10.0.2.2:3000/api/savings';
+    }
+  }
 
-  final List<SavingsContribution> _contributions = [
-    SavingsContribution(
-      id: '1',
-      goalId: '1',
-      amount: 2000000,
-      date: DateTime.now().subtract(const Duration(days: 30)),
-      note: 'Tiền lương tháng 12',
-      type: 'auto',
-    ),
-    SavingsContribution(
-      id: '2',
-      goalId: '1',
-      amount: 1000000,
-      date: DateTime.now().subtract(const Duration(days: 15)),
-      note: 'Tiền thưởng',
-      type: 'manual',
-    ),
-    SavingsContribution(
-      id: '3',
-      goalId: '2',
-      amount: 1500000,
-      date: DateTime.now().subtract(const Duration(days: 20)),
-      note: 'Tiết kiệm tháng 12',
-      type: 'manual',
-    ),
-    SavingsContribution(
-      id: '4',
-      goalId: '3',
-      amount: 3000000,
-      date: DateTime.now().subtract(const Duration(days: 10)),
-      note: 'Tiết kiệm tháng 1',
-      type: 'auto',
-    ),
-  ];
+  List<SavingsGoal> _savingsGoals = [];
+  bool _isLoading = false;
+  String? _error;
+  SavingsStats? _stats;
 
+  // Getters
   List<SavingsGoal> get savingsGoals => List.unmodifiable(_savingsGoals);
   List<SavingsGoal> get activeSavingsGoals =>
-      _savingsGoals.where((goal) => goal.isActive).toList();
+      _savingsGoals.where((goal) => goal.status == SavingsStatus.active).toList();
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+  SavingsStats? get stats => _stats;
 
-  int get totalSaved =>
-      _savingsGoals.fold(0, (sum, goal) => sum + goal.currentAmount);
-  int get totalTarget =>
-      _savingsGoals.fold(0, (sum, goal) => sum + goal.targetAmount);
+  double get totalSaved =>
+      _savingsGoals.fold(0.0, (sum, goal) => sum + goal.currentAmount);
+  double get totalTarget =>
+      _savingsGoals.fold(0.0, (sum, goal) => sum + goal.targetAmount);
   double get overallProgress =>
       totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
 
-  List<SavingsContribution> getContributionsForGoal(String goalId) {
-    return _contributions
-        .where((contribution) => contribution.goalId == goalId)
-        .toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+  /// Get authorization header
+  Future<Map<String, String>> _getHeaders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token');
+
+    if (token == null) {
+      throw Exception('No access token found. Please login again.');
+    }
+
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
   }
 
-  List<SavingsContribution> getRecentContributions({int limit = 10}) {
-    final sortedContributions = List<SavingsContribution>.from(_contributions)
-      ..sort((a, b) => b.date.compareTo(a.date));
-    return sortedContributions.take(limit).toList();
-  }
+  /// Get all savings goals with filters
+  Future<void> getSavingsGoals({
+    String? status,
+    String? category,
+    String? priority,
+    int page = 1,
+    int limit = 50,
+    String sort = '-targetDate',
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
 
-  SavingsGoal? getSavingsGoalById(String id) {
     try {
-      return _savingsGoals.firstWhere((goal) => goal.id == id);
+      final headers = await _getHeaders();
+
+      // Build query parameters
+      final queryParams = {
+        'page': page.toString(),
+        'limit': limit.toString(),
+        'sort': sort,
+      };
+
+      if (status != null) queryParams['status'] = status;
+      if (category != null) queryParams['category'] = category;
+      if (priority != null) queryParams['priority'] = priority;
+
+      final uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
+
+      final response = await http.get(uri, headers: headers);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final goalsData = data['data']['goals'] as List;
+          _savingsGoals = goalsData.map((g) => SavingsGoal.fromJson(g)).toList();
+          _error = null;
+        } else {
+          _error = data['message'] ?? 'Failed to load savings goals';
+        }
+      } else {
+        final data = json.decode(response.body);
+        _error = data['message'] ?? 'Failed to load savings goals';
+      }
     } catch (e) {
+      _error = e.toString();
+      if (kDebugMode) {
+        print('Error fetching savings goals: $e');
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Get savings goal by ID
+  Future<SavingsGoal?> getSavingsGoalById(String id) async {
+    try {
+      final headers = await _getHeaders();
+      final uri = Uri.parse('$baseUrl/$id');
+      final response = await http.get(uri, headers: headers);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          return SavingsGoal.fromJson(data['data']);
+        }
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching savings goal: $e');
+      }
       return null;
     }
   }
 
-  // CRUD Operations for Savings Goals
-  void addSavingsGoal(SavingsGoal goal) {
-    _savingsGoals.add(goal);
-    notifyListeners();
-  }
+  /// Create new savings goal
+  Future<Map<String, dynamic>> createSavingsGoal({
+    required String name,
+    String? description,
+    required double targetAmount,
+    required DateTime targetDate,
+    required SavingsCategory category,
+    SavingsPriority priority = SavingsPriority.medium,
+    AutoSave? autoSave,
+    String icon = 'piggy_bank',
+    String color = '#4CAF50',
+    List<String> tags = const [],
+    String? notes,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final uri = Uri.parse(baseUrl);
 
-  void updateSavingsGoal(SavingsGoal updatedGoal) {
-    final index = _savingsGoals.indexWhere((goal) => goal.id == updatedGoal.id);
-    if (index != -1) {
-      _savingsGoals[index] = updatedGoal;
-      notifyListeners();
-    }
-  }
+      final body = {
+        'name': name,
+        'description': description,
+        'targetAmount': targetAmount,
+        'targetDate': targetDate.toIso8601String(),
+        'category': category.value,
+        'priority': priority.value,
+        if (autoSave != null) 'autoSave': autoSave.toJson(),
+        'icon': icon,
+        'color': color,
+        'tags': tags,
+        'notes': notes,
+      };
 
-  void deleteSavingsGoal(String goalId) {
-    _savingsGoals.removeWhere((goal) => goal.id == goalId);
-    _contributions.removeWhere((contribution) => contribution.goalId == goalId);
-    notifyListeners();
-  }
-
-  // Contribution Operations
-  void addContribution(SavingsContribution contribution) {
-    _contributions.add(contribution);
-
-    // Update goal's current amount
-    final goalIndex = _savingsGoals.indexWhere(
-      (goal) => goal.id == contribution.goalId,
-    );
-    if (goalIndex != -1) {
-      final updatedGoal = _savingsGoals[goalIndex].copyWith(
-        currentAmount:
-            _savingsGoals[goalIndex].currentAmount + contribution.amount,
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: json.encode(body),
       );
-      _savingsGoals[goalIndex] = updatedGoal;
-    }
 
-    notifyListeners();
-  }
+      final data = json.decode(response.body);
 
-  void updateContribution(SavingsContribution updatedContribution) {
-    final index = _contributions.indexWhere(
-      (c) => c.id == updatedContribution.id,
-    );
-    if (index != -1) {
-      final oldAmount = _contributions[index].amount;
-      _contributions[index] = updatedContribution;
-
-      // Update goal's current amount
-      final goalIndex = _savingsGoals.indexWhere(
-        (goal) => goal.id == updatedContribution.goalId,
-      );
-      if (goalIndex != -1) {
-        final difference = updatedContribution.amount - oldAmount;
-        final updatedGoal = _savingsGoals[goalIndex].copyWith(
-          currentAmount: _savingsGoals[goalIndex].currentAmount + difference,
-        );
-        _savingsGoals[goalIndex] = updatedGoal;
+      if (response.statusCode == 201 && data['success'] == true) {
+        final newGoal = SavingsGoal.fromJson(data['data']);
+        _savingsGoals.add(newGoal);
+        notifyListeners();
+        return {'success': true, 'message': 'Savings goal created successfully'};
+      } else {
+        return {'success': false, 'message': data['message'] ?? 'Failed to create savings goal'};
       }
-
-      notifyListeners();
-    }
-  }
-
-  void deleteContribution(String contributionId) {
-    final contributionIndex = _contributions.indexWhere(
-      (c) => c.id == contributionId,
-    );
-    if (contributionIndex != -1) {
-      final contribution = _contributions[contributionIndex];
-      _contributions.removeAt(contributionIndex);
-
-      // Update goal's current amount
-      final goalIndex = _savingsGoals.indexWhere(
-        (goal) => goal.id == contribution.goalId,
-      );
-      if (goalIndex != -1) {
-        final updatedGoal = _savingsGoals[goalIndex].copyWith(
-          currentAmount:
-              _savingsGoals[goalIndex].currentAmount - contribution.amount,
-        );
-        _savingsGoals[goalIndex] = updatedGoal;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error creating savings goal: $e');
       }
-
-      notifyListeners();
+      return {'success': false, 'message': e.toString()};
     }
   }
 
-  // Statistics and Analytics
-  Map<SavingsCategory, int> getCategoryBreakdown() {
-    final breakdown = <SavingsCategory, int>{};
-    for (final goal in _savingsGoals) {
-      breakdown[goal.category] =
-          (breakdown[goal.category] ?? 0) + goal.currentAmount;
+  /// Update savings goal
+  Future<Map<String, dynamic>> updateSavingsGoal({
+    required String id,
+    String? name,
+    String? description,
+    double? targetAmount,
+    DateTime? targetDate,
+    SavingsCategory? category,
+    SavingsPriority? priority,
+    SavingsStatus? status,
+    AutoSave? autoSave,
+    String? icon,
+    String? color,
+    List<String>? tags,
+    String? notes,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final uri = Uri.parse('$baseUrl/$id');
+
+      final body = <String, dynamic>{};
+      if (name != null) body['name'] = name;
+      if (description != null) body['description'] = description;
+      if (targetAmount != null) body['targetAmount'] = targetAmount;
+      if (targetDate != null) body['targetDate'] = targetDate.toIso8601String();
+      if (category != null) body['category'] = category.value;
+      if (priority != null) body['priority'] = priority.value;
+      if (status != null) body['status'] = status.value;
+      if (autoSave != null) body['autoSave'] = autoSave.toJson();
+      if (icon != null) body['icon'] = icon;
+      if (color != null) body['color'] = color;
+      if (tags != null) body['tags'] = tags;
+      if (notes != null) body['notes'] = notes;
+
+      final response = await http.put(
+        uri,
+        headers: headers,
+        body: json.encode(body),
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        final updatedGoal = SavingsGoal.fromJson(data['data']);
+        final index = _savingsGoals.indexWhere((g) => g.id == id);
+        if (index != -1) {
+          _savingsGoals[index] = updatedGoal;
+          notifyListeners();
+        }
+        return {'success': true, 'message': 'Savings goal updated successfully'};
+      } else {
+        return {'success': false, 'message': data['message'] ?? 'Failed to update savings goal'};
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error updating savings goal: $e');
+      }
+      return {'success': false, 'message': e.toString()};
     }
-    return breakdown;
   }
 
-  Map<String, int> getMonthlyContributions() {
-    final monthly = <String, int>{};
-    for (final contribution in _contributions) {
-      final monthKey =
-          '${contribution.date.year}-${contribution.date.month.toString().padLeft(2, '0')}';
-      monthly[monthKey] = (monthly[monthKey] ?? 0) + contribution.amount;
+  /// Delete savings goal
+  Future<Map<String, dynamic>> deleteSavingsGoal(String id) async {
+    try {
+      final headers = await _getHeaders();
+      final uri = Uri.parse('$baseUrl/$id');
+
+      final response = await http.delete(uri, headers: headers);
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        _savingsGoals.removeWhere((g) => g.id == id);
+        notifyListeners();
+        return {'success': true, 'message': 'Savings goal deleted successfully'};
+      } else {
+        return {'success': false, 'message': data['message'] ?? 'Failed to delete savings goal'};
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error deleting savings goal: $e');
+      }
+      return {'success': false, 'message': e.toString()};
     }
-    return monthly;
   }
 
+  /// Add contribution to savings goal
+  Future<Map<String, dynamic>> addContribution({
+    required String goalId,
+    required double amount,
+    String source = 'manual',
+    String? incomeId,
+    String? note,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final uri = Uri.parse('$baseUrl/$goalId/contribute');
+
+      final body = {
+        'amount': amount,
+        'source': source,
+        if (incomeId != null) 'incomeId': incomeId,
+        if (note != null) 'note': note,
+      };
+
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: json.encode(body),
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        final updatedGoal = SavingsGoal.fromJson(data['data']);
+        final index = _savingsGoals.indexWhere((g) => g.id == goalId);
+        if (index != -1) {
+          _savingsGoals[index] = updatedGoal;
+          notifyListeners();
+        }
+        return {'success': true, 'message': 'Contribution added successfully'};
+      } else {
+        return {'success': false, 'message': data['message'] ?? 'Failed to add contribution'};
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error adding contribution: $e');
+      }
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  /// Withdraw from savings goal
+  Future<Map<String, dynamic>> withdrawFromSavings({
+    required String goalId,
+    required double amount,
+    String? reason,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final uri = Uri.parse('$baseUrl/$goalId/withdraw');
+
+      final body = {
+        'amount': amount,
+        if (reason != null) 'reason': reason,
+      };
+
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: json.encode(body),
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        final updatedGoal = SavingsGoal.fromJson(data['data']);
+        final index = _savingsGoals.indexWhere((g) => g.id == goalId);
+        if (index != -1) {
+          _savingsGoals[index] = updatedGoal;
+          notifyListeners();
+        }
+        return {'success': true, 'message': 'Withdrawal successful'};
+      } else {
+        return {'success': false, 'message': data['message'] ?? 'Failed to withdraw'};
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error withdrawing: $e');
+      }
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  /// Get savings statistics
+  Future<void> getSavingsStats() async {
+    try {
+      final headers = await _getHeaders();
+      final uri = Uri.parse('$baseUrl/stats');
+
+      final response = await http.get(uri, headers: headers);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          _stats = SavingsStats.fromJson(data['data']);
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching savings stats: $e');
+      }
+    }
+  }
+
+  /// Helper: Get savings goals sorted by priority
   List<SavingsGoal> getSortedGoalsByPriority() {
     final goals = List<SavingsGoal>.from(_savingsGoals);
     goals.sort((a, b) {
       final priorityOrder = {
-        SavingsPriority.urgent: 0,
+        SavingsPriority.critical: 0,
         SavingsPriority.high: 1,
         SavingsPriority.medium: 2,
         SavingsPriority.low: 3,
@@ -236,6 +393,7 @@ class SavingsService extends ChangeNotifier {
     return goals;
   }
 
+  /// Helper: Get goals nearing deadline
   List<SavingsGoal> getGoalsNearingDeadline({int daysThreshold = 30}) {
     final now = DateTime.now();
     return _savingsGoals.where((goal) {
@@ -246,80 +404,9 @@ class SavingsService extends ChangeNotifier {
     }).toList();
   }
 
-  // Helper methods for formatting
-  String getCategoryDisplayName(SavingsCategory category) {
-    switch (category) {
-      case SavingsCategory.emergency:
-        return 'Khẩn cấp';
-      case SavingsCategory.purchase:
-        return 'Mua sắm';
-      case SavingsCategory.travel:
-        return 'Du lịch';
-      case SavingsCategory.education:
-        return 'Giáo dục';
-      case SavingsCategory.investment:
-        return 'Đầu tư';
-      case SavingsCategory.home:
-        return 'Nhà cửa';
-      case SavingsCategory.vehicle:
-        return 'Xe cộ';
-      case SavingsCategory.health:
-        return 'Sức khỏe';
-      case SavingsCategory.wedding:
-        return 'Đám cưới';
-      case SavingsCategory.other:
-        return 'Khác';
-    }
-  }
-
-  String getPriorityDisplayName(SavingsPriority priority) {
-    switch (priority) {
-      case SavingsPriority.urgent:
-        return 'Khẩn cấp';
-      case SavingsPriority.high:
-        return 'Cao';
-      case SavingsPriority.medium:
-        return 'Trung bình';
-      case SavingsPriority.low:
-        return 'Thấp';
-    }
-  }
-
-  Color getPriorityColor(SavingsPriority priority) {
-    switch (priority) {
-      case SavingsPriority.urgent:
-        return Colors.red.shade600;
-      case SavingsPriority.high:
-        return Colors.orange.shade600;
-      case SavingsPriority.medium:
-        return Colors.blue.shade600;
-      case SavingsPriority.low:
-        return Colors.green.shade600;
-    }
-  }
-
-  IconData getCategoryIcon(SavingsCategory category) {
-    switch (category) {
-      case SavingsCategory.emergency:
-        return Icons.emergency;
-      case SavingsCategory.purchase:
-        return Icons.shopping_bag;
-      case SavingsCategory.travel:
-        return Icons.flight;
-      case SavingsCategory.education:
-        return Icons.school;
-      case SavingsCategory.investment:
-        return Icons.trending_up;
-      case SavingsCategory.home:
-        return Icons.home;
-      case SavingsCategory.vehicle:
-        return Icons.directions_car;
-      case SavingsCategory.health:
-        return Icons.health_and_safety;
-      case SavingsCategory.wedding:
-        return Icons.favorite;
-      case SavingsCategory.other:
-        return Icons.category;
-    }
+  /// Clear error
+  void clearError() {
+    _error = null;
+    notifyListeners();
   }
 }

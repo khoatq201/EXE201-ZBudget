@@ -19,8 +19,9 @@ import settingsRoutes from "./routes/settingsRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import securityRoutes from "./routes/securityRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
+import savingsRoutes from "./routes/savingsRoutes.js";
+import budgetRoutes from "./routes/budgetRoutes.js";
 // import userRoutes from './routes/users.js';
-// import budgetRoutes from './routes/budgets.js';
 // import challengeRoutes from './routes/challenges.js';
 // import groupRoutes from './routes/groups.js';
 // import notificationRoutes from './routes/notifications.js';
@@ -170,10 +171,11 @@ app.use("/api/settings", settingsRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/security", securityRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/savings", savingsRoutes);
+app.use("/api/budgets", budgetRoutes);
 
 // Protected routes (will be added later)
 // app.use('/api/users', authenticate, userRoutes);
-// app.use('/api/budgets', authenticate, budgetRoutes);
 // app.use('/api/challenges', authenticate, challengeRoutes);
 // app.use('/api/groups', authenticate, groupRoutes);
 // app.use('/api/notifications', authenticate, notificationRoutes);
@@ -190,6 +192,7 @@ app.get("/api", (req, res) => {
       dashboard: "/api/dashboard",
       income: "/api/income",
       reports: "/api/reports",
+      savings: "/api/savings",
       health: "/api/health",
     },
     todo_endpoints: {

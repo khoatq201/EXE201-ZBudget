@@ -9,9 +9,9 @@ import mongoose from "mongoose";
  */
 export const getDashboardSummary = async (req, res) => {
   const userId = req.userId;
-  const { period = "month" } = req.query; // month, week, year
+  const { period = "month", budgetId } = req.query; // month, week, year, optional budgetId
 
-  // console.log("🎯 getDashboardSummary called for userId:", userId);
+  // console.log("🎯 getDashboardSummary called for userId:", userId, "budgetId:", budgetId);
 
   try {
     // Get date range based on period
@@ -68,13 +68,18 @@ export const getDashboardSummary = async (req, res) => {
         // 4. Get recent transactions (combined income + expense)
         getRecentTransactions(userId, 5),
 
-        // 5. Get active budget for current month
-        Budget.findOne({
-          userId: new mongoose.Types.ObjectId(userId),
-          isActive: true,
-          "period.startDate": { $lte: new Date() },
-          "period.endDate": { $gte: new Date() },
-        }),
+        // 5. Get budget (specific budgetId if provided, otherwise find active budget for current month)
+        budgetId
+          ? Budget.findOne({
+              _id: new mongoose.Types.ObjectId(budgetId),
+              userId: new mongoose.Types.ObjectId(userId),
+            })
+          : Budget.findOne({
+              userId: new mongoose.Types.ObjectId(userId),
+              isActive: true,
+              "period.startDate": { $lte: new Date() },
+              "period.endDate": { $gte: new Date() },
+            }),
       ]);
 
     // console.log("✅ All parallel queries completed!");

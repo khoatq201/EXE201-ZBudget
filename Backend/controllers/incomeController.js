@@ -1,4 +1,6 @@
 import Income from "../models/Income.js";
+import Budget from "../models/Budget.js";
+import SavingsGoal from "../models/SavingsGoal.js";
 import { User } from "../models/index.js";
 import {
   BadRequestError,
@@ -8,7 +10,7 @@ import {
 import mongoose from "mongoose";
 
 /**
- * @desc    Create new income
+ * @desc    Create new income with YNAB-style allocations
  * @route   POST /api/income
  * @access  Private
  */
@@ -25,81 +27,152 @@ export const createIncome = async (req, res) => {
     isRecurring,
     recurringDetails,
     taxInfo,
+    allocations, // YNAB-style allocations
   } = req.body;
 
+  const session = await mongoose.startSession();
+
   try {
-    console.log('💰 Creating income for user:', userId);
+    await session.withTransaction(async () => {
+      console.log('💰 Creating income for user:', userId);
 
-    // Create income
-    const income = new Income({
-      userId,
-      title,
-      description,
-      amount,
-      category,
-      date: date ? new Date(date) : new Date(),
-      paymentMethod: paymentMethod || "banking",
-      source,
-      isRecurring: isRecurring || false,
-      recurringDetails,
-      taxInfo,
-      isConfirmed: true,
-    });
+      // Create income with allocations
+      const income = new Income({
+        userId,
+        title,
+        description,
+        amount,
+        category,
+        date: date ? new Date(date) : new Date(),
+        paymentMethod: paymentMethod || "banking",
+        source,
+        isRecurring: isRecurring || false,
+        recurringDetails,
+        taxInfo,
+        allocations: allocations || [],
+        isConfirmed: true,
+      });
 
-    console.log('💾 Saving income...');
-    await income.save();
-    console.log('✅ Income saved:', income._id);
+      console.log('💾 Saving income...');
+      await income.save({ session });
+      console.log('✅ Income saved:', income._id);
 
-    // Update user's financial summary
-    console.log('📊 Updating user financial summary...');
-    try {
+      // Calculate allocation totals
+      const totalAllocated = parseFloat(income.totalAllocated?.toString() || "0");
+      const unallocated = parseFloat(income.unallocated?.toString() || "0");
+
+      // Update user's financial summary
+      console.log('📊 Updating user financial summary...');
       await User.findByIdAndUpdate(
         userId,
         {
           $inc: {
             'financialSummary.totalIncome': amount,
             'financialSummary.currentBalance': amount,
+            'financialSummary.readyToAssign': unallocated,
           },
           'financialSummary.lastUpdated': new Date(),
         },
-        { new: true }
+        { session }
       );
       console.log('✅ Financial summary updated');
-    } catch (summaryError) {
-      console.error('⚠️ Financial summary update failed:', summaryError.message);
-    }
 
-    // Format response with proper number conversion
-    const formattedIncome = {
-      _id: income._id,
-      userId: income.userId,
-      title: income.title,
-      description: income.description,
-      amount: parseFloat(income.amount.toString()),
-      category: income.category,
-      date: income.date,
-      paymentMethod: income.paymentMethod,
-      source: income.source,
-      isConfirmed: income.isConfirmed,
-      isRecurring: income.isRecurring,
-      recurringDetails: income.recurringDetails,
-      taxInfo: income.taxInfo ? {
-        isTaxable: income.taxInfo.isTaxable,
-        taxRate: income.taxInfo.taxRate || 0,
-        taxAmount: income.taxInfo.taxAmount ? parseFloat(income.taxInfo.taxAmount.toString()) : 0,
-      } : null,
-      createdAt: income.createdAt,
-      updatedAt: income.updatedAt,
-    };
+      // Process allocations
+      if (allocations && allocations.length > 0) {
+        console.log(`📝 Processing ${allocations.length} allocations...`);
 
-    res.status(201).json({
-      success: true,
-      message: "Income created successfully",
-      data: formattedIncome
+        for (const alloc of allocations) {
+          if (alloc.type === 'budget') {
+            // Fund budget category
+            const budget = await Budget.findById(alloc.targetId).session(session);
+
+            if (!budget) {
+              console.warn(`⚠️ Budget not found: ${alloc.targetId}`);
+              continue;
+            }
+
+            console.log(`💵 Funding budget ${budget.name}, category: ${alloc.categoryAllocationId}`);
+            budget.fundCategory(alloc.categoryAllocationId, parseFloat(alloc.amount));
+            await budget.save({ session });
+
+            // Update user's totalAssigned
+            await User.findByIdAndUpdate(
+              userId,
+              {
+                $inc: {
+                  'financialSummary.totalAssigned': parseFloat(alloc.amount),
+                },
+                'financialSummary.lastAssignmentDate': new Date(),
+              },
+              { session }
+            );
+          } else if (alloc.type === 'savings') {
+            // Fund savings goal
+            const savingsGoal = await SavingsGoal.findById(alloc.targetId).session(session);
+
+            if (!savingsGoal) {
+              console.warn(`⚠️ Savings goal not found: ${alloc.targetId}`);
+              continue;
+            }
+
+            console.log(`💰 Contributing to savings goal ${savingsGoal.name}`);
+            savingsGoal.addContribution(parseFloat(alloc.amount), 'income_allocation', income._id, alloc.note);
+            await savingsGoal.save({ session });
+
+            // Update user's totalSaved
+            await User.findByIdAndUpdate(
+              userId,
+              {
+                $inc: {
+                  'financialSummary.totalSaved': parseFloat(alloc.amount),
+                },
+              },
+              { session }
+            );
+          }
+        }
+
+        console.log('✅ Allocations processed');
+      }
+
+      // Format response
+      const formattedIncome = {
+        _id: income._id,
+        userId: income.userId,
+        title: income.title,
+        description: income.description,
+        amount: parseFloat(income.amount.toString()),
+        category: income.category,
+        date: income.date,
+        paymentMethod: income.paymentMethod,
+        source: income.source,
+        isConfirmed: income.isConfirmed,
+        isRecurring: income.isRecurring,
+        recurringDetails: income.recurringDetails,
+        allocations: income.allocations,
+        totalAllocated: parseFloat(income.totalAllocated.toString()),
+        unallocated: parseFloat(income.unallocated.toString()),
+        isFullyAllocated: income.isFullyAllocated,
+        taxInfo: income.taxInfo ? {
+          isTaxable: income.taxInfo.isTaxable,
+          taxRate: income.taxInfo.taxRate || 0,
+          taxAmount: income.taxInfo.taxAmount ? parseFloat(income.taxInfo.taxAmount.toString()) : 0,
+        } : null,
+        createdAt: income.createdAt,
+        updatedAt: income.updatedAt,
+      };
+
+      res.status(201).json({
+        success: true,
+        message: "Income created successfully",
+        data: formattedIncome
+      });
     });
   } catch (error) {
     console.error("❌ Create income error:", error);
     throw new BadRequestError(error.message);
+  } finally {
+    session.endSession();
   }
 };
 
@@ -397,6 +470,153 @@ export const getIncomeStats = async (req, res) => {
 };
 
 
+/**
+ * @desc    Assign from Ready to Assign pool
+ * @route   POST /api/income/assign
+ * @access  Private
+ */
+export const assignReadyToAssign = async (req, res) => {
+  const userId = req.userId;
+  const { assignments } = req.body;
+
+  if (!assignments || !Array.isArray(assignments) || assignments.length === 0) {
+    throw new BadRequestError("Assignments array is required");
+  }
+
+  const session = await mongoose.startSession();
+
+  try {
+    await session.withTransaction(async () => {
+      console.log('💸 Processing Ready to Assign assignments...');
+
+      // Get current Ready to Assign
+      const user = await User.findById(userId).session(session);
+      const readyToAssign = parseFloat(user.financialSummary.readyToAssign?.toString() || "0");
+
+      // Calculate total assigning
+      const totalAssigning = assignments.reduce(
+        (sum, a) => sum + parseFloat(a.amount),
+        0
+      );
+
+      console.log(`💰 Ready to Assign: ${readyToAssign}, Assigning: ${totalAssigning}`);
+
+      if (totalAssigning > readyToAssign) {
+        throw new BadRequestError(`Insufficient Ready to Assign. Available: ${readyToAssign}, Requested: ${totalAssigning}`);
+      }
+
+      // Process assignments
+      for (const assign of assignments) {
+        if (assign.type === 'budget') {
+          const budget = await Budget.findById(assign.targetId).session(session);
+          if (!budget) {
+            console.warn(`⚠️ Budget not found: ${assign.targetId}`);
+            continue;
+          }
+
+          console.log(`💵 Funding budget ${budget.name}, category: ${assign.categoryAllocationId}`);
+          budget.fundCategory(assign.categoryAllocationId, parseFloat(assign.amount));
+          await budget.save({ session });
+
+        } else if (assign.type === 'savings') {
+          // Fund savings goal
+          const savingsGoal = await SavingsGoal.findById(assign.targetId).session(session);
+          if (!savingsGoal) {
+            console.warn(`⚠️ Savings goal not found: ${assign.targetId}`);
+            continue;
+          }
+
+          console.log(`💰 Contributing to savings goal ${savingsGoal.name}`);
+          savingsGoal.addContribution(parseFloat(assign.amount), 'income_allocation', null, assign.note);
+          await savingsGoal.save({ session });
+
+          // Update user's totalSaved
+          await User.findByIdAndUpdate(
+            userId,
+            {
+              $inc: {
+                'financialSummary.totalSaved': parseFloat(assign.amount),
+              },
+            },
+            { session }
+          );
+        }
+      }
+
+      // Update user's financial summary
+      await User.findByIdAndUpdate(
+        userId,
+        {
+          $inc: {
+            'financialSummary.readyToAssign': -totalAssigning,
+            'financialSummary.totalAssigned': totalAssigning,
+          },
+          'financialSummary.lastAssignmentDate': new Date(),
+        },
+        { session }
+      );
+
+      const remainingReadyToAssign = readyToAssign - totalAssigning;
+
+      console.log('✅ Assignments processed');
+
+      res.status(200).json({
+        success: true,
+        message: "Assignments processed successfully",
+        data: {
+          assigned: totalAssigning,
+          remainingReadyToAssign: remainingReadyToAssign,
+        }
+      });
+    });
+  } catch (error) {
+    console.error("❌ Assign Ready to Assign error:", error);
+    if (error instanceof BadRequestError) throw error;
+    throw new BadRequestError(error.message);
+  } finally {
+    session.endSession();
+  }
+};
+
+/**
+ * @desc    Get current Ready to Assign amount
+ * @route   GET /api/income/ready-to-assign
+ * @access  Private
+ */
+export const getReadyToAssign = async (req, res) => {
+  const userId = req.userId;
+
+  try {
+    const user = await User.findById(userId).select('financialSummary');
+
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+
+    const readyToAssign = parseFloat(user.financialSummary.readyToAssign?.toString() || "0");
+    const totalAssigned = parseFloat(user.financialSummary.totalAssigned?.toString() || "0");
+    const totalSaved = parseFloat(user.financialSummary.totalSaved?.toString() || "0");
+
+    res.status(200).json({
+      success: true,
+      message: "Ready to Assign retrieved successfully",
+      data: {
+        readyToAssign,
+        totalAssigned,
+        totalSaved,
+        lastAssignmentDate: user.financialSummary.lastAssignmentDate,
+      }
+    });
+  } catch (error) {
+    console.error("Get Ready to Assign error:", error);
+    if (error instanceof NotFoundError) throw error;
+    res.status(500).json({
+      success: false,
+      error: "Failed to retrieve Ready to Assign",
+    });
+  }
+};
+
 export default {
   createIncome,
   getIncomes,
@@ -404,4 +624,6 @@ export default {
   updateIncome,
   deleteIncome,
   getIncomeStats,
+  assignReadyToAssign,
+  getReadyToAssign,
 };

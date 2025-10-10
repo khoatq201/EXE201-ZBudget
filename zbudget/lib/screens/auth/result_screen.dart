@@ -8,13 +8,13 @@ class ResultScreen extends StatefulWidget {
   final VoidCallback onButtonPressed;
 
   const ResultScreen({
-    Key? key,
+    super.key,
     required this.isSuccess,
     required this.title,
     required this.message,
     required this.buttonText,
     required this.onButtonPressed,
-  }) : super(key: key);
+  });
 
   @override
   State<ResultScreen> createState() => _ResultScreenState();

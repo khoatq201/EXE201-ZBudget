@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../constants/colors.dart';
 import '../../constants/typography.dart';
+import '../../services/budget_service.dart';
+import '../../models/budget.dart' as budget_model;
 
 enum BudgetPeriod { daily, weekly, monthly, yearly }
 
@@ -25,6 +28,7 @@ class CategoryBudget {
   double percentage;
   bool isSelected;
   final String priority;
+  TextEditingController? _percentageController;
 
   CategoryBudget({
     required this.category,
@@ -36,6 +40,15 @@ class CategoryBudget {
     required this.isSelected,
     required this.priority,
   });
+
+  TextEditingController get percentageController {
+    _percentageController ??= TextEditingController(text: percentage.toStringAsFixed(0));
+    return _percentageController!;
+  }
+
+  void dispose() {
+    _percentageController?.dispose();
+  }
 }
 
 class BudgetTemplate {
@@ -424,6 +437,9 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
     _monthlyIncomeController.dispose();
     _slideController.dispose();
     _fadeController.dispose();
+    for (var category in _categories) {
+      category.dispose();
+    }
     super.dispose();
   }
 
@@ -457,12 +473,15 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
   void _updateCategoryAmounts() {
     final totalBudget = int.tryParse(_totalBudgetController.text) ?? 0;
     if (totalBudget > 0) {
-      setState(() {
-        for (var category in _categories.where((c) => c.isSelected)) {
-          category.allocatedAmount = (totalBudget * category.percentage / 100)
-              .round();
+      for (var category in _categories.where((c) => c.isSelected)) {
+        category.allocatedAmount = (totalBudget * category.percentage / 100)
+            .round();
+        // Update controller text without triggering onChanged
+        final newText = category.percentage.toStringAsFixed(0);
+        if (category.percentageController.text != newText) {
+          category.percentageController.text = newText;
         }
-      });
+      }
     }
   }
 
@@ -475,32 +494,138 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
       return;
     }
 
+    // Validate selected categories
+    final selectedCategories = _categories.where((c) => c.isSelected).toList();
+    if (selectedCategories.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng chọn ít nhất một danh mục')),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 2));
+      final budgetService = Provider.of<BudgetService>(context, listen: false);
+
+      // Parse total budget amount
+      final totalAmount = double.tryParse(_totalBudgetController.text.replaceAll(',', '')) ?? 0;
+
+      if (totalAmount <= 0) {
+        throw Exception('Số tiền ngân sách phải lớn hơn 0');
+      }
+
+      // Calculate period dates
+      final now = DateTime.now();
+      DateTime startDate, endDate;
+
+      switch (_selectedPeriod) {
+        case BudgetPeriod.daily:
+          startDate = DateTime(now.year, now.month, now.day);
+          endDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
+          break;
+        case BudgetPeriod.weekly:
+          startDate = now.subtract(Duration(days: now.weekday - 1));
+          endDate = startDate.add(const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
+          break;
+        case BudgetPeriod.monthly:
+          startDate = DateTime(now.year, now.month, 1);
+          endDate = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+          break;
+        case BudgetPeriod.yearly:
+          startDate = DateTime(now.year, 1, 1);
+          endDate = DateTime(now.year, 12, 31, 23, 59, 59);
+          break;
+      }
+
+      // Create category allocations from selected categories
+      final categoryAllocations = selectedCategories.map((cat) {
+        return budget_model.CategoryAllocation(
+          category: _mapExpenseCategoryToBudgetCategory(cat.category),
+          allocated: cat.allocatedAmount.toDouble(),
+          percentage: cat.percentage.toDouble(),
+          remaining: cat.allocatedAmount.toDouble(),
+          lastUpdated: DateTime.now(),
+        );
+      }).toList();
+
+      // Create budget period
+      final period = budget_model.BudgetPeriod(
+        startDate: startDate,
+        endDate: endDate,
+        type: _mapBudgetPeriodToBudgetPeriodType(_selectedPeriod),
+      );
+
+      // Call API to create budget
+      final result = await budgetService.createBudget(
+        name: _budgetNameController.text,
+        totalAmount: totalAmount,
+        period: period,
+        categoryAllocations: categoryAllocations,
+      );
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tạo ngân sách thành công!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      Navigator.pop(context);
+      if (result['success']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tạo ngân sách thành công!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true); // Return true to indicate success
+      } else {
+        throw Exception(result['message'] ?? 'Lỗi khi tạo ngân sách');
+      }
     } catch (error) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Lỗi: $error')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi: $error')),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // Helper methods to map enums
+  budget_model.BudgetCategory _mapExpenseCategoryToBudgetCategory(ExpenseCategory cat) {
+    switch (cat) {
+      case ExpenseCategory.food:
+        return budget_model.BudgetCategory.food;
+      case ExpenseCategory.transport:
+        return budget_model.BudgetCategory.transport;
+      case ExpenseCategory.shopping:
+        return budget_model.BudgetCategory.shopping;
+      case ExpenseCategory.entertainment:
+        return budget_model.BudgetCategory.entertainment;
+      case ExpenseCategory.healthcare:
+        return budget_model.BudgetCategory.healthcare;
+      case ExpenseCategory.education:
+        return budget_model.BudgetCategory.education;
+      case ExpenseCategory.utilities:
+        return budget_model.BudgetCategory.utilities;
+      case ExpenseCategory.other:
+        return budget_model.BudgetCategory.other;
+    }
+  }
+
+  budget_model.BudgetPeriodType _mapBudgetPeriodToBudgetPeriodType(BudgetPeriod period) {
+    switch (period) {
+      case BudgetPeriod.daily:
+        return budget_model.BudgetPeriodType.daily;
+      case BudgetPeriod.weekly:
+        return budget_model.BudgetPeriodType.weekly;
+      case BudgetPeriod.monthly:
+        return budget_model.BudgetPeriodType.monthly;
+      case BudgetPeriod.yearly:
+        return budget_model.BudgetPeriodType.yearly;
     }
   }
 
@@ -896,6 +1021,54 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
             'Chọn và phân bổ ngân sách cho từng danh mục',
             style: AppTypography.body.copyWith(color: AppColors.textSecondary),
           ),
+          const SizedBox(height: 8),
+          // Total percentage display
+          Builder(
+            builder: (context) {
+              final totalPercentage = _categories
+                  .where((c) => c.isSelected)
+                  .fold<double>(0, (sum, cat) => sum + cat.percentage);
+              final isValid = totalPercentage <= 100;
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isValid ? Colors.green.shade50 : Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isValid ? Colors.green : Colors.red,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isValid ? Icons.check_circle : Icons.warning,
+                      size: 16,
+                      color: isValid ? Colors.green : Colors.red,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Tổng: ${totalPercentage.toStringAsFixed(0)}%',
+                      style: AppTypography.caption.copyWith(
+                        color: isValid ? Colors.green.shade900 : Colors.red.shade900,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (!isValid) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        '(Vượt quá 100%)',
+                        style: AppTypography.caption.copyWith(
+                          color: Colors.red.shade900,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
+          ),
           const SizedBox(height: 16),
           GridView.builder(
             shrinkWrap: true,
@@ -904,7 +1077,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
               crossAxisCount: 2,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: 1.5,
+              childAspectRatio: 0.95,
             ),
             itemCount: _categories.length,
             itemBuilder: (context, index) {
@@ -955,17 +1128,46 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                           color: AppColors.textPrimary,
                           fontWeight: FontWeight.w600,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      if (category.isSelected &&
-                          category.allocatedAmount > 0) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          formatCurrency(category.allocatedAmount),
-                          style: AppTypography.caption.copyWith(
-                            color: category.color,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      if (category.isSelected) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: '%',
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                controller: category.percentageController,
+                                onChanged: (value) {
+                                  final newPercentage = double.tryParse(value) ?? 0;
+                                  setState(() {
+                                    category.percentage = newPercentage;
+                                    _updateCategoryAmounts();
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
                         ),
+                        if (category.allocatedAmount > 0) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            formatCurrency(category.allocatedAmount),
+                            style: AppTypography.caption.copyWith(
+                              color: category.color,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ],
                     ],
                   ),

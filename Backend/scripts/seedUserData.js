@@ -238,21 +238,31 @@ const generateBudget = (userId, expenses) => {
   const totalBudget = SEED_CONFIG.monthlyBudget;
 
   // Create category allocations based on actual spending + buffer
+  // YNAB style: allocated (planned), funded (from income), spent (actual), available (funded - spent)
   const categoryAllocations = Object.entries(categoryTotals).map(
     ([category, spent]) => {
-      const allocated = Math.ceil(spent * 1.2); // 20% buffer
+      const allocated = Math.ceil(spent * 1.2); // 20% buffer - planned amount
+      const funded = allocated; // Assume fully funded for seed data
+      const available = funded - spent; // Available = funded - spent
       const percentage = (allocated / totalBudget) * 100;
 
       return {
         category,
         allocated: mongoose.Types.Decimal128.fromString(allocated.toString()),
+        funded: mongoose.Types.Decimal128.fromString(funded.toString()),
         spent: mongoose.Types.Decimal128.fromString(spent.toString()),
-        remaining: mongoose.Types.Decimal128.fromString(
-          (allocated - spent).toString()
-        ),
+        available: mongoose.Types.Decimal128.fromString(available.toString()),
+        remaining: mongoose.Types.Decimal128.fromString(available.toString()), // Deprecated, same as available
         percentage: Math.min(percentage, 100), // Cap at 100%
+        lastUpdated: new Date(),
       };
     }
+  );
+
+  // Calculate total funded
+  const totalFunded = categoryAllocations.reduce(
+    (sum, cat) => sum + parseFloat(cat.funded.toString()),
+    0
   );
 
   const budget = {
@@ -266,11 +276,27 @@ const generateBudget = (userId, expenses) => {
     startDate: new Date(2025, 9, 1),
     endDate: new Date(2025, 9, 31),
     totalAmount: mongoose.Types.Decimal128.fromString(totalBudget.toString()),
+    totalAllocated: mongoose.Types.Decimal128.fromString(totalBudget.toString()),
+    totalFunded: mongoose.Types.Decimal128.fromString(totalFunded.toString()),
     categoryAllocations,
+    fundingStatus: {
+      totalFunded: mongoose.Types.Decimal128.fromString(totalFunded.toString()),
+      fundingPercentage: Math.round((totalFunded / totalBudget) * 100),
+      underfunded: totalFunded < totalBudget,
+      overfunded: totalFunded > totalBudget,
+    },
     status: {
       totalSpent: mongoose.Types.Decimal128.fromString(totalSpent.toString()),
-      spentPercentage: (totalSpent / totalBudget) * 100,
+      totalRemaining: mongoose.Types.Decimal128.fromString((totalBudget - totalSpent).toString()),
+      spentPercentage: Math.round(((totalSpent / totalBudget) * 100) * 100) / 100,
       isOverBudget: totalSpent > totalBudget,
+      daysRemaining: Math.ceil((new Date(2025, 9, 31) - new Date()) / (1000 * 60 * 60 * 24)),
+      dailyAverageSpent: mongoose.Types.Decimal128.fromString((totalSpent / 10).toString()), // Assume 10 days passed
+      projectedTotal: mongoose.Types.Decimal128.fromString((totalSpent * 3).toString()), // Simple projection
+    },
+    alerts: {
+      thresholds: [50, 75, 90],
+      alertsSent: [],
     },
     alertThreshold: 80,
     notificationsEnabled: true,
