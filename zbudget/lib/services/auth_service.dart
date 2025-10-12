@@ -753,6 +753,32 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Search users by name
+  Future<List<Map<String, dynamic>>> searchUsers(String query) async {
+    try {
+      if (query.trim().length < 2) {
+        return [];
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/search-users?q=${Uri.encodeComponent(query)}'),
+        headers: getAuthHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['success'] == true && responseData['data'] != null) {
+          final users = responseData['data']['users'] as List;
+          return users.cast<Map<String, dynamic>>();
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error searching users: $e');
+      return [];
+    }
+  }
+
   /// Complete user profile after Google Sign-In
   Future<Map<String, dynamic>> completeProfile({
     String? phone,

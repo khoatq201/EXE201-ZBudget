@@ -15,6 +15,7 @@ import {
   getProfile,
   updateProfile,
   deleteAccount,
+  searchUsers,
 } from "../controllers/authController.js";
 import { OAuth2Client } from "google-auth-library";
 import {
@@ -34,27 +35,16 @@ import { auditLogger } from "../middleware/logger.js";
 import { uploadMiddleware } from "../middleware/upload.js";
 import Joi from "joi";
 import { catchAsync } from "../middleware/errorHandler.js";
-
 const router = express.Router();
-
 // Enhanced audit logging middleware with better debugging
 const auditAuthOperation = (operation) => (req, res, next) => {
-  console.log(
-    `🔍 DEBUG: auditAuthOperation middleware started for: ${operation}`
-  );
-  console.log(`🔍 DEBUG: Request path: ${req.path}, Method: ${req.method}`);
-
   // Log immediately when middleware runs
   auditLogger(operation + "_ATTEMPT", req, {
     timestamp: new Date().toISOString(),
     userAgent: req.get("User-Agent"),
     ip: req.ip,
   });
-
   res.on("finish", () => {
-    console.log(
-      `🔍 DEBUG: auditAuthOperation response finished for: ${operation}, Status: ${res.statusCode}`
-    );
     if (res.statusCode < 400) {
       auditLogger(operation + "_SUCCESS", req, {
         success: true,
@@ -67,31 +57,16 @@ const auditAuthOperation = (operation) => (req, res, next) => {
       });
     }
   });
-
-  console.log(
-    `🔍 DEBUG: auditAuthOperation middleware completed for: ${operation}`
-  );
   next();
 };
-
 // Debug middleware for all auth routes
 router.use((req, res, next) => {
-  console.log(`🛣️ DEBUG: ===== AUTH ROUTE HIT =====`);
-  console.log(`🛣️ DEBUG: ${req.method} ${req.originalUrl}`);
-  console.log(`🛣️ DEBUG: Path: ${req.path}`);
-  console.log(
-    `🛣️ DEBUG: Body keys: [${Object.keys(req.body || {}).join(", ")}]`
-  );
-  console.log(`🛣️ DEBUG: Content-Type: ${req.get("Content-Type")}`);
   next();
 });
-
 // Create a simple pass-through middleware for testing
 const bypassRateLimit = (req, res, next) => {
-  console.log(`⚡ DEBUG: Bypassing rate limit for testing`);
   next();
 };
-
 /**
  * @route   POST /api/auth/register
  * @desc    Đăng ký tài khoản mới
@@ -102,34 +77,23 @@ router.post(
   "/register",
   // Add debug middleware for each step
   (req, res, next) => {
-    console.log("🎯 DEBUG: Step 1 - Entering /register route");
-    console.log("🎯 DEBUG: About to run rateLimitAuth middleware");
     next();
   },
   // ⚡ TEMPORARILY USE BYPASS INSTEAD OF RATE LIMITING
   process.env.NODE_ENV === "development" ? bypassRateLimit : rateLimitAuth,
   (req, res, next) => {
-    console.log("🎯 DEBUG: Step 2 - Passed rateLimitAuth");
-    console.log("🎯 DEBUG: About to run validation middleware");
-    console.log("🎯 DEBUG: Request body:", JSON.stringify(req.body, null, 2));
     next();
   },
   validate(userSchemas.register),
   (req, res, next) => {
-    console.log("🎯 DEBUG: Step 3 - Passed validation");
-    console.log("🎯 DEBUG: Validated body:", JSON.stringify(req.body, null, 2));
-    console.log("🎯 DEBUG: About to run auditAuthOperation");
     next();
   },
   auditAuthOperation("USER_REGISTER"),
   (req, res, next) => {
-    console.log("🎯 DEBUG: Step 4 - Passed auditAuthOperation");
-    console.log("🎯 DEBUG: About to call register controller");
     next();
   },
   catchAsync(register) // Wrap register with asyncHandler for error catching
 );
-
 /**
  * @route   POST /api/auth/login
  * @desc    Đăng nhập
@@ -143,7 +107,6 @@ router.post(
   auditAuthOperation("USER_LOGIN"),
   catchAsync(login) // ✅ Wrap with catchAsync to handle async errors
 );
-
 /**
  * @route   POST /api/auth/logout
  * @desc    Đăng xuất
@@ -156,7 +119,6 @@ router.post(
   auditAuthOperation("USER_LOGOUT"),
   catchAsync(logout)
 );
-
 /**
  * @route   POST /api/auth/refresh-token
  * @desc    Làm mới access token bằng refresh token
@@ -164,7 +126,6 @@ router.post(
  * @body    { refreshToken }
  */
 router.post("/refresh-token", rateLimitAuth, catchAsync(refreshToken));
-
 /**
  * @route   POST /api/auth/forgot-password
  * @desc    Quên mật khẩu - gửi email reset
@@ -178,7 +139,6 @@ router.post(
   auditAuthOperation("PASSWORD_RESET_REQUEST"),
   catchAsync(forgotPassword)
 );
-
 /**
  * @route   POST /api/auth/verify-password-reset-otp
  * @desc    Xác thực OTP đặt lại mật khẩu
@@ -192,7 +152,6 @@ router.post(
   auditAuthOperation("PASSWORD_RESET_OTP_VERIFY"),
   catchAsync(verifyPasswordResetOTP)
 );
-
 /**
  * @route   POST /api/auth/reset-password
  * @desc    Reset mật khẩu với OTP
@@ -206,7 +165,6 @@ router.post(
   auditAuthOperation("PASSWORD_RESET_COMPLETE"),
   catchAsync(resetPassword)
 );
-
 /**
  * @route   GET /api/auth/verify-email/:token
  * @desc    Xác thực email với token
@@ -218,7 +176,6 @@ router.get(
   auditAuthOperation("EMAIL_VERIFICATION"),
   catchAsync(verifyEmail)
 );
-
 /**
  * @route   POST /api/auth/verify-otp
  * @desc    Xác thực OTP email
@@ -232,7 +189,6 @@ router.post(
   auditAuthOperation("OTP_VERIFICATION"),
   catchAsync(verifyOTP)
 );
-
 /**
  * @route   POST /api/auth/resend-verification
  * @desc    Gửi lại email xác thực
@@ -245,7 +201,6 @@ router.post(
   auditAuthOperation("EMAIL_VERIFICATION_RESEND"),
   catchAsync(resendEmailVerification)
 );
-
 /**
  * @route   POST /api/auth/change-password
  * @desc    Đổi mật khẩu (khi đã đăng nhập)
@@ -261,7 +216,6 @@ router.post(
   auditAuthOperation("PASSWORD_CHANGE"),
   catchAsync(changePassword)
 );
-
 /**
  * @route   GET /api/auth/profile
  * @desc    Lấy thông tin profile người dùng hiện tại
@@ -270,6 +224,14 @@ router.post(
  */
 router.get("/profile", authenticate, catchAsync(getProfile));
 
+/**
+ * @route   GET /api/auth/search-users
+ * @desc    Tìm kiếm users theo tên
+ * @access  Private
+ * @headers Authorization: Bearer <accessToken>
+ * @query   q - Từ khóa tìm kiếm (tối thiểu 2 ký tự)
+ */
+router.get("/search-users", authenticate, catchAsync(searchUsers));
 /**
  * @route   PUT /api/auth/profile
  * @desc    Cập nhật thông tin profile
@@ -284,7 +246,6 @@ router.put(
   auditAuthOperation("PROFILE_UPDATE"),
   catchAsync(updateProfile)
 );
-
 /**
  * @route   POST /api/auth/profile/avatar
  * @desc    Cập nhật ảnh đại diện
@@ -305,7 +266,6 @@ router.post(
   },
   catchAsync(updateProfile)
 );
-
 /**
  * @route   DELETE /api/auth/account
  * @desc    Xóa tài khoản (soft delete)
@@ -328,7 +288,6 @@ router.delete(
   auditAuthOperation("ACCOUNT_DELETE"),
   catchAsync(deleteAccount)
 );
-
 /**
  * @route   GET /api/auth/check
  * @desc    Kiểm tra trạng thái đăng nhập
@@ -344,7 +303,6 @@ router.get("/check", optionalAuthenticate, (req, res) => {
     },
   });
 });
-
 /**
  * @route   POST /api/auth/validate-token
  * @desc    Validate access token (for mobile apps)
@@ -362,7 +320,6 @@ router.post("/validate-token", authenticate, (req, res) => {
     },
   });
 });
-
 /**
  * @route   POST /api/auth/google-signin
  * @desc    Google Sign-In
@@ -374,24 +331,20 @@ router.post(
   auditAuthOperation("google_signin"),
   catchAsync(async (req, res) => {
     const { idToken, accessToken, email, displayName, photoUrl } = req.body;
-
     if (!email) {
       return res.status(400).json({
         success: false,
         message: "Email là bắt buộc",
       });
     }
-
     if (!idToken && !accessToken) {
       return res.status(400).json({
         success: false,
         message: "ID token hoặc access token là bắt buộc",
       });
     }
-
     try {
       let payload = {};
-
       if (idToken) {
         // Verify the Google ID token
         const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -399,9 +352,7 @@ router.post(
           idToken,
           audience: process.env.GOOGLE_CLIENT_ID,
         });
-
         payload = ticket.getPayload();
-
         if (payload.email !== email) {
           return res.status(401).json({
             success: false,
@@ -418,16 +369,11 @@ router.post(
           picture: photoUrl,
           sub: `google_${email}`, // Create a pseudo Google ID
         };
-
-        console.log(`🌐 Web Google Sign-In for: ${email}`);
       }
-
       // Import User model dynamically
       // const { User } = await import("../models/index.js");
-
       // Find or create user
       let user = await User.findOne({ email: payload.email });
-
       if (!user) {
         // Create new user for Google sign-in
         user = new User({
@@ -441,8 +387,6 @@ router.post(
           googleId: payload.sub,
         });
         await user.save();
-
-        console.log(`✅ New Google user created: ${user.email}`);
       } else {
         // Check if user was created with different auth provider
         if (user.authProvider === "local" && !user.googleId) {
@@ -451,7 +395,6 @@ router.post(
           user.authProvider = "google"; // Switch to Google provider
           user.emailVerified = true;
         }
-
         // Update user info if they exist
         if (user.profile) {
           user.profile.avatar =
@@ -460,26 +403,20 @@ router.post(
             user.profile.name = displayName || payload.name;
           }
         }
-
         user.emailVerified = true;
         user.lastLogin = new Date();
         await user.save();
-
-        console.log(`✅ Existing user signed in with Google: ${user.email}`);
       }
-
       // Generate JWT tokens
       const { accessToken: jwtAccessToken, refreshToken } = generateTokens(
         user._id
       );
-
       // Log successful Google sign-in
       auditLogger("google_signin_SUCCESS", req, {
         userId: user._id,
         email: user.email,
         timestamp: new Date().toISOString(),
       });
-
       res.json({
         success: true,
         message: "Đăng nhập Google thành công",
@@ -497,14 +434,12 @@ router.post(
       });
     } catch (error) {
       console.error("Google sign-in error:", error);
-
       // Log failed Google sign-in
       auditLogger("google_signin_FAILED", req, {
         email,
         error: error.message,
         timestamp: new Date().toISOString(),
       });
-
       res.status(401).json({
         success: false,
         message: "Token Google không hợp lệ",
@@ -512,7 +447,6 @@ router.post(
     }
   })
 );
-
 // Complete Profile endpoint (for Google Sign-In users)
 const completeProfileSchema = Joi.object({
   phone: Joi.string()
@@ -532,14 +466,12 @@ const completeProfileSchema = Joi.object({
     "string.max": "Tên quốc gia không được vượt quá 50 ký tự",
   }),
 });
-
 router.patch(
   "/complete-profile",
   authenticate,
   auditAuthOperation("complete_profile"),
   catchAsync(async (req, res) => {
     const { error, value } = completeProfileSchema.validate(req.body);
-
     if (error) {
       return res.status(400).json({
         success: false,
@@ -550,17 +482,14 @@ router.patch(
         })),
       });
     }
-
     const { User } = await import("../models/index.js");
     const user = await User.findById(req.user.id);
-
     if (!user) {
       return res.status(404).json({
         success: false,
         message: "Người dùng không tồn tại",
       });
     }
-
     // Update profile information
     const updateData = {};
     if (value.phone) updateData["profile.phone"] = value.phone;
@@ -569,13 +498,11 @@ router.patch(
     if (value.gender) updateData["profile.gender"] = value.gender;
     if (value.city) updateData["profile.location.city"] = value.city;
     if (value.country) updateData["profile.location.country"] = value.country;
-
     const updatedUser = await User.findByIdAndUpdate(
       req.user.id,
       { $set: updateData },
       { new: true, runValidators: true }
     );
-
     // Log successful profile completion
     auditLogger("complete_profile_SUCCESS", req, {
       userId: user._id,
@@ -583,7 +510,6 @@ router.patch(
       updatedFields: Object.keys(updateData),
       timestamp: new Date().toISOString(),
     });
-
     res.json({
       success: true,
       message: "Cập nhật thông tin thành công",
@@ -603,5 +529,4 @@ router.patch(
     });
   })
 );
-
 export default router;

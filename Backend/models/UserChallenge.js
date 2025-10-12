@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-
 // Sub-schemas
 const DailyProgressSchema = new mongoose.Schema(
   {
@@ -30,7 +29,6 @@ const DailyProgressSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const MilestoneAchievedSchema = new mongoose.Schema(
   {
     milestoneIndex: {
@@ -54,7 +52,6 @@ const MilestoneAchievedSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const CurrentStatsSchema = new mongoose.Schema(
   {
     daysCompleted: {
@@ -98,7 +95,6 @@ const CurrentStatsSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const UserNoteSchema = new mongoose.Schema(
   {
     date: {
@@ -113,7 +109,6 @@ const UserNoteSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const SocialSchema = new mongoose.Schema(
   {
     shareProgress: {
@@ -137,7 +132,6 @@ const SocialSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const CompletionSchema = new mongoose.Schema(
   {
     completedAt: {
@@ -172,7 +166,6 @@ const CompletionSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 // Main UserChallenge Schema
 const UserChallengeSchema = new mongoose.Schema(
   {
@@ -188,7 +181,6 @@ const UserChallengeSchema = new mongoose.Schema(
       required: [true, "Challenge ID là bắt buộc"],
       index: true,
     },
-
     // Progress Tracking
     status: {
       type: String,
@@ -214,44 +206,37 @@ const UserChallengeSchema = new mongoose.Schema(
         message: "Ngày kết thúc phải sau ngày bắt đầu",
       },
     },
-
     // Daily Progress
     dailyProgress: {
       type: [DailyProgressSchema],
       default: [],
     },
-
     // Milestone Progress
     milestonesAchieved: {
       type: [MilestoneAchievedSchema],
       default: [],
     },
-
     // Current Stats
     currentStats: {
       type: CurrentStatsSchema,
       required: true,
       default: () => ({}),
     },
-
     // User Notes & Reflections
     userNotes: {
       type: [UserNoteSchema],
       default: [],
     },
-
     // Social Features
     social: {
       type: SocialSchema,
       default: () => ({}),
     },
-
     // Completion Details
     completion: {
       type: CompletionSchema,
       default: () => ({}),
     },
-
     version: {
       type: Number,
       default: 1,
@@ -275,44 +260,37 @@ const UserChallengeSchema = new mongoose.Schema(
               );
           });
         }
-
         if (ret.currentStats && ret.currentStats.totalSaved) {
           ret.currentStats.totalSaved = parseFloat(
             ret.currentStats.totalSaved.toString()
           );
         }
-
         if (ret.completion) {
           if (ret.completion.finalSaving)
             ret.completion.finalSaving = parseFloat(
               ret.completion.finalSaving.toString()
             );
         }
-
         return ret;
       },
     },
   }
 );
-
 // Compound Indexes
 UserChallengeSchema.index({ userId: 1, status: 1 });
 UserChallengeSchema.index({ challengeId: 1, status: 1 });
 UserChallengeSchema.index({ userId: 1, startDate: -1 });
 UserChallengeSchema.index({ "currentStats.rank": 1 }, { sparse: true });
-
 // Instance Methods
 UserChallengeSchema.methods.startChallenge = function (challenge) {
   if (this.status !== "available") {
     throw new Error("Không thể bắt đầu thách thức đã được kích hoạt");
   }
-
   this.status = "active";
   this.startDate = new Date();
   this.endDate = new Date(
     Date.now() + challenge.duration.days * 24 * 60 * 60 * 1000
   );
-
   // Initialize current stats
   this.currentStats = {
     daysCompleted: 0,
@@ -323,13 +301,11 @@ UserChallengeSchema.methods.startChallenge = function (challenge) {
     pointsEarned: 0,
     onTrack: true,
   };
-
   // Initialize daily progress array
   this.dailyProgress = [];
   for (let i = 0; i < challenge.duration.days; i++) {
     const date = new Date(this.startDate);
     date.setDate(date.getDate() + i);
-
     this.dailyProgress.push({
       date,
       targetAmount: challenge.targets.dailySavingTarget,
@@ -339,7 +315,6 @@ UserChallengeSchema.methods.startChallenge = function (challenge) {
     });
   }
 };
-
 UserChallengeSchema.methods.updateDailyProgress = function (
   date,
   actualSaved,
@@ -349,11 +324,9 @@ UserChallengeSchema.methods.updateDailyProgress = function (
   const dayProgress = this.dailyProgress.find(
     (day) => day.date.toDateString() === date.toDateString()
   );
-
   if (!dayProgress) {
     throw new Error("Không tìm thấy ngày trong kế hoạch thách thức");
   }
-
   // Update progress
   dayProgress.actualSaved = mongoose.Types.Decimal128.fromString(
     actualSaved.toFixed(2)
@@ -364,13 +337,10 @@ UserChallengeSchema.methods.updateDailyProgress = function (
   dayProgress.completed =
     actualSaved >= parseFloat(dayProgress.targetAmount.toString());
   if (notes) dayProgress.notes = notes;
-
   // Update overall stats
   this.updateCurrentStats();
-
   return dayProgress;
 };
-
 UserChallengeSchema.methods.updateCurrentStats = function () {
   const completedDays = this.dailyProgress.filter(
     (day) => day.completed
@@ -379,11 +349,9 @@ UserChallengeSchema.methods.updateCurrentStats = function () {
     (sum, day) => sum + parseFloat(day.actualSaved.toString()),
     0
   );
-
   // Calculate completion percentage
   const completionPercentage =
     (completedDays / this.currentStats.totalDays) * 100;
-
   // Calculate current streak
   let currentStreak = 0;
   for (let i = this.dailyProgress.length - 1; i >= 0; i--) {
@@ -393,7 +361,6 @@ UserChallengeSchema.methods.updateCurrentStats = function () {
       break;
     }
   }
-
   // Check if on track
   const today = new Date();
   const daysSinceStart = Math.floor(
@@ -404,7 +371,6 @@ UserChallengeSchema.methods.updateCurrentStats = function () {
     this.currentStats.totalDays
   );
   const onTrack = completedDays >= expectedCompletedDays * 0.8; // 80% threshold
-
   // Update stats
   this.currentStats = {
     daysCompleted: completedDays,
@@ -417,7 +383,6 @@ UserChallengeSchema.methods.updateCurrentStats = function () {
     onTrack,
   };
 };
-
 UserChallengeSchema.methods.achieveMilestone = function (
   milestoneIndex,
   pointsEarned,
@@ -427,11 +392,9 @@ UserChallengeSchema.methods.achieveMilestone = function (
   const alreadyAchieved = this.milestonesAchieved.find(
     (m) => m.milestoneIndex === milestoneIndex
   );
-
   if (alreadyAchieved) {
     throw new Error("Milestone đã được hoàn thành trước đó");
   }
-
   // Add milestone
   this.milestonesAchieved.push({
     milestoneIndex,
@@ -439,20 +402,16 @@ UserChallengeSchema.methods.achieveMilestone = function (
     pointsEarned,
     badgeEarned,
   });
-
   // Update points
   this.currentStats.pointsEarned += pointsEarned;
-
   return this.milestonesAchieved[this.milestonesAchieved.length - 1];
 };
-
 UserChallengeSchema.methods.addNote = function (note) {
   this.userNotes.push({
     date: new Date(),
     note,
   });
 };
-
 UserChallengeSchema.methods.completeChallenge = function (
   finalSaving,
   totalPointsEarned,
@@ -461,7 +420,6 @@ UserChallengeSchema.methods.completeChallenge = function (
   if (this.status !== "active") {
     throw new Error("Chỉ có thể hoàn thành thách thức đang active");
   }
-
   this.status = "completed";
   this.completion = {
     completedAt: new Date(),
@@ -469,42 +427,34 @@ UserChallengeSchema.methods.completeChallenge = function (
     totalPointsEarned,
     badgesEarned: badgesEarned || [],
   };
-
   // Update final stats
   this.currentStats.completionPercentage = 100;
   this.currentStats.pointsEarned = totalPointsEarned;
 };
-
 UserChallengeSchema.methods.failChallenge = function (reason) {
   if (this.status !== "active") {
     throw new Error("Chỉ có thể fail thách thức đang active");
   }
-
   this.status = "failed";
   if (reason) {
     this.addNote(`Thách thức thất bại: ${reason}`);
   }
 };
-
 UserChallengeSchema.methods.abandonChallenge = function (reason) {
   if (!["available", "active"].includes(this.status)) {
     throw new Error("Không thể abandon thách thức đã hoàn thành hoặc thất bại");
   }
-
   this.status = "abandoned";
   if (reason) {
     this.addNote(`Từ bỏ thách thức: ${reason}`);
   }
 };
-
 UserChallengeSchema.methods.getDaysRemaining = function () {
   if (this.status !== "active" || !this.endDate) return 0;
-
   const now = new Date();
   const diffTime = this.endDate - now;
   return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 };
-
 UserChallengeSchema.methods.getProgress = function () {
   return {
     status: this.status,
@@ -519,17 +469,14 @@ UserChallengeSchema.methods.getProgress = function () {
     milestonesCount: this.milestonesAchieved.length,
   };
 };
-
 // Pre-save middleware
 UserChallengeSchema.pre("save", function (next) {
   // Update version
   if (this.isModified() && !this.isNew) {
     this.version += 1;
   }
-
   next();
 });
-
 // Static Methods
 UserChallengeSchema.statics.findUserActiveChallenges = function (userId) {
   return this.find({
@@ -539,7 +486,6 @@ UserChallengeSchema.statics.findUserActiveChallenges = function (userId) {
     .populate("challengeId")
     .sort({ startDate: -1 });
 };
-
 UserChallengeSchema.statics.findUserCompletedChallenges = function (
   userId,
   limit = 10
@@ -552,7 +498,6 @@ UserChallengeSchema.statics.findUserCompletedChallenges = function (
     .sort({ "completion.completedAt": -1 })
     .limit(limit);
 };
-
 UserChallengeSchema.statics.getChallengeLeaderboard = function (
   challengeId,
   limit = 100
@@ -569,7 +514,6 @@ UserChallengeSchema.statics.getChallengeLeaderboard = function (
     })
     .limit(limit);
 };
-
 UserChallengeSchema.statics.getUserChallengeStats = function (userId) {
   return this.aggregate([
     {
@@ -589,7 +533,6 @@ UserChallengeSchema.statics.getUserChallengeStats = function (userId) {
     },
   ]);
 };
-
 UserChallengeSchema.statics.findExpiredActiveChallenges = function () {
   const now = new Date();
   return this.find({
@@ -597,7 +540,5 @@ UserChallengeSchema.statics.findExpiredActiveChallenges = function () {
     endDate: { $lt: now },
   }).populate("challengeId");
 };
-
 const UserChallenge = mongoose.model("UserChallenge", UserChallengeSchema);
-
 export default UserChallenge;

@@ -1,7 +1,6 @@
 import crypto from "crypto";
 import Session from "../models/Session.js";
 import logger from "../middleware/logger.js";
-
 class SessionService {
   // Enhanced device detection với custom device info từ header
   static parseUserAgent(userAgent, customDeviceInfo = null) {
@@ -12,9 +11,6 @@ class SessionService {
           typeof customDeviceInfo === "string"
             ? JSON.parse(customDeviceInfo)
             : customDeviceInfo;
-
-        console.log("📱 Using custom device info:", deviceData);
-
         return {
           userAgent,
           platform: deviceData.platform || "Unknown",
@@ -26,11 +22,9 @@ class SessionService {
           deviceFingerprint: this.generateDeviceFingerprint(deviceData),
         };
       } catch (error) {
-        console.log("❌ Error parsing custom device info:", error);
         // Fall back to User-Agent parsing
       }
     }
-
     // Fallback: Simple device detection from User-Agent
     const deviceInfo = {
       userAgent,
@@ -44,7 +38,6 @@ class SessionService {
         .digest("hex")
         .substring(0, 16),
     };
-
     // Simple detection từ User-Agent
     if (/Mobile|Android|iPhone|iPad/.test(userAgent)) {
       deviceInfo.deviceType = "mobile";
@@ -55,7 +48,6 @@ class SessionService {
       deviceInfo.platform = "Desktop";
       deviceInfo.deviceName = "Desktop Browser";
     }
-
     if (/Chrome/.test(userAgent)) {
       deviceInfo.browser = "Chrome";
       deviceInfo.deviceName = `${deviceInfo.platform} - Chrome`;
@@ -69,10 +61,8 @@ class SessionService {
       deviceInfo.browser = "Flutter";
       deviceInfo.deviceName = `${deviceInfo.platform} - Flutter`;
     }
-
     return deviceInfo;
   }
-
   // Generate device fingerprint từ device data
   static generateDeviceFingerprint(deviceData) {
     try {
@@ -80,7 +70,6 @@ class SessionService {
       const model = deviceData.model || "Unknown";
       const manufacturer = deviceData.manufacturer || "Unknown";
       const version = deviceData.version || "Unknown";
-
       const fingerprint = `${platform}-${manufacturer}-${model}-${version}`;
       return crypto
         .createHash("md5")
@@ -88,11 +77,9 @@ class SessionService {
         .digest("hex")
         .substring(0, 16);
     } catch (error) {
-      console.log("❌ Error generating fingerprint:", error);
       return crypto.randomBytes(8).toString("hex");
     }
   }
-
   // Get real IP address
   static getRealIP(req) {
     return (
@@ -104,7 +91,6 @@ class SessionService {
       "Unknown"
     );
   }
-
   // Get location from IP (simplified)
   static async getLocationFromIP(ip) {
     try {
@@ -128,7 +114,6 @@ class SessionService {
           },
         };
       }
-
       // For real IPs, return unknown for now
       return {
         ip,
@@ -157,14 +142,11 @@ class SessionService {
       };
     }
   }
-
   // Generate unique session ID
   static generateSessionId() {
     return crypto.randomBytes(32).toString("hex");
   }
-
   // Create new session với enhanced device detection
-
   static async createSession(
     userId,
     jwtTokenId,
@@ -175,17 +157,13 @@ class SessionService {
     try {
       const userAgent = req.headers["user-agent"] || "Unknown";
       const ip = this.getRealIP(req);
-
       // ✅ DEVICE TRACKING: Extract custom device info từ header
       const customDeviceInfo = req.headers["x-device-info"];
-
       // Enhanced device detection với custom info
       const deviceInfo = this.parseUserAgent(userAgent, customDeviceInfo);
       const location = await this.getLocationFromIP(ip);
-
       // Use jwtTokenId as sessionId for easy comparison
       const sessionId = jwtTokenId;
-
       // ✅ CHECK EXISTING DEVICE: Check if session already exists with same device fingerprint
       const deviceFingerprint = deviceInfo.deviceFingerprint;
       const existingSession = await Session.findOne({
@@ -193,7 +171,6 @@ class SessionService {
         "deviceInfo.deviceFingerprint": deviceFingerprint,
         isActive: true,
       });
-
       if (existingSession) {
         // Update existing session instead of creating new one
         existingSession.sessionId = sessionId;
@@ -202,19 +179,15 @@ class SessionService {
         existingSession.expiresAt = expiresAt;
         existingSession.location = location; // Update location in case IP changed
         existingSession.loginTime = new Date(); // Update login time
-
         await existingSession.save();
-
         logger.info("Session updated for existing device", {
           userId,
           sessionId,
           deviceName: deviceInfo.deviceName,
           location: `${location.city}, ${location.country}`,
         });
-
         return existingSession;
       }
-
       // Create session object (only if no existing device found)
       const sessionData = {
         userId,
@@ -232,11 +205,9 @@ class SessionService {
         loginTime: new Date(),
         lastActiveTime: new Date(),
       };
-
       // Save to database
       const session = new Session(sessionData);
       await session.save();
-
       return session;
     } catch (error) {
       console.error("❌ Session creation failed:", error);
@@ -247,12 +218,10 @@ class SessionService {
       throw error;
     }
   }
-
   // Get active sessions for user
   static async getActiveSessions(userId) {
     try {
       const sessions = await Session.findActiveByUserId(userId);
-
       return sessions.map((session) => ({
         sessionId: session.sessionId,
         deviceName: session.deviceInfo.deviceName,
@@ -274,7 +243,6 @@ class SessionService {
       throw error;
     }
   }
-
   // Update session activity
   static async updateActivity(sessionId) {
     try {
@@ -291,7 +259,6 @@ class SessionService {
       });
     }
   }
-
   // Terminate session
   static async terminateSession(sessionId) {
     try {
@@ -302,7 +269,6 @@ class SessionService {
           terminatedAt: new Date(),
         }
       );
-
       return result.modifiedCount > 0;
     } catch (error) {
       logger.error("Failed to terminate session:", {
@@ -312,7 +278,6 @@ class SessionService {
       throw error;
     }
   }
-
   // Terminate all user sessions
   static async terminateAllUserSessions(userId, excludeSessionId = null) {
     try {
@@ -320,16 +285,13 @@ class SessionService {
         userId,
         isActive: true,
       };
-
       if (excludeSessionId) {
         filter.sessionId = { $ne: excludeSessionId };
       }
-
       const result = await Session.updateMany(filter, {
         isActive: false,
         terminatedAt: new Date(),
       });
-
       return result.modifiedCount;
     } catch (error) {
       logger.error("Failed to terminate all user sessions:", {
@@ -339,16 +301,13 @@ class SessionService {
       throw error;
     }
   }
-
   // Cleanup old sessions
   static async cleanupOldSessions(userId, keepLatest = 5) {
     try {
       const sessions = await Session.find({ userId, isActive: true })
         .sort({ lastActiveTime: -1 })
         .skip(keepLatest);
-
       const sessionIds = sessions.map((s) => s.sessionId);
-
       if (sessionIds.length > 0) {
         await Session.updateMany(
           { sessionId: { $in: sessionIds } },
@@ -358,7 +317,6 @@ class SessionService {
           }
         );
       }
-
       return sessionIds.length;
     } catch (error) {
       logger.error("Failed to cleanup old sessions:", {
@@ -368,7 +326,6 @@ class SessionService {
       throw error;
     }
   }
-
   // Find session by ID
   static async findBySessionId(sessionId) {
     try {
@@ -384,7 +341,6 @@ class SessionService {
   static async cleanupExpiredSessions() {
     try {
       const now = new Date();
-
       // Find and deactivate expired sessions
       const result = await Session.updateMany(
         {
@@ -397,12 +353,10 @@ class SessionService {
           terminatedReason: "expired",
         }
       );
-
       logger.info("Expired sessions cleaned up", {
         cleanedCount: result.modifiedCount,
         timestamp: now,
       });
-
       return result.modifiedCount;
     } catch (error) {
       logger.error("Failed to cleanup expired sessions:", {
@@ -413,5 +367,4 @@ class SessionService {
     }
   }
 }
-
 export default SessionService;

@@ -4,9 +4,7 @@ import { uploadAvatar } from "../middleware/uploadSimple.js";
 import { catchAsync } from "../middleware/errorHandler.js";
 import { successResponse, errorResponse } from "../utils/responseHelpers.js";
 import User from "../models/User.js";
-
 const router = express.Router();
-
 // Upload avatar endpoint
 router.post(
   "/avatar",
@@ -14,16 +12,13 @@ router.post(
   uploadAvatar,
   catchAsync(async (req, res) => {
     const userId = req.user.id;
-
     // Check if file was uploaded
     if (!req.file) {
       return errorResponse(res, "Vui lòng chọn file ảnh để tải lên", 400);
     }
-
     try {
       // Get uploaded file URL (Cloudinary returns full URL in req.file.path)
       const avatarUrl = req.file.path;
-
       // Update user's avatar in database
       const updatedUser = await User.findByIdAndUpdate(
         userId,
@@ -34,16 +29,9 @@ router.post(
         },
         { new: true, runValidators: true }
       ).select("profile.avatar profile.displayName email");
-
       if (!updatedUser) {
         return errorResponse(res, "Không tìm thấy người dùng", 404);
       }
-
-      console.log(
-        `✅ Avatar uploaded successfully for user ${userId}:`,
-        avatarUrl
-      );
-
       return successResponse(
         res,
         {
@@ -66,7 +54,6 @@ router.post(
     }
   })
 );
-
 // TODO: Upload receipt endpoint (for expense tracking) - temporarily disabled
 /*
 router.post(
@@ -78,13 +65,9 @@ router.post(
     if (!req.file) {
       return errorResponse(res, "Vui lòng chọn file ảnh hóa đơn để tải lên", 400);
     }
-
     try {
       // Get uploaded file URL
       const receiptUrl = req.file.path;
-
-      console.log(`✅ Receipt uploaded successfully:`, receiptUrl);
-
       return successResponse(
         res,
         "Tải ảnh hóa đơn thành công",
@@ -94,28 +77,23 @@ router.post(
           size: req.file.size
         }
       );
-
     } catch (error) {
       console.error("❌ Error uploading receipt:", error);
       return errorResponse(res, "Lỗi tải ảnh hóa đơn lên server: " + error.message, 500);
     }
   })
 );
-
 // Get user's current avatar
 router.get(
   "/avatar",
   authenticate,
   catchAsync(async (req, res) => {
     const userId = req.user.id;
-
     try {
       const user = await User.findById(userId).select("profile.avatar profile.displayName email");
-      
       if (!user) {
         return errorResponse(res, "Không tìm thấy người dùng", 404);
       }
-
       return successResponse(
         res,
         "Lấy thông tin ảnh đại diện thành công",
@@ -128,28 +106,24 @@ router.get(
           }
         }
       );
-
     } catch (error) {
       console.error("❌ Error getting avatar:", error);
       return errorResponse(res, "Lỗi lấy thông tin ảnh đại diện: " + error.message, 500);
     }
   })
 );
-
 // Delete avatar endpoint
 router.delete(
   "/avatar",
   authenticate,
   catchAsync(async (req, res) => {
     const userId = req.user.id;
-
     try {
       // Get current user to check if avatar exists
       const user = await User.findById(userId);
       if (!user) {
         return errorResponse(res, "Không tìm thấy người dùng", 404);
       }
-
         // Delete avatar from cloudinary if exists
         if (user.profile.avatar && user.profile.avatar.includes("cloudinary.com")) {
           try {
@@ -161,16 +135,13 @@ router.delete(
         }      // Remove avatar from database
       const updatedUser = await User.findByIdAndUpdate(
         userId,
-        { 
-          $unset: { 
-            "profile.avatar": "" 
+        {
+          $unset: {
+            "profile.avatar": ""
           }
         },
         { new: true, runValidators: true }
       ).select("profile.displayName email");
-
-      console.log(`✅ Avatar deleted successfully for user ${userId}`);
-
       return successResponse(
         res,
         "Xóa ảnh đại diện thành công",
@@ -182,7 +153,6 @@ router.delete(
           }
         }
       );
-
     } catch (error) {
       console.error("❌ Error deleting avatar:", error);
       return errorResponse(res, "Lỗi xóa ảnh đại diện: " + error.message, 500);
@@ -190,5 +160,4 @@ router.delete(
   })
 );
 */
-
 export default router;

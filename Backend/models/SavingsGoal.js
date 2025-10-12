@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-
 // Contribution tracking sub-schema
 const ContributionSchema = new mongoose.Schema(
   {
@@ -36,7 +35,6 @@ const ContributionSchema = new mongoose.Schema(
   },
   { _id: true }
 );
-
 // Withdrawal tracking sub-schema
 const WithdrawalSchema = new mongoose.Schema(
   {
@@ -62,7 +60,6 @@ const WithdrawalSchema = new mongoose.Schema(
   },
   { _id: true }
 );
-
 // Main SavingsGoal Schema
 const SavingsGoalSchema = new mongoose.Schema(
   {
@@ -72,7 +69,6 @@ const SavingsGoalSchema = new mongoose.Schema(
       required: [true, "User ID là bắt buộc"],
       index: true,
     },
-
     // Core Goal Information
     name: {
       type: String,
@@ -84,7 +80,6 @@ const SavingsGoalSchema = new mongoose.Schema(
       type: String,
       maxlength: [1000, "Mô tả không được vượt quá 1000 ký tự"],
     },
-
     // Financial Information
     targetAmount: {
       type: mongoose.Schema.Types.Decimal128,
@@ -107,7 +102,6 @@ const SavingsGoalSchema = new mongoose.Schema(
       enum: ["VND", "USD", "EUR"],
       default: "VND",
     },
-
     // Timeline
     startDate: {
       type: Date,
@@ -125,7 +119,6 @@ const SavingsGoalSchema = new mongoose.Schema(
       },
       index: true,
     },
-
     // Category & Priority
     category: {
       type: String,
@@ -149,7 +142,6 @@ const SavingsGoalSchema = new mongoose.Schema(
       enum: ["low", "medium", "high", "critical"],
       default: "medium",
     },
-
     // Progress Tracking
     contributions: {
       type: [ContributionSchema],
@@ -161,7 +153,6 @@ const SavingsGoalSchema = new mongoose.Schema(
       default: [],
       description: "Lịch sử rút tiền",
     },
-
     // Status
     status: {
       type: String,
@@ -173,7 +164,6 @@ const SavingsGoalSchema = new mongoose.Schema(
       type: Date,
       description: "Ngày hoàn thành mục tiêu",
     },
-
     // Auto-save Settings
     autoSave: {
       enabled: {
@@ -194,7 +184,6 @@ const SavingsGoalSchema = new mongoose.Schema(
         description: "Ngày tự động tiết kiệm tiếp theo",
       },
     },
-
     // Visualization
     icon: {
       type: String,
@@ -206,7 +195,6 @@ const SavingsGoalSchema = new mongoose.Schema(
       default: "#4CAF50",
       description: "Màu sắc cho mục tiêu",
     },
-
     // Metadata
     tags: [
       {
@@ -223,26 +211,22 @@ const SavingsGoalSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-
 // Indexes for performance
 SavingsGoalSchema.index({ userId: 1, status: 1 });
 SavingsGoalSchema.index({ userId: 1, targetDate: 1 });
 SavingsGoalSchema.index({ userId: 1, category: 1 });
-
 // Virtual for progress percentage
 SavingsGoalSchema.virtual("progressPercentage").get(function () {
   const current = parseFloat(this.currentAmount.toString());
   const target = parseFloat(this.targetAmount.toString());
   return target > 0 ? Math.min((current / target) * 100, 100) : 0;
 });
-
 // Virtual for remaining amount
 SavingsGoalSchema.virtual("remainingAmount").get(function () {
   const current = parseFloat(this.currentAmount.toString());
   const target = parseFloat(this.targetAmount.toString());
   return Math.max(target - current, 0);
 });
-
 // Virtual for days remaining
 SavingsGoalSchema.virtual("daysRemaining").get(function () {
   if (this.status === "completed") return 0;
@@ -252,7 +236,6 @@ SavingsGoalSchema.virtual("daysRemaining").get(function () {
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   return Math.max(diffDays, 0);
 });
-
 // Virtual for suggested monthly contribution
 SavingsGoalSchema.virtual("suggestedMonthlyContribution").get(function () {
   if (this.status === "completed") return 0;
@@ -262,7 +245,6 @@ SavingsGoalSchema.virtual("suggestedMonthlyContribution").get(function () {
   const monthsRemaining = Math.max(daysRemaining / 30, 1);
   return remaining / monthsRemaining;
 });
-
 // Static methods
 SavingsGoalSchema.statics = {
   // Get all active savings goals for user
@@ -272,7 +254,6 @@ SavingsGoalSchema.statics = {
       status: "active",
     }).sort({ priority: -1, targetDate: 1 });
   },
-
   // Get savings goals by category
   async getByCategory(userId, category) {
     return await this.find({
@@ -281,7 +262,6 @@ SavingsGoalSchema.statics = {
       status: "active",
     }).sort({ targetDate: 1 });
   },
-
   // Get total saved amount for user
   async getTotalSaved(userId) {
     const result = await this.aggregate([
@@ -299,18 +279,15 @@ SavingsGoalSchema.statics = {
         },
       },
     ]);
-
     return result.length > 0
       ? { total: result[0].total, count: result[0].count }
       : { total: 0, count: 0 };
   },
-
   // Get savings statistics
   async getStats(userId) {
     const goals = await this.find({
       userId: new mongoose.Types.ObjectId(userId),
     });
-
     const stats = {
       total: goals.length,
       active: goals.filter((g) => g.status === "active").length,
@@ -324,16 +301,13 @@ SavingsGoalSchema.statics = {
         .filter((g) => g.status === "active")
         .reduce((sum, g) => sum + parseFloat(g.targetAmount.toString()), 0),
     };
-
     stats.overallProgress =
       stats.totalTarget > 0
         ? (stats.totalSaved / stats.totalTarget) * 100
         : 100;
-
     return stats;
   },
 };
-
 // Instance methods
 SavingsGoalSchema.methods = {
   // Add contribution to savings goal
@@ -345,67 +319,53 @@ SavingsGoalSchema.methods = {
       note,
       date: new Date(),
     };
-
     this.contributions.push(contribution);
-
     // Update current amount
     const current = parseFloat(this.currentAmount.toString());
     const newAmount = current + amount;
     this.currentAmount = mongoose.Types.Decimal128.fromString(
       newAmount.toFixed(2)
     );
-
     // Check if goal is completed
     const target = parseFloat(this.targetAmount.toString());
     if (newAmount >= target && this.status === "active") {
       this.status = "completed";
       this.completedDate = new Date();
     }
-
     return contribution;
   },
-
   // Withdraw from savings goal
   withdraw(amount, reason = null) {
     const current = parseFloat(this.currentAmount.toString());
-
     if (amount > current) {
       throw new Error(
         `Số tiền rút (${amount}) vượt quá số dư hiện tại (${current})`
       );
     }
-
     const withdrawal = {
       amount: mongoose.Types.Decimal128.fromString(amount.toFixed(2)),
       reason,
       date: new Date(),
     };
-
     this.withdrawals.push(withdrawal);
-
     // Update current amount
     const newAmount = current - amount;
     this.currentAmount = mongoose.Types.Decimal128.fromString(
       newAmount.toFixed(2)
     );
-
     // Update status if was completed
     if (this.status === "completed") {
       this.status = "active";
       this.completedDate = null;
     }
-
     return withdrawal;
   },
-
   // Calculate next auto-save date
   calculateNextAutoSaveDate() {
     if (!this.autoSave.enabled || !this.autoSave.frequency) return null;
-
     const current =
       this.autoSave.nextAutoSaveDate || this.startDate || new Date();
     const next = new Date(current);
-
     switch (this.autoSave.frequency) {
       case "daily":
         next.setDate(next.getDate() + 1);
@@ -417,14 +377,11 @@ SavingsGoalSchema.methods = {
         next.setMonth(next.getMonth() + 1);
         break;
     }
-
     return next;
   },
-
   // Update auto-save next date
   async updateNextAutoSaveDate() {
     if (!this.autoSave.enabled) return;
-
     const next = this.calculateNextAutoSaveDate();
     if (next) {
       this.autoSave.nextAutoSaveDate = next;
@@ -432,7 +389,6 @@ SavingsGoalSchema.methods = {
     }
   },
 };
-
 // Middleware
 SavingsGoalSchema.pre("save", function (next) {
   // Set next auto-save date if enabled
@@ -443,10 +399,7 @@ SavingsGoalSchema.pre("save", function (next) {
   ) {
     this.autoSave.nextAutoSaveDate = this.calculateNextAutoSaveDate();
   }
-
   next();
 });
-
 const SavingsGoal = mongoose.model("SavingsGoal", SavingsGoalSchema);
-
 export default SavingsGoal;

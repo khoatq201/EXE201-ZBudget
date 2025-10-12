@@ -8,7 +8,6 @@ import {
   successResponse,
 } from "../middleware/errorHandler.js";
 import mongoose from "mongoose";
-
 /**
  * @desc    Create new income with YNAB-style allocations
  * @route   POST /api/income
@@ -30,152 +29,125 @@ export const createIncome = async (req, res) => {
     allocations, // YNAB-style allocations
   } = req.body;
 
-  const session = await mongoose.startSession();
-
   try {
-    await session.withTransaction(async () => {
-      console.log('💰 Creating income for user:', userId);
+    // Create income with allocations
+    const income = new Income({
+      userId,
+      title,
+      description,
+      amount,
+      category,
+      date: date ? new Date(date) : new Date(),
+      paymentMethod: paymentMethod || "banking",
+      source,
+      isRecurring: isRecurring || false,
+      recurringDetails,
+      taxInfo,
+      allocations: allocations || [],
+      isConfirmed: true,
+    });
+    await income.save();
 
-      // Create income with allocations
-      const income = new Income({
-        userId,
-        title,
-        description,
-        amount,
-        category,
-        date: date ? new Date(date) : new Date(),
-        paymentMethod: paymentMethod || "banking",
-        source,
-        isRecurring: isRecurring || false,
-        recurringDetails,
-        taxInfo,
-        allocations: allocations || [],
-        isConfirmed: true,
-      });
+    // Calculate allocation totals
+    const totalAllocated = parseFloat(income.totalAllocated?.toString() || "0");
+    const unallocated = parseFloat(income.unallocated?.toString() || "0");
 
-      console.log('💾 Saving income...');
-      await income.save({ session });
-      console.log('✅ Income saved:', income._id);
-
-      // Calculate allocation totals
-      const totalAllocated = parseFloat(income.totalAllocated?.toString() || "0");
-      const unallocated = parseFloat(income.unallocated?.toString() || "0");
-
-      // Update user's financial summary
-      console.log('📊 Updating user financial summary...');
-      await User.findByIdAndUpdate(
-        userId,
-        {
-          $inc: {
-            'financialSummary.totalIncome': amount,
-            'financialSummary.currentBalance': amount,
-            'financialSummary.readyToAssign': unallocated,
-          },
-          'financialSummary.lastUpdated': new Date(),
+    // Update user's financial summary
+    await User.findByIdAndUpdate(
+      userId,
+      {
+        $inc: {
+          'financialSummary.totalIncome': amount,
+          'financialSummary.currentBalance': amount,
+          'financialSummary.readyToAssign': unallocated,
         },
-        { session }
-      );
-      console.log('✅ Financial summary updated');
-
-      // Process allocations
-      if (allocations && allocations.length > 0) {
-        console.log(`📝 Processing ${allocations.length} allocations...`);
-
-        for (const alloc of allocations) {
-          if (alloc.type === 'budget') {
-            // Fund budget category
-            const budget = await Budget.findById(alloc.targetId).session(session);
-
-            if (!budget) {
-              console.warn(`⚠️ Budget not found: ${alloc.targetId}`);
-              continue;
-            }
-
-            console.log(`💵 Funding budget ${budget.name}, category: ${alloc.categoryAllocationId}`);
-            budget.fundCategory(alloc.categoryAllocationId, parseFloat(alloc.amount));
-            await budget.save({ session });
-
-            // Update user's totalAssigned
-            await User.findByIdAndUpdate(
-              userId,
-              {
-                $inc: {
-                  'financialSummary.totalAssigned': parseFloat(alloc.amount),
-                },
-                'financialSummary.lastAssignmentDate': new Date(),
-              },
-              { session }
-            );
-          } else if (alloc.type === 'savings') {
-            // Fund savings goal
-            const savingsGoal = await SavingsGoal.findById(alloc.targetId).session(session);
-
-            if (!savingsGoal) {
-              console.warn(`⚠️ Savings goal not found: ${alloc.targetId}`);
-              continue;
-            }
-
-            console.log(`💰 Contributing to savings goal ${savingsGoal.name}`);
-            savingsGoal.addContribution(parseFloat(alloc.amount), 'income_allocation', income._id, alloc.note);
-            await savingsGoal.save({ session });
-
-            // Update user's totalSaved
-            await User.findByIdAndUpdate(
-              userId,
-              {
-                $inc: {
-                  'financialSummary.totalSaved': parseFloat(alloc.amount),
-                },
-              },
-              { session }
-            );
-          }
-        }
-
-        console.log('✅ Allocations processed');
+        'financialSummary.lastUpdated': new Date(),
       }
+    );
 
-      // Format response
-      const formattedIncome = {
-        _id: income._id,
-        userId: income.userId,
-        title: income.title,
-        description: income.description,
-        amount: parseFloat(income.amount.toString()),
-        category: income.category,
-        date: income.date,
-        paymentMethod: income.paymentMethod,
-        source: income.source,
-        isConfirmed: income.isConfirmed,
-        isRecurring: income.isRecurring,
-        recurringDetails: income.recurringDetails,
-        allocations: income.allocations,
-        totalAllocated: parseFloat(income.totalAllocated.toString()),
-        unallocated: parseFloat(income.unallocated.toString()),
-        isFullyAllocated: income.isFullyAllocated,
-        taxInfo: income.taxInfo ? {
-          isTaxable: income.taxInfo.isTaxable,
-          taxRate: income.taxInfo.taxRate || 0,
-          taxAmount: income.taxInfo.taxAmount ? parseFloat(income.taxInfo.taxAmount.toString()) : 0,
-        } : null,
-        createdAt: income.createdAt,
-        updatedAt: income.updatedAt,
-      };
+    // Process allocations
+    if (allocations && allocations.length > 0) {
+      for (const alloc of allocations) {
+        if (alloc.type === 'budget') {
+          // Fund budget category
+          const budget = await Budget.findById(alloc.targetId);
+          if (!budget) {
+            console.warn(`⚠️ Budget not found: ${alloc.targetId}`);
+            continue;
+          }
+          budget.fundCategory(alloc.categoryAllocationId, parseFloat(alloc.amount));
+          await budget.save();
 
-      res.status(201).json({
-        success: true,
-        message: "Income created successfully",
-        data: formattedIncome
-      });
+          // Update user's totalAssigned
+          await User.findByIdAndUpdate(
+            userId,
+            {
+              $inc: {
+                'financialSummary.totalAssigned': parseFloat(alloc.amount),
+              },
+              'financialSummary.lastAssignmentDate': new Date(),
+            }
+          );
+        } else if (alloc.type === 'savings') {
+          // Fund savings goal
+          const savingsGoal = await SavingsGoal.findById(alloc.targetId);
+          if (!savingsGoal) {
+            console.warn(`⚠️ Savings goal not found: ${alloc.targetId}`);
+            continue;
+          }
+          savingsGoal.addContribution(parseFloat(alloc.amount), 'income_allocation', income._id, alloc.note);
+          await savingsGoal.save();
+
+          // Update user's totalSaved
+          await User.findByIdAndUpdate(
+            userId,
+            {
+              $inc: {
+                'financialSummary.totalSaved': parseFloat(alloc.amount),
+              },
+            }
+          );
+        }
+      }
+    }
+
+    // Format response
+    const formattedIncome = {
+      _id: income._id,
+      userId: income.userId,
+      title: income.title,
+      description: income.description,
+      amount: parseFloat(income.amount.toString()),
+      category: income.category,
+      date: income.date,
+      paymentMethod: income.paymentMethod,
+      source: income.source,
+      isConfirmed: income.isConfirmed,
+      isRecurring: income.isRecurring,
+      recurringDetails: income.recurringDetails,
+      allocations: income.allocations,
+      totalAllocated: parseFloat(income.totalAllocated.toString()),
+      unallocated: parseFloat(income.unallocated.toString()),
+      isFullyAllocated: income.isFullyAllocated,
+      taxInfo: income.taxInfo ? {
+        isTaxable: income.taxInfo.isTaxable,
+        taxRate: income.taxInfo.taxRate || 0,
+        taxAmount: income.taxInfo.taxAmount ? parseFloat(income.taxInfo.taxAmount.toString()) : 0,
+      } : null,
+      createdAt: income.createdAt,
+      updatedAt: income.updatedAt,
+    };
+
+    res.status(201).json({
+      success: true,
+      message: "Income created successfully",
+      data: formattedIncome
     });
   } catch (error) {
     console.error("❌ Create income error:", error);
     throw new BadRequestError(error.message);
-  } finally {
-    session.endSession();
   }
 };
-
 /**
  * @desc    Get all incomes for user
  * @route   GET /api/income
@@ -192,10 +164,8 @@ export const getIncomes = async (req, res) => {
     limit = 50,
     sort = "-date",
   } = req.query;
-
   try {
     const query = { userId, isConfirmed: true };
-
     // Filters
     if (category) query.category = category;
     if (isRecurring !== undefined) query.isRecurring = isRecurring === "true";
@@ -205,9 +175,7 @@ export const getIncomes = async (req, res) => {
         $lte: new Date(endDate),
       };
     }
-
     const skip = (parseInt(page) - 1) * parseInt(limit);
-
     const [incomes, total] = await Promise.all([
       Income.find(query)
         .sort(sort)
@@ -216,13 +184,11 @@ export const getIncomes = async (req, res) => {
         .lean(),
       Income.countDocuments(query),
     ]);
-
     // Convert Decimal128 to numbers
     const formattedIncomes = incomes.map((income) => ({
       ...income,
       amount: parseFloat(income.amount.toString()),
     }));
-
     res.status(200).json({
       success: true,
       message: "Incomes retrieved successfully",
@@ -244,7 +210,6 @@ export const getIncomes = async (req, res) => {
     });
   }
 };
-
 /**
  * @desc    Get income by ID
  * @route   GET /api/income/:id
@@ -253,19 +218,15 @@ export const getIncomes = async (req, res) => {
 export const getIncomeById = async (req, res) => {
   const userId = req.userId;
   const { id } = req.params;
-
   try {
     const income = await Income.findOne({ _id: id, userId });
-
     if (!income) {
       throw new NotFoundError("Income not found");
     }
-
     const formattedIncome = {
       ...income.toObject(),
       amount: parseFloat(income.amount.toString()),
     };
-
     res.status(200).json({
       success: true,
       message: "Income retrieved successfully",
@@ -279,7 +240,6 @@ export const getIncomeById = async (req, res) => {
     });
   }
 };
-
 /**
  * @desc    Update income
  * @route   PUT /api/income/:id
@@ -288,16 +248,12 @@ export const getIncomeById = async (req, res) => {
 export const updateIncome = async (req, res) => {
   const userId = req.userId;
   const { id } = req.params;
-
   try {
     const income = await Income.findOne({ _id: id, userId });
-
     if (!income) {
       throw new NotFoundError("Income not found");
     }
-
     const oldAmount = parseFloat(income.amount.toString());
-
     // Update fields
     const allowedUpdates = [
       "title",
@@ -309,15 +265,12 @@ export const updateIncome = async (req, res) => {
       "source",
       "notes",
     ];
-
     allowedUpdates.forEach((field) => {
       if (req.body[field] !== undefined) {
         income[field] = req.body[field];
       }
     });
-
     await income.save();
-
     // Update user's financial summary if amount changed
     const newAmount = parseFloat(income.amount.toString());
     if (oldAmount !== newAmount) {
@@ -334,12 +287,10 @@ export const updateIncome = async (req, res) => {
         { new: true }
       );
     }
-
     const formattedIncome = {
       ...income.toObject(),
       amount: parseFloat(income.amount.toString()),
     };
-
     res.status(200).json({
       success: true,
       message: "Income updated successfully",
@@ -351,7 +302,6 @@ export const updateIncome = async (req, res) => {
     throw new BadRequestError(error.message);
   }
 };
-
 /**
  * @desc    Delete income
  * @route   DELETE /api/income/:id
@@ -360,16 +310,12 @@ export const updateIncome = async (req, res) => {
 export const deleteIncome = async (req, res) => {
   const userId = req.userId;
   const { id } = req.params;
-
   try {
     const income = await Income.findOneAndDelete({ _id: id, userId });
-
     if (!income) {
       throw new NotFoundError("Income not found");
     }
-
     const amount = parseFloat(income.amount.toString());
-
     // Update user's financial summary
     await User.findByIdAndUpdate(
       userId,
@@ -382,7 +328,6 @@ export const deleteIncome = async (req, res) => {
       },
       { new: true }
     );
-
     res.status(200).json({
       success: true,
       message: "Income deleted successfully",
@@ -397,7 +342,6 @@ export const deleteIncome = async (req, res) => {
     });
   }
 };
-
 /**
  * @desc    Get income statistics
  * @route   GET /api/income/stats
@@ -406,27 +350,23 @@ export const deleteIncome = async (req, res) => {
 export const getIncomeStats = async (req, res) => {
   const userId = req.userId;
   const { startDate, endDate, groupBy = "category" } = req.query;
-
   try {
     const match = {
       userId: new mongoose.Types.ObjectId(userId),
       isConfirmed: true,
     };
-
     if (startDate && endDate) {
       match.date = {
         $gte: new Date(startDate),
         $lte: new Date(endDate),
       };
     }
-
     let groupByField = "$category";
     if (groupBy === "month") {
       groupByField = { $month: "$date" };
     } else if (groupBy === "paymentMethod") {
       groupByField = "$paymentMethod";
     }
-
     const stats = await Income.aggregate([
       { $match: match },
       {
@@ -439,7 +379,6 @@ export const getIncomeStats = async (req, res) => {
       },
       { $sort: { total: -1 } },
     ]);
-
     // Get total
     const totalStats = await Income.aggregate([
       { $match: match },
@@ -451,7 +390,6 @@ export const getIncomeStats = async (req, res) => {
         },
       },
     ]);
-
     res.status(200).json({
       success: true,
       message: "Income statistics retrieved successfully",
@@ -468,8 +406,6 @@ export const getIncomeStats = async (req, res) => {
     });
   }
 };
-
-
 /**
  * @desc    Assign from Ready to Assign pool
  * @route   POST /api/income/assign
@@ -478,33 +414,23 @@ export const getIncomeStats = async (req, res) => {
 export const assignReadyToAssign = async (req, res) => {
   const userId = req.userId;
   const { assignments } = req.body;
-
   if (!assignments || !Array.isArray(assignments) || assignments.length === 0) {
     throw new BadRequestError("Assignments array is required");
   }
-
   const session = await mongoose.startSession();
-
   try {
     await session.withTransaction(async () => {
-      console.log('💸 Processing Ready to Assign assignments...');
-
       // Get current Ready to Assign
       const user = await User.findById(userId).session(session);
       const readyToAssign = parseFloat(user.financialSummary.readyToAssign?.toString() || "0");
-
       // Calculate total assigning
       const totalAssigning = assignments.reduce(
         (sum, a) => sum + parseFloat(a.amount),
         0
       );
-
-      console.log(`💰 Ready to Assign: ${readyToAssign}, Assigning: ${totalAssigning}`);
-
       if (totalAssigning > readyToAssign) {
         throw new BadRequestError(`Insufficient Ready to Assign. Available: ${readyToAssign}, Requested: ${totalAssigning}`);
       }
-
       // Process assignments
       for (const assign of assignments) {
         if (assign.type === 'budget') {
@@ -513,11 +439,8 @@ export const assignReadyToAssign = async (req, res) => {
             console.warn(`⚠️ Budget not found: ${assign.targetId}`);
             continue;
           }
-
-          console.log(`💵 Funding budget ${budget.name}, category: ${assign.categoryAllocationId}`);
           budget.fundCategory(assign.categoryAllocationId, parseFloat(assign.amount));
           await budget.save({ session });
-
         } else if (assign.type === 'savings') {
           // Fund savings goal
           const savingsGoal = await SavingsGoal.findById(assign.targetId).session(session);
@@ -525,11 +448,8 @@ export const assignReadyToAssign = async (req, res) => {
             console.warn(`⚠️ Savings goal not found: ${assign.targetId}`);
             continue;
           }
-
-          console.log(`💰 Contributing to savings goal ${savingsGoal.name}`);
           savingsGoal.addContribution(parseFloat(assign.amount), 'income_allocation', null, assign.note);
           await savingsGoal.save({ session });
-
           // Update user's totalSaved
           await User.findByIdAndUpdate(
             userId,
@@ -542,7 +462,6 @@ export const assignReadyToAssign = async (req, res) => {
           );
         }
       }
-
       // Update user's financial summary
       await User.findByIdAndUpdate(
         userId,
@@ -555,11 +474,7 @@ export const assignReadyToAssign = async (req, res) => {
         },
         { session }
       );
-
       const remainingReadyToAssign = readyToAssign - totalAssigning;
-
-      console.log('✅ Assignments processed');
-
       res.status(200).json({
         success: true,
         message: "Assignments processed successfully",
@@ -577,7 +492,6 @@ export const assignReadyToAssign = async (req, res) => {
     session.endSession();
   }
 };
-
 /**
  * @desc    Get current Ready to Assign amount
  * @route   GET /api/income/ready-to-assign
@@ -585,18 +499,14 @@ export const assignReadyToAssign = async (req, res) => {
  */
 export const getReadyToAssign = async (req, res) => {
   const userId = req.userId;
-
   try {
     const user = await User.findById(userId).select('financialSummary');
-
     if (!user) {
       throw new NotFoundError("User not found");
     }
-
     const readyToAssign = parseFloat(user.financialSummary.readyToAssign?.toString() || "0");
     const totalAssigned = parseFloat(user.financialSummary.totalAssigned?.toString() || "0");
     const totalSaved = parseFloat(user.financialSummary.totalSaved?.toString() || "0");
-
     res.status(200).json({
       success: true,
       message: "Ready to Assign retrieved successfully",
@@ -616,7 +526,6 @@ export const getReadyToAssign = async (req, res) => {
     });
   }
 };
-
 export default {
   createIncome,
   getIncomes,

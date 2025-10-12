@@ -1,6 +1,5 @@
 // MUST BE FIRST - Import config to load environment variables
 import config from "./config/env.js";
-
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -9,7 +8,6 @@ import mongoose from "mongoose";
 import { connectDB } from "./models/index.js";
 import logger from "morgan";
 import sessionCleanupJob from "./services/SessionCleanupJob.js";
-
 // Import routes
 import authRoutes from "./routes/authRoutes.js";
 import expenseRoutes from "./routes/expenseRoutes.js";
@@ -21,6 +19,7 @@ import securityRoutes from "./routes/securityRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import savingsRoutes from "./routes/savingsRoutes.js";
 import budgetRoutes from "./routes/budgetRoutes.js";
+import groupBudgetRoutes from "./routes/groupBudgetRoutes.js";
 // import userRoutes from './routes/users.js';
 // import challengeRoutes from './routes/challenges.js';
 // import groupRoutes from './routes/groups.js';
@@ -31,32 +30,20 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { requestLogger } from "./middleware/logger.js";
 import { responseLogger } from "./middleware/responseLogger.js";
 import { authenticate } from "./middleware/auth.js";
-
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 // Global server reference for graceful shutdown
 let server = null;
-
 // Trust proxy (for rate limiting behind reverse proxy)
 app.set("trust proxy", 1);
 app.use((req, res, next) => {
   req.startTime = Date.now();
-  console.log(
-    `🌐 DEBUG: Request started - ${req.method} ${req.path} at ${new Date().toISOString()}`
-  );
-
   // Log when response finishes
   res.on("finish", () => {
     const duration = Date.now() - req.startTime;
-    console.log(
-      `🌐 DEBUG: Request completed - ${req.method} ${req.path} - ${res.statusCode} in ${duration}ms`
-    );
   });
-
   next();
 });
-
 // Security middleware
 app.use(
   helmet({
@@ -71,7 +58,6 @@ app.use(
     },
   })
 );
-
 // CORS configuration - more permissive for development
 const corsOptions = {
   origin: true, // Allow all origins for development
@@ -89,15 +75,10 @@ const corsOptions = {
   preflightContinue: false,
   optionsSuccessStatus: 204,
 };
-
 app.use(cors(corsOptions));
 app.use(logger("dev"));
 // Add manual CORS headers for extra compatibility
 app.use((req, res, next) => {
-  console.log(
-    `📥 ${req.method} ${req.url} from origin: ${req.get("origin") || "no-origin"}`
-  );
-
   res.header("Access-Control-Allow-Origin", req.get("origin") || "*");
   res.header("Access-Control-Allow-Credentials", "true");
   res.header(
@@ -108,15 +89,11 @@ app.use((req, res, next) => {
     "Access-Control-Allow-Headers",
     "Origin,X-Requested-With,Content-Type,Accept,Authorization,X-API-Key"
   );
-
   if (req.method === "OPTIONS") {
-    console.log("🚀 Handling preflight OPTIONS request");
     return res.status(204).send();
   }
-
   next();
 });
-
 // Rate limiting
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
@@ -130,9 +107,7 @@ const limiter = rateLimit({
   // Skip rate limiting for health checks
   skip: (req) => req.path === "/api/health",
 });
-
 app.use("/api/", limiter);
-
 // Body parsing middleware
 app.use(
   express.json({
@@ -146,11 +121,9 @@ app.use(
     limit: process.env.MAX_URLENCODED_SIZE || "10mb",
   })
 );
-
 // Request and response logging middleware
 app.use(requestLogger);
 app.use(responseLogger);
-
 // Health check endpoint
 app.get("/api/health", (req, res) => {
   res.json({
@@ -161,7 +134,6 @@ app.get("/api/health", (req, res) => {
     version: "1.0.0",
   });
 });
-
 // API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/expenses", expenseRoutes);
@@ -173,13 +145,12 @@ app.use("/api/security", securityRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/savings", savingsRoutes);
 app.use("/api/budgets", budgetRoutes);
-
+app.use("/api/group-budgets", groupBudgetRoutes);
 // Protected routes (will be added later)
 // app.use('/api/users', authenticate, userRoutes);
 // app.use('/api/challenges', authenticate, challengeRoutes);
 // app.use('/api/groups', authenticate, groupRoutes);
 // app.use('/api/notifications', authenticate, notificationRoutes);
-
 // API documentation
 app.get("/api", (req, res) => {
   res.json({
@@ -206,7 +177,6 @@ app.get("/api", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
-
 // 404 handler
 app.use("*", (req, res) => {
   res.status(404).json({
@@ -217,39 +187,28 @@ app.use("*", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
-
 // Global error handler
 app.use(errorHandler);
-
 // Graceful shutdown flag to prevent multiple shutdowns
 let isShuttingDown = false;
-
 // Graceful shutdown
 const gracefulShutdown = (signal) => {
   if (isShuttingDown) {
-    console.log(`⚠️ Shutdown already in progress, ignoring ${signal}`);
     return;
   }
-
   isShuttingDown = true;
-  console.log(`\n📴 Nhận signal ${signal}. Đang shutdown gracefully...`);
-
   // Force close after 5 seconds to prevent hanging
   const forceShutdown = setTimeout(() => {
     console.error("⏰ Force shutdown sau 5 giây");
     process.exit(1);
   }, 5000);
-
   // Close HTTP server first
   if (server && server.listening) {
     server.close(async () => {
-      console.log("🔌 HTTP server đã đóng");
-
       // Close database connections
       try {
         if (mongoose.connection.readyState !== 0) {
           await mongoose.connection.close();
-          console.log("📊 MongoDB connection đã đóng");
         }
         clearTimeout(forceShutdown);
         process.exit(0);
@@ -260,20 +219,16 @@ const gracefulShutdown = (signal) => {
       }
     });
   } else {
-    console.log("🔌 HTTP server không đang chạy");
     clearTimeout(forceShutdown);
     process.exit(0);
   }
 };
-
 // Signal handlers
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-
 // Unhandled promise rejections
 process.on("unhandledRejection", (reason, promise) => {
   console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);
-
   // Only shutdown if it's not already shutting down and not a connection close error
   if (
     !isShuttingDown &&
@@ -282,64 +237,39 @@ process.on("unhandledRejection", (reason, promise) => {
     gracefulShutdown("Unhandled Rejection");
   }
 });
-
 // Uncaught exceptions
 process.on("uncaughtException", (error) => {
   console.error("💥 Uncaught Exception thrown:", error);
-
   // Only shutdown if it's not already shutting down
   if (!isShuttingDown) {
     gracefulShutdown("Uncaught Exception");
   }
 });
-
 // Start server
 async function startServer() {
   try {
     // Connect to database
     await connectDB();
-    console.log("✅ Database connected successfully");
-
     // Start HTTP server
     server = app.listen(PORT, () => {
-      console.log(`🚀 ZBudget API Server running on port ${PORT}`);
-      console.log(`📍 API Base URL: http://localhost:${PORT}/api`);
-      console.log(`🏥 Health Check: http://localhost:${PORT}/api/health`);
-      console.log(`📖 API Docs: http://localhost:${PORT}/api`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
-
+      console.log(`🚀 Server is running on port ${PORT}`);
       // Start session cleanup job
       sessionCleanupJob.start();
-      console.log("🧹 Session cleanup job started");
-
       if (process.env.NODE_ENV === "development") {
-        console.log("\n🛠️  Development URLs:");
-        console.log(`   Frontend: http://localhost:3001`);
-        console.log(`   Flutter Web: http://localhost:8080`);
-        console.log(`   Database Stats: npm run db:stats`);
-        console.log(`   Database Health: npm run db:health\n`);
+        console.log(`📝 API Documentation: http://localhost:${PORT}/api`);
       }
     });
-
     return server;
   } catch (error) {
     console.error("💥 Failed to start server:", error);
     process.exit(1);
   }
 }
-
 // Export app for testing
 export default app;
-
 // Start server if this file is run directly
-console.log("🔧 Debug: import.meta.url:", import.meta.url);
-console.log("🔧 Debug: process.argv[1]:", process.argv[1]);
-console.log("🔧 Debug: file URL:", `file://${process.argv[1]}`);
-
 if (import.meta.url === `file://${process.argv[1]}`) {
-  console.log("✅ Starting server via import check...");
   startServer();
 } else {
-  console.log("⚠️ Import check failed, starting server anyway...");
   startServer();
 }

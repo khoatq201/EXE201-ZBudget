@@ -24,15 +24,11 @@ import {
 import { auditLogger } from "../middleware/logger.js";
 import { uploadMiddleware } from "../middleware/upload.js";
 import Joi from "joi";
-
 const router = express.Router();
-
 // Apply authentication to all expense routes
 router.use(authenticate);
-
 // Apply general rate limiting (with default 15min window, 100 requests max)
 router.use(rateLimitGeneral());
-
 // Audit logging for expense operations
 const auditExpenseOperation = (operation) => (req, res, next) => {
   res.on("finish", () => {
@@ -46,7 +42,6 @@ const auditExpenseOperation = (operation) => (req, res, next) => {
   });
   next();
 };
-
 /**
  * @route   POST /api/expenses
  * @desc    Tạo chi tiêu mới
@@ -60,7 +55,6 @@ router.post(
   auditExpenseOperation("EXPENSE_CREATE"),
   createExpense
 );
-
 /**
  * @route   POST /api/expenses/with-receipt
  * @desc    Tạo chi tiêu mới kèm hóa đơn
@@ -76,7 +70,6 @@ router.post(
   auditExpenseOperation("EXPENSE_CREATE_WITH_RECEIPT"),
   createExpense
 );
-
 /**
  * @route   GET /api/expenses
  * @desc    Lấy danh sách chi tiêu (có phân trang và filter)
@@ -84,7 +77,6 @@ router.post(
  * @query   page?, limit?, sort?, startDate?, endDate?, category?, subcategory?, minAmount?, maxAmount?, paymentMethod?, tags?, groupId?, budgetId?, search?
  */
 router.get("/", validate(expenseSchemas.query, "query"), getExpenses);
-
 /**
  * @route   GET /api/expenses/stats
  * @desc    Lấy thống kê chi tiêu
@@ -111,7 +103,6 @@ router.get(
   ),
   getExpenseStats
 );
-
 /**
  * @route   GET /api/expenses/by-category
  * @desc    Lấy chi tiêu theo danh mục
@@ -136,7 +127,6 @@ router.get(
   ),
   getExpensesByCategory
 );
-
 /**
  * @route   GET /api/expenses/by-date-range
  * @desc    Lấy chi tiêu theo khoảng thời gian
@@ -162,7 +152,6 @@ router.get(
   ),
   getExpensesByDateRange
 );
-
 /**
  * @route   GET /api/expenses/export
  * @desc    Xuất dữ liệu chi tiêu (CSV/Excel)
@@ -191,7 +180,6 @@ router.get(
   auditExpenseOperation("EXPENSE_EXPORT"),
   exportExpenses
 );
-
 /**
  * @route   GET /api/expenses/:id
  * @desc    Lấy chi tiết một chi tiêu
@@ -199,7 +187,6 @@ router.get(
  * @params  id - Expense ID
  */
 router.get("/:id", validateObjectId("id"), getExpenseById);
-
 /**
  * @route   PUT /api/expenses/:id
  * @desc    Cập nhật chi tiêu
@@ -215,7 +202,6 @@ router.put(
   auditExpenseOperation("EXPENSE_UPDATE"),
   updateExpense
 );
-
 /**
  * @route   PUT /api/expenses/:id/receipt
  * @desc    Cập nhật hóa đơn cho chi tiêu
@@ -236,7 +222,6 @@ router.put(
   },
   updateExpense
 );
-
 /**
  * @route   DELETE /api/expenses/:id/receipt
  * @desc    Xóa hóa đơn của chi tiêu
@@ -253,7 +238,6 @@ router.delete(
   },
   updateExpense
 );
-
 /**
  * @route   POST /api/expenses/:id/duplicate
  * @desc    Nhân bản chi tiêu
@@ -274,7 +258,6 @@ router.post(
   auditExpenseOperation("EXPENSE_DUPLICATE"),
   duplicateExpense
 );
-
 /**
  * @route   DELETE /api/expenses/:id
  * @desc    Xóa một chi tiêu
@@ -287,7 +270,6 @@ router.delete(
   auditExpenseOperation("EXPENSE_DELETE"),
   deleteExpense
 );
-
 /**
  * @route   DELETE /api/expenses
  * @desc    Xóa nhiều chi tiêu
@@ -313,7 +295,6 @@ router.delete(
   auditExpenseOperation("EXPENSE_BULK_DELETE"),
   bulkDeleteExpenses
 );
-
 /**
  * @route   POST /api/expenses/bulk-import
  * @desc    Nhập khẩu chi tiêu từ file CSV/Excel
@@ -357,5 +338,4 @@ router.post(
   }
   // bulkImportExpenses // Will be implemented
 );
-
 export default router;

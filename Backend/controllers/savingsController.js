@@ -6,7 +6,6 @@ import {
   successResponse,
 } from "../middleware/errorHandler.js";
 import mongoose from "mongoose";
-
 /**
  * @desc    Create new savings goal
  * @route   POST /api/savings
@@ -27,10 +26,7 @@ export const createSavingsGoal = async (req, res) => {
     tags,
     notes,
   } = req.body;
-
   try {
-    console.log("💰 Creating savings goal for user:", userId);
-
     const savingsGoal = new SavingsGoal({
       userId,
       name,
@@ -45,10 +41,7 @@ export const createSavingsGoal = async (req, res) => {
       tags,
       notes,
     });
-
     await savingsGoal.save();
-    console.log("✅ Savings goal created:", savingsGoal._id);
-
     // Format response
     const formattedGoal = {
       ...savingsGoal.toObject({ virtuals: true }),
@@ -59,7 +52,6 @@ export const createSavingsGoal = async (req, res) => {
       daysRemaining: savingsGoal.daysRemaining,
       suggestedMonthlyContribution: savingsGoal.suggestedMonthlyContribution,
     };
-
     res.status(201).json({
       success: true,
       message: "Savings goal created successfully",
@@ -70,7 +62,6 @@ export const createSavingsGoal = async (req, res) => {
     throw new BadRequestError(error.message);
   }
 };
-
 /**
  * @desc    Get all savings goals for user
  * @route   GET /api/savings
@@ -86,17 +77,13 @@ export const getSavingsGoals = async (req, res) => {
     limit = 50,
     sort = "-targetDate",
   } = req.query;
-
   try {
     const query = { userId };
-
     // Filters
     if (status) query.status = status;
     if (category) query.category = category;
     if (priority) query.priority = priority;
-
     const skip = (parseInt(page) - 1) * parseInt(limit);
-
     const [goals, total] = await Promise.all([
       SavingsGoal.find(query)
         .sort(sort)
@@ -105,7 +92,6 @@ export const getSavingsGoals = async (req, res) => {
         .lean(),
       SavingsGoal.countDocuments(query),
     ]);
-
     // Format goals with virtuals calculated manually
     const formattedGoals = goals.map((goal) => {
       const current = parseFloat(goal.currentAmount.toString());
@@ -113,7 +99,6 @@ export const getSavingsGoals = async (req, res) => {
       const progressPercentage =
         target > 0 ? Math.min((current / target) * 100, 100) : 0;
       const remainingAmount = Math.max(target - current, 0);
-
       const now = new Date();
       const targetDate = new Date(goal.targetDate);
       const diffTime = targetDate - now;
@@ -121,11 +106,9 @@ export const getSavingsGoals = async (req, res) => {
         Math.ceil(diffTime / (1000 * 60 * 60 * 24)),
         0
       );
-
       const monthsRemaining = Math.max(daysRemaining / 30, 1);
       const suggestedMonthlyContribution =
         goal.status === "completed" ? 0 : remainingAmount / monthsRemaining;
-
       return {
         ...goal,
         targetAmount: target,
@@ -136,7 +119,6 @@ export const getSavingsGoals = async (req, res) => {
         suggestedMonthlyContribution,
       };
     });
-
     res.status(200).json({
       success: true,
       message: "Savings goals retrieved successfully",
@@ -158,7 +140,6 @@ export const getSavingsGoals = async (req, res) => {
     });
   }
 };
-
 /**
  * @desc    Get savings goal by ID
  * @route   GET /api/savings/:id
@@ -167,14 +148,11 @@ export const getSavingsGoals = async (req, res) => {
 export const getSavingsGoalById = async (req, res) => {
   const userId = req.userId;
   const { id } = req.params;
-
   try {
     const goal = await SavingsGoal.findOne({ _id: id, userId });
-
     if (!goal) {
       throw new NotFoundError("Savings goal not found");
     }
-
     const formattedGoal = {
       ...goal.toObject({ virtuals: true }),
       targetAmount: parseFloat(goal.targetAmount.toString()),
@@ -192,7 +170,6 @@ export const getSavingsGoalById = async (req, res) => {
         amount: parseFloat(w.amount.toString()),
       })),
     };
-
     res.status(200).json({
       success: true,
       message: "Savings goal retrieved successfully",
@@ -206,7 +183,6 @@ export const getSavingsGoalById = async (req, res) => {
     });
   }
 };
-
 /**
  * @desc    Update savings goal
  * @route   PUT /api/savings/:id
@@ -215,14 +191,11 @@ export const getSavingsGoalById = async (req, res) => {
 export const updateSavingsGoal = async (req, res) => {
   const userId = req.userId;
   const { id } = req.params;
-
   try {
     const goal = await SavingsGoal.findOne({ _id: id, userId });
-
     if (!goal) {
       throw new NotFoundError("Savings goal not found");
     }
-
     // Update allowed fields
     const allowedUpdates = [
       "name",
@@ -238,15 +211,12 @@ export const updateSavingsGoal = async (req, res) => {
       "tags",
       "notes",
     ];
-
     allowedUpdates.forEach((field) => {
       if (req.body[field] !== undefined) {
         goal[field] = req.body[field];
       }
     });
-
     await goal.save();
-
     const formattedGoal = {
       ...goal.toObject({ virtuals: true }),
       targetAmount: parseFloat(goal.targetAmount.toString()),
@@ -256,7 +226,6 @@ export const updateSavingsGoal = async (req, res) => {
       daysRemaining: goal.daysRemaining,
       suggestedMonthlyContribution: goal.suggestedMonthlyContribution,
     };
-
     res.status(200).json({
       success: true,
       message: "Savings goal updated successfully",
@@ -268,7 +237,6 @@ export const updateSavingsGoal = async (req, res) => {
     throw new BadRequestError(error.message);
   }
 };
-
 /**
  * @desc    Delete savings goal
  * @route   DELETE /api/savings/:id
@@ -277,24 +245,18 @@ export const updateSavingsGoal = async (req, res) => {
 export const deleteSavingsGoal = async (req, res) => {
   const userId = req.userId;
   const { id } = req.params;
-
   const session = await mongoose.startSession();
-
   try {
     await session.withTransaction(async () => {
       const goal = await SavingsGoal.findOne({ _id: id, userId }).session(
         session
       );
-
       if (!goal) {
         throw new NotFoundError("Savings goal not found");
       }
-
       const currentAmount = parseFloat(goal.currentAmount.toString());
-
       // Delete the goal
       await SavingsGoal.findByIdAndDelete(id).session(session);
-
       // Update user's financial summary
       await User.findByIdAndUpdate(
         userId,
@@ -306,7 +268,6 @@ export const deleteSavingsGoal = async (req, res) => {
         },
         { session }
       );
-
       res.status(200).json({
         success: true,
         message: "Savings goal deleted successfully",
@@ -324,7 +285,6 @@ export const deleteSavingsGoal = async (req, res) => {
     session.endSession();
   }
 };
-
 /**
  * @desc    Add contribution to savings goal
  * @route   POST /api/savings/:id/contribute
@@ -334,35 +294,26 @@ export const addContribution = async (req, res) => {
   const userId = req.userId;
   const { id } = req.params;
   const { amount, source = "manual", incomeId, note } = req.body;
-
   if (!amount || amount <= 0) {
     throw new BadRequestError("Amount must be greater than 0");
   }
-
   const session = await mongoose.startSession();
-
   try {
     await session.withTransaction(async () => {
-      console.log("💸 Adding contribution to savings goal:", id);
-
       const goal = await SavingsGoal.findOne({ _id: id, userId }).session(
         session
       );
-
       if (!goal) {
         throw new NotFoundError("Savings goal not found");
       }
-
       if (goal.status !== "active") {
         throw new BadRequestError(
           "Cannot contribute to inactive savings goal"
         );
       }
-
       // Add contribution
       goal.addContribution(parseFloat(amount), source, incomeId, note);
       await goal.save({ session });
-
       // Update user's totalSaved
       await User.findByIdAndUpdate(
         userId,
@@ -374,9 +325,6 @@ export const addContribution = async (req, res) => {
         },
         { session }
       );
-
-      console.log("✅ Contribution added successfully");
-
       const formattedGoal = {
         ...goal.toObject({ virtuals: true }),
         targetAmount: parseFloat(goal.targetAmount.toString()),
@@ -386,7 +334,6 @@ export const addContribution = async (req, res) => {
         daysRemaining: goal.daysRemaining,
         suggestedMonthlyContribution: goal.suggestedMonthlyContribution,
       };
-
       res.status(200).json({
         success: true,
         message: "Contribution added successfully",
@@ -402,7 +349,6 @@ export const addContribution = async (req, res) => {
     session.endSession();
   }
 };
-
 /**
  * @desc    Withdraw from savings goal
  * @route   POST /api/savings/:id/withdraw
@@ -412,29 +358,21 @@ export const withdrawFromSavings = async (req, res) => {
   const userId = req.userId;
   const { id } = req.params;
   const { amount, reason } = req.body;
-
   if (!amount || amount <= 0) {
     throw new BadRequestError("Amount must be greater than 0");
   }
-
   const session = await mongoose.startSession();
-
   try {
     await session.withTransaction(async () => {
-      console.log("💸 Withdrawing from savings goal:", id);
-
       const goal = await SavingsGoal.findOne({ _id: id, userId }).session(
         session
       );
-
       if (!goal) {
         throw new NotFoundError("Savings goal not found");
       }
-
       // Withdraw
       goal.withdraw(parseFloat(amount), reason);
       await goal.save({ session });
-
       // Update user's totalSaved
       await User.findByIdAndUpdate(
         userId,
@@ -446,9 +384,6 @@ export const withdrawFromSavings = async (req, res) => {
         },
         { session }
       );
-
-      console.log("✅ Withdrawal successful");
-
       const formattedGoal = {
         ...goal.toObject({ virtuals: true }),
         targetAmount: parseFloat(goal.targetAmount.toString()),
@@ -458,7 +393,6 @@ export const withdrawFromSavings = async (req, res) => {
         daysRemaining: goal.daysRemaining,
         suggestedMonthlyContribution: goal.suggestedMonthlyContribution,
       };
-
       res.status(200).json({
         success: true,
         message: "Withdrawal successful",
@@ -474,7 +408,6 @@ export const withdrawFromSavings = async (req, res) => {
     session.endSession();
   }
 };
-
 /**
  * @desc    Get savings statistics
  * @route   GET /api/savings/stats
@@ -482,10 +415,8 @@ export const withdrawFromSavings = async (req, res) => {
  */
 export const getSavingsStats = async (req, res) => {
   const userId = req.userId;
-
   try {
     const stats = await SavingsGoal.getStats(userId);
-
     res.status(200).json({
       success: true,
       message: "Savings statistics retrieved successfully",
@@ -499,7 +430,6 @@ export const getSavingsStats = async (req, res) => {
     });
   }
 };
-
 export default {
   createSavingsGoal,
   getSavingsGoals,

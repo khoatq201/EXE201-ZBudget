@@ -22,12 +22,9 @@ import { authenticate } from "../middleware/auth.js";
 import { catchAsync } from "../middleware/errorHandler.js";
 import { validate } from "../middleware/validation.js";
 import { settingsSchemas } from "../middleware/validation.js";
-
 const router = express.Router();
-
 // All settings routes require authentication
 router.use(authenticate);
-
 // Settings routes
 router.get("/", catchAsync(getSettings));
 router.put(
@@ -35,7 +32,6 @@ router.put(
   validate(settingsSchemas.updateSettings),
   catchAsync(updateSettings)
 );
-
 // Specific settings routes
 router.put(
   "/currency",
@@ -66,10 +62,8 @@ router.put(
   validate(settingsSchemas.updateLanguage),
   catchAsync(updateLanguageSettings)
 );
-
 // Reset settings
 router.post("/reset", catchAsync(resetSettings));
-
 // Profile routes
 router.get("/profile", catchAsync(getProfile));
 router.put(
@@ -82,7 +76,6 @@ router.put(
   validate(settingsSchemas.updateAvatar),
   catchAsync(updateAvatar)
 );
-
 // Stats routes
 router.get("/profile/stats", catchAsync(getStats));
 router.put(
@@ -91,5 +84,4 @@ router.put(
   catchAsync(updateStats)
 );
 router.post("/profile/calculate-stats", catchAsync(calculateStats));
-
 export default router;

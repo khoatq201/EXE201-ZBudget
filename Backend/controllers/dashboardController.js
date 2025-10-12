@@ -1,7 +1,7 @@
 import { User, Expense, Income, Budget } from "../models/index.js";
 import { successResponse } from "../middleware/errorHandler.js";
 import mongoose from "mongoose";
-
+import { toNumber } from "../utils/currencyHelper.js"; // ✅ NEW: Import currencyHelper
 /**
  * @desc    Get dashboard summary - All data needed for dashboard screen
  * @route   GET /api/dashboard/summary
@@ -10,18 +10,10 @@ import mongoose from "mongoose";
 export const getDashboardSummary = async (req, res) => {
   const userId = req.userId;
   const { period = "month", budgetId } = req.query; // month, week, year, optional budgetId
-
-  // console.log("🎯 getDashboardSummary called for userId:", userId, "budgetId:", budgetId);
-
   try {
     // Get date range based on period
     const dateRange = getDateRange(period);
     const { startDate, endDate } = dateRange;
-    // console.log("📅 Date range:", { startDate, endDate, period });
-
-    // console.log("⏳ Starting parallel queries...");
-    // console.log("🆔 userId type:", typeof userId, "value:", userId);
-
     // Parallel queries for performance
     const [user, incomeStats, expenseStats, recentTransactions, activeBudget] =
       await Promise.all([
@@ -29,7 +21,6 @@ export const getDashboardSummary = async (req, res) => {
         User.findById(userId).select(
           "email profile.name financialSummary stats"
         ),
-
         // 2. Get income statistics for period
         Income.aggregate([
           {
@@ -47,7 +38,6 @@ export const getDashboardSummary = async (req, res) => {
             },
           },
         ]),
-
         // 3. Get expense statistics for period
         Expense.aggregate([
           {
@@ -64,10 +54,8 @@ export const getDashboardSummary = async (req, res) => {
             },
           },
         ]),
-
         // 4. Get recent transactions (combined income + expense)
         getRecentTransactions(userId, 5),
-
         // 5. Get budget (specific budgetId if provided, otherwise find active budget for current month)
         budgetId
           ? Budget.findOne({
@@ -81,21 +69,16 @@ export const getDashboardSummary = async (req, res) => {
               "period.endDate": { $gte: new Date() },
             }),
       ]);
-
-    // console.log("✅ All parallel queries completed!");
-    // console.log("📊 Results:", {
     //   user: user ? "found" : "not found",
     //   incomeStats: incomeStats?.length || 0,
     //   expenseStats: expenseStats?.length || 0,
     //   transactions: recentTransactions?.length || 0,
     //   budget: activeBudget ? "found" : "not found"
     // });
-
     // Calculate summary
     const periodIncome = incomeStats[0]?.totalIncome || 0;
     const periodExpense = expenseStats[0]?.totalExpense || 0;
     const periodBalance = periodIncome - periodExpense;
-
     // Get financial summary from user
     const financialSummary = user.financialSummary || {};
     const currentBalance = parseFloat(
@@ -113,7 +96,6 @@ export const getDashboardSummary = async (req, res) => {
     const totalSavings = parseFloat(
       financialSummary.totalSavings?.toString() || "0"
     );
-
     // Budget info
     let budgetInfo = null;
     if (activeBudget) {
@@ -125,14 +107,12 @@ export const getDashboardSummary = async (req, res) => {
       );
       const budgetRemaining = budgetTotal - budgetSpent;
       const spentPercentage = activeBudget.status?.spentPercentage || 0;
-
       // Calculate daily budget (remaining / remaining days)
       const now = new Date();
       const endDate = new Date(activeBudget.period.endDate);
       const remainingDays = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
       const dailyBudget =
         remainingDays > 0 ? Math.floor(budgetRemaining / remainingDays) : 0;
-
       budgetInfo = {
         id: activeBudget._id,
         name: activeBudget.name,
@@ -148,7 +128,6 @@ export const getDashboardSummary = async (req, res) => {
         endDate: activeBudget.period.endDate,
       };
     }
-
     // Spending insights
     const insights = generateInsights({
       periodExpense,
@@ -157,7 +136,6 @@ export const getDashboardSummary = async (req, res) => {
       budgetInfo,
       monthlyAllowance,
     });
-
     // Category breakdown for period
     const categoryBreakdown = await Expense.aggregate([
       {
@@ -176,7 +154,6 @@ export const getDashboardSummary = async (req, res) => {
       { $sort: { total: -1 } },
       { $limit: 5 },
     ]);
-
     const response = {
       // Financial summary
       currentBalance,
@@ -184,7 +161,6 @@ export const getDashboardSummary = async (req, res) => {
       totalExpenses,
       totalSavings,
       monthlyAllowance,
-
       // Period statistics
       period: {
         type: period,
@@ -196,13 +172,10 @@ export const getDashboardSummary = async (req, res) => {
         incomeCount: incomeStats[0]?.count || 0,
         expenseCount: expenseStats[0]?.count || 0,
       },
-
       // Budget information
       budget: budgetInfo,
-
       // Recent transactions
       recentTransactions,
-
       // Category breakdown
       categoryBreakdown: categoryBreakdown.map((cat) => ({
         category: cat._id,
@@ -211,10 +184,8 @@ export const getDashboardSummary = async (req, res) => {
         percentage:
           periodExpense > 0 ? Math.round((cat.total / periodExpense) * 100) : 0,
       })),
-
       // Insights & recommendations
       insights,
-
       // User stats
       userStats: {
         level: user.stats?.level || 1,
@@ -222,11 +193,9 @@ export const getDashboardSummary = async (req, res) => {
         currentStreak: user.stats?.currentStreak || 0,
         longestStreak: user.stats?.longestStreak || 0,
       },
-
       // Metadata
       generatedAt: new Date(),
     };
-
     res.status(200).json({
       success: true,
       message: "Dashboard data retrieved successfully",
@@ -240,7 +209,6 @@ export const getDashboardSummary = async (req, res) => {
     });
   }
 };
-
 /**
  * Get date range based on period type
  * Returns UTC dates to match database stored dates
@@ -248,7 +216,6 @@ export const getDashboardSummary = async (req, res) => {
 function getDateRange(period) {
   const now = new Date();
   let startDate, endDate;
-
   switch (period) {
     case "week":
       // Last 7 days from today (UTC)
@@ -275,13 +242,11 @@ function getDateRange(period) {
         )
       );
       break;
-
     case "year":
       // Current year: Jan 1 00:00:00 to Dec 31 23:59:59 (UTC)
       startDate = new Date(Date.UTC(now.getFullYear(), 0, 1, 0, 0, 0, 0));
       endDate = new Date(Date.UTC(now.getFullYear(), 11, 31, 23, 59, 59, 999));
       break;
-
     case "month":
     default:
       // Current month: 1st 00:00:00 to last day 23:59:59 (UTC)
@@ -293,10 +258,8 @@ function getDateRange(period) {
       );
       break;
   }
-
   return { startDate, endDate };
 }
-
 /**
  * @desc    Get all transactions with filtering
  * @route   GET /api/dashboard/transactions
@@ -305,17 +268,7 @@ function getDateRange(period) {
 export const getAllTransactions = async (req, res) => {
   const userId = req.userId;
   const { type, startDate, endDate, limit, skip } = req.query;
-
   try {
-    console.log("📋 getAllTransactions called:", {
-      userId,
-      type,
-      startDate,
-      endDate,
-      limit,
-      skip,
-    });
-
     // Build date filter
     const dateFilter = {};
     if (startDate || endDate) {
@@ -323,11 +276,9 @@ export const getAllTransactions = async (req, res) => {
       if (startDate) dateFilter.date.$gte = new Date(startDate);
       if (endDate) dateFilter.date.$lte = new Date(endDate);
     }
-
     // Fetch based on type filter
     let incomes = [];
     let expenses = [];
-
     if (type === "income" || !type || type === "all") {
       incomes = await Income.find({
         userId: new mongoose.Types.ObjectId(userId),
@@ -340,7 +291,6 @@ export const getAllTransactions = async (req, res) => {
         .sort({ date: -1 })
         .lean();
     }
-
     if (type === "expense" || !type || type === "all") {
       expenses = await Expense.find({
         userId: new mongoose.Types.ObjectId(userId),
@@ -352,23 +302,21 @@ export const getAllTransactions = async (req, res) => {
         .sort({ date: -1 })
         .lean();
     }
-
     // Combine and format transactions
     const transactions = [
       ...incomes.map((inc) => ({
         ...inc,
         type: "income",
         isIncome: true,
-        amount: parseFloat(inc.amount.toString()),
+        amount: toNumber(inc.amount), // ✅ Using currencyHelper
       })),
       ...expenses.map((exp) => ({
         ...exp,
         type: "expense",
         isIncome: false,
-        amount: parseFloat(exp.amount.toString()),
+        amount: toNumber(exp.amount), // ✅ Using currencyHelper
       })),
     ];
-
     // Sort by date descending, then by createdAt for same-day transactions
     transactions.sort((a, b) => {
       const dateCompare = new Date(b.date) - new Date(a.date);
@@ -376,7 +324,6 @@ export const getAllTransactions = async (req, res) => {
       // If same date, sort by createdAt (newest first)
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
-
     // Apply pagination if provided
     const skipNum = parseInt(skip) || 0;
     const limitNum = parseInt(limit) || transactions.length;
@@ -384,11 +331,6 @@ export const getAllTransactions = async (req, res) => {
       skipNum,
       skipNum + limitNum
     );
-
-    console.log(
-      `✅ Found ${transactions.length} transactions, returning ${paginatedTransactions.length}`
-    );
-
     res.status(200).json({
       success: true,
       message: "Transactions retrieved successfully",
@@ -406,7 +348,6 @@ export const getAllTransactions = async (req, res) => {
     });
   }
 };
-
 /**
  * Get recent transactions (combined income + expense)
  */
@@ -420,30 +361,27 @@ async function getRecentTransactions(userId, limit = 10) {
       .sort({ date: -1, createdAt: -1 })
       .limit(limit)
       .lean(),
-
     Expense.find({ userId: new mongoose.Types.ObjectId(userId) })
       .select("title description amount category date paymentMethod createdAt")
       .sort({ date: -1, createdAt: -1 })
       .limit(limit)
       .lean(),
   ]);
-
   // Combine and mark type
   const transactions = [
     ...incomes.map((inc) => ({
       ...inc,
       type: "income",
       isIncome: true,
-      amount: parseFloat(inc.amount.toString()),
+      amount: toNumber(inc.amount), // ✅ Using currencyHelper
     })),
     ...expenses.map((exp) => ({
       ...exp,
       type: "expense",
       isIncome: false,
-      amount: parseFloat(exp.amount.toString()),
+      amount: toNumber(exp.amount), // ✅ Using currencyHelper
     })),
   ];
-
   // Sort by date descending, then by createdAt for same-day transactions
   transactions.sort((a, b) => {
     const dateCompare = new Date(b.date) - new Date(a.date);
@@ -451,10 +389,8 @@ async function getRecentTransactions(userId, limit = 10) {
     // If same date, sort by createdAt (newest first)
     return new Date(b.createdAt) - new Date(a.createdAt);
   });
-
   return transactions.slice(0, limit);
 }
-
 /**
  * Generate insights based on financial data
  */
@@ -466,7 +402,6 @@ function generateInsights({
   monthlyAllowance,
 }) {
   const insights = [];
-
   // Budget insights
   if (budgetInfo) {
     if (budgetInfo.spentPercentage >= 90) {
@@ -494,7 +429,6 @@ function generateInsights({
         action: null,
       });
     }
-
     // Daily budget recommendation
     if (budgetInfo.dailyBudget > 0) {
       insights.push({
@@ -506,7 +440,6 @@ function generateInsights({
       });
     }
   }
-
   // Balance insights
   if (currentBalance < monthlyAllowance * 0.2) {
     insights.push({
@@ -517,7 +450,6 @@ function generateInsights({
       action: "Xem gợi ý",
     });
   }
-
   // Income vs Expense
   if (periodIncome > 0 && periodExpense > periodIncome) {
     insights.push({
@@ -538,10 +470,8 @@ function generateInsights({
       action: null,
     });
   }
-
   return insights;
 }
-
 /**
  * @desc    Get quick stats for widgets
  * @route   GET /api/dashboard/quick-stats
@@ -549,10 +479,8 @@ function generateInsights({
  */
 export const getQuickStats = async (req, res) => {
   const userId = req.userId;
-
   try {
     const user = await User.findById(userId).select("financialSummary");
-
     const stats = {
       currentBalance: parseFloat(
         user.financialSummary?.currentBalance?.toString() || "0"
@@ -567,7 +495,6 @@ export const getQuickStats = async (req, res) => {
         user.financialSummary?.totalSavings?.toString() || "0"
       ),
     };
-
     res.status(200).json({
       success: true,
       message: "Quick stats retrieved",
@@ -580,7 +507,6 @@ export const getQuickStats = async (req, res) => {
     });
   }
 };
-
 export default {
   getDashboardSummary,
   getQuickStats,

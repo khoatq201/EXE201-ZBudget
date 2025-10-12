@@ -5,17 +5,10 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import config from "../config/env.js";
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 // Upload middleware that uses pre-loaded config
 export const uploadAvatar = (req, res, next) => {
-  console.log("🔧 Upload using config:", {
-    cloud_name: config.CLOUDINARY_CLOUD_NAME,
-    use_cloudinary: config.USE_CLOUDINARY,
-  });
-
   // Configure Cloudinary with loaded config
   cloudinary.config({
     cloud_name: config.CLOUDINARY_CLOUD_NAME,
@@ -23,7 +16,6 @@ export const uploadAvatar = (req, res, next) => {
     api_secret: config.CLOUDINARY_API_SECRET,
     secure: true,
   });
-
   // Use Cloudinary if enabled, otherwise local
   const storage = config.USE_CLOUDINARY
     ? new CloudinaryStorage({
@@ -58,12 +50,6 @@ export const uploadAvatar = (req, res, next) => {
           cb(null, `avatar-${uniqueSuffix}${ext}`);
         },
       });
-
-  console.log(
-    "📦 Using storage:",
-    config.USE_CLOUDINARY ? "Cloudinary" : "Local"
-  );
-
   const upload = multer({
     storage,
     fileFilter: (req, file, cb) => {
@@ -73,12 +59,9 @@ export const uploadAvatar = (req, res, next) => {
         "image/png": true,
         "image/webp": true,
       };
-
       if (allowedMimes[file.mimetype]) {
-        console.log("✅ File type", file.mimetype, "is allowed");
         cb(null, true);
       } else {
-        console.log("❌ File type", file.mimetype, "is not allowed");
         cb(new Error(`File type ${file.mimetype} is not allowed`), false);
       }
     },
@@ -86,7 +69,6 @@ export const uploadAvatar = (req, res, next) => {
       fileSize: 10 * 1024 * 1024, // 10MB
     },
   });
-
   // Use multer single upload
   upload.single("avatar")(req, res, next);
 };

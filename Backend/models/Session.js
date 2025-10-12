@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-
 // Schema for user sessions
 const SessionSchema = new mongoose.Schema(
   {
@@ -120,42 +119,35 @@ const SessionSchema = new mongoose.Schema(
     versionKey: false,
   }
 );
-
 // Indexes for efficient queries
 SessionSchema.index({ userId: 1, isActive: 1 });
 SessionSchema.index({ sessionId: 1, isActive: 1 });
 SessionSchema.index({ expiresAt: 1 });
 SessionSchema.index({ "location.ip": 1 });
-
 // Instance methods
 SessionSchema.methods.updateActivity = function () {
   this.lastActiveTime = new Date();
   return this.save();
 };
-
 SessionSchema.methods.terminate = function () {
   this.isActive = false;
   this.expiresAt = new Date(); // Expire immediately
   return this.save();
 };
-
 SessionSchema.methods.isExpired = function () {
   return this.expiresAt < new Date();
 };
-
 SessionSchema.methods.getTimeAgo = function () {
   const now = new Date();
   const diff = now - this.lastActiveTime;
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
-
   if (minutes < 1) return "Vừa xong";
   if (minutes < 60) return `${minutes} phút trước`;
   if (hours < 24) return `${hours} giờ trước`;
   return `${days} ngày trước`;
 };
-
 // Static methods
 SessionSchema.statics.findActiveByUserId = function (userId) {
   return this.find({
@@ -164,7 +156,6 @@ SessionSchema.statics.findActiveByUserId = function (userId) {
     expiresAt: { $gt: new Date() },
   }).sort({ lastActiveTime: -1 });
 };
-
 SessionSchema.statics.findBySessionId = function (sessionId) {
   return this.findOne({
     sessionId,
@@ -172,7 +163,6 @@ SessionSchema.statics.findBySessionId = function (sessionId) {
     expiresAt: { $gt: new Date() },
   });
 };
-
 SessionSchema.statics.terminateAllUserSessions = function (
   userId,
   excludeSessionId = null
@@ -181,23 +171,19 @@ SessionSchema.statics.terminateAllUserSessions = function (
     userId,
     isActive: true,
   };
-
   if (excludeSessionId) {
     query.sessionId = { $ne: excludeSessionId };
   }
-
   return this.updateMany(query, {
     isActive: false,
     expiresAt: new Date(),
   });
 };
-
 SessionSchema.statics.cleanupExpiredSessions = function () {
   return this.deleteMany({
     $or: [{ expiresAt: { $lt: new Date() } }, { isActive: false }],
   });
 };
-
 // Pre-save middleware
 SessionSchema.pre("save", function (next) {
   // Generate device name if not set
@@ -208,7 +194,5 @@ SessionSchema.pre("save", function (next) {
   }
   next();
 });
-
 const Session = mongoose.model("Session", SessionSchema);
-
 export default Session;

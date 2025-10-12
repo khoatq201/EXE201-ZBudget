@@ -1,7 +1,6 @@
 import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import crypto from "crypto";
-
 /**
  * Enhanced 2FA Service with TOTP and QR Code generation
  * Provides comprehensive Two-Factor Authentication functionality
@@ -21,13 +20,10 @@ class TwoFactorAuthService {
         issuer: serviceName,
         length: 32,
       });
-
       // Generate QR code as data URL
       const qrCodeDataURL = await QRCode.toDataURL(secret.otpauth_url);
-
       // Generate backup codes
       const backupCodes = this.generateBackupCodes(8);
-
       return {
         secret: secret.base32,
         qrCode: qrCodeDataURL,
@@ -42,7 +38,6 @@ class TwoFactorAuthService {
       throw new Error("Failed to generate 2FA secret");
     }
   }
-
   /**
    * Verify TOTP token
    * @param {string} token - 6-digit TOTP token
@@ -55,10 +50,8 @@ class TwoFactorAuthService {
       if (!token || !secret) {
         return false;
       }
-
       // Remove any spaces or formatting from token
       const cleanToken = token.replace(/\s/g, "");
-
       // Verify the token
       const verified = speakeasy.totp.verify({
         secret: secret,
@@ -67,14 +60,12 @@ class TwoFactorAuthService {
         window: window, // Allow 2 time steps before/after current
         algorithm: "sha1",
       });
-
       return verified;
     } catch (error) {
       console.error("Error verifying TOTP token:", error);
       return false;
     }
   }
-
   /**
    * Generate backup codes for 2FA recovery
    * @param {number} count - Number of backup codes to generate
@@ -91,7 +82,6 @@ class TwoFactorAuthService {
     }
     return codes;
   }
-
   /**
    * Verify backup code
    * @param {string} inputCode - User input backup code
@@ -103,22 +93,17 @@ class TwoFactorAuthService {
       if (!inputCode || !Array.isArray(userBackupCodes)) {
         return { valid: false, remainingCodes: userBackupCodes };
       }
-
       // Clean and format input code
       const cleanCode = inputCode.replace(/\s/g, "").toUpperCase();
-
       // Check if code exists in user's backup codes
       const codeIndex = userBackupCodes.indexOf(cleanCode);
-
       if (codeIndex === -1) {
         return { valid: false, remainingCodes: userBackupCodes };
       }
-
       // Remove used backup code
       const remainingCodes = userBackupCodes.filter(
         (_, index) => index !== codeIndex
       );
-
       return {
         valid: true,
         remainingCodes: remainingCodes,
@@ -129,7 +114,6 @@ class TwoFactorAuthService {
       return { valid: false, remainingCodes: userBackupCodes };
     }
   }
-
   /**
    * Generate QR code as PNG buffer
    * @param {string} otpauthUrl - OTPAUTH URL
@@ -152,7 +136,6 @@ class TwoFactorAuthService {
       throw new Error("Failed to generate QR code");
     }
   }
-
   /**
    * Validate 2FA setup completion
    * @param {string} secret - TOTP secret
@@ -169,7 +152,6 @@ class TwoFactorAuthService {
       return false;
     }
   }
-
   /**
    * Generate recovery information for 2FA
    * @param {string} userEmail - User email
@@ -184,7 +166,6 @@ class TwoFactorAuthService {
       used: false,
     };
   }
-
   /**
    * Check if 2FA token is rate limited
    * @param {string} userId - User ID
@@ -194,13 +175,11 @@ class TwoFactorAuthService {
   static checkRateLimit(userId, attempts = {}) {
     const now = Date.now();
     const userAttempts = attempts[userId] || { count: 0, resetTime: now };
-
     // Reset counter every 15 minutes
     if (now > userAttempts.resetTime) {
       userAttempts.count = 0;
       userAttempts.resetTime = now + 15 * 60 * 1000;
     }
-
     // Allow max 5 attempts per 15 minutes
     if (userAttempts.count >= 5) {
       return {
@@ -209,13 +188,11 @@ class TwoFactorAuthService {
         maxAttempts: 5,
       };
     }
-
     return {
       isLimited: false,
       attemptsLeft: 5 - userAttempts.count,
     };
   }
-
   /**
    * Record failed 2FA attempt
    * @param {string} userId - User ID
@@ -224,15 +201,12 @@ class TwoFactorAuthService {
    */
   static recordFailedAttempt(userId, attempts = {}) {
     const now = Date.now();
-
     if (!attempts[userId]) {
       attempts[userId] = { count: 0, resetTime: now + 15 * 60 * 1000 };
     }
-
     attempts[userId].count += 1;
     return attempts;
   }
-
   /**
    * Get 2FA status summary
    * @param {Object} user - User object with security settings
@@ -240,7 +214,6 @@ class TwoFactorAuthService {
    */
   static getTwoFactorStatus(user) {
     const security = user.settings?.security || {};
-
     return {
       isEnabled: security.isTwoFactorEnabled || false,
       hasSecret: !!security.twoFactorSecret,
@@ -249,7 +222,6 @@ class TwoFactorAuthService {
       lastUsed: security.twoFactorLastUsed || null,
     };
   }
-
   /**
    * Generate 2FA setup instructions
    * @returns {Object} Setup instructions
@@ -295,5 +267,4 @@ class TwoFactorAuthService {
     };
   }
 }
-
 export default TwoFactorAuthService;

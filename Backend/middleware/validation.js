@@ -1,6 +1,5 @@
 import Joi from "joi";
 import { BadRequestError } from "./errorHandler.js";
-
 // Vietnamese error messages for Joi
 const vietnameseMessages = {
   "any.required": "{{#label}} là bắt buộc",
@@ -23,12 +22,10 @@ const vietnameseMessages = {
   "object.unknown": "Trường {{#label}} không được phép",
   "alternatives.match": "{{#label}} không khớp với bất kỳ kiểu nào được phép",
 };
-
 // MongoDB ObjectId validation function
 const isValidObjectId = (value) => {
   return /^[0-9a-fA-F]{24}$/.test(value);
 };
-
 // Common validation schemas
 const commonSchemas = {
   // MongoDB ObjectId
@@ -39,33 +36,28 @@ const commonSchemas = {
     .messages({
       "string.pattern.base": "{{#label}} phải là MongoDB ObjectId hợp lệ",
     }),
-
   // Pagination
   pagination: {
     page: Joi.number().integer().min(1).default(1).label("Trang"),
     limit: Joi.number().integer().min(1).max(100).default(20).label("Giới hạn"),
     sort: Joi.string().valid("asc", "desc").default("desc").label("Sắp xếp"),
   },
-
   // Date range
   dateRange: {
     startDate: Joi.date().iso().label("Ngày bắt đầu"),
     endDate: Joi.date().iso().min(Joi.ref("startDate")).label("Ngày kết thúc"),
   },
-
   // Vietnamese phone number
   vietnamesePhone: Joi.string()
     .pattern(/^(\+84|84|0)[3|5|7|8|9]([0-9]{8})$/)
     .message("Số điện thoại phải là số điện thoại Việt Nam hợp lệ")
     .label("Số điện thoại"),
-
   // Currency amount (VND)
   vndAmount: Joi.number()
     .integer()
     .min(0)
     .max(999999999999) // 999 billion VND
     .label("Số tiền"),
-
   // Password strength
   strongPassword: Joi.string()
     .min(8)
@@ -75,14 +67,12 @@ const commonSchemas = {
       "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt"
     )
     .label("Mật khẩu"),
-
   // Vietnamese text
   vietnameseText: Joi.string()
     .pattern(/^[\p{L}\p{N}\s\.,!?\-()'"]+$/u)
     .message("Chỉ được chứa chữ cái, số và dấu câu cơ bản")
     .label("Văn bản"),
 };
-
 // User validation schemas
 export const userSchemas = {
   register: Joi.object({
@@ -109,13 +99,11 @@ export const userSchemas = {
       .optional()
       .label("Giới tính"),
   }).messages(vietnameseMessages),
-
   login: Joi.object({
     email: Joi.string().email().required().label("Email"),
     password: Joi.string().required().label("Mật khẩu"),
     rememberMe: Joi.boolean().optional().label("Ghi nhớ đăng nhập"),
   }).messages(vietnameseMessages),
-
   verifyOTP: Joi.object({
     email: Joi.string().email().required().label("Email"),
     otp: Joi.string()
@@ -128,7 +116,6 @@ export const userSchemas = {
         "string.pattern.base": "Mã OTP chỉ được chứa các chữ số",
       }),
   }).messages(vietnameseMessages),
-
   verifyPasswordResetOTP: Joi.object({
     email: Joi.string().email().required().label("Email"),
     otp: Joi.string()
@@ -141,7 +128,6 @@ export const userSchemas = {
         "string.pattern.base": "Mã OTP chỉ được chứa các chữ số",
       }),
   }).messages(vietnameseMessages),
-
   updateProfile: Joi.object({
     fullName: Joi.string().min(2).max(50).optional().label("Họ tên"),
     phoneNumber: commonSchemas.vietnamesePhone.optional(),
@@ -165,7 +151,6 @@ export const userSchemas = {
       .optional()
       .label("Tùy chọn"),
   }).messages(vietnameseMessages),
-
   changePassword: Joi.object({
     currentPassword: Joi.string().required().label("Mật khẩu hiện tại"),
     newPassword: commonSchemas.strongPassword.required().label("Mật khẩu mới"),
@@ -177,11 +162,9 @@ export const userSchemas = {
         "any.only": "Xác nhận mật khẩu mới không khớp",
       }),
   }).messages(vietnameseMessages),
-
   forgotPassword: Joi.object({
     email: Joi.string().email().required().label("Email"),
   }).messages(vietnameseMessages),
-
   resetPassword: Joi.object({
     email: Joi.string().email().required().label("Email"),
     otp: Joi.string()
@@ -203,7 +186,6 @@ export const userSchemas = {
       }),
   }).messages(vietnameseMessages),
 };
-
 // Expense validation schemas
 export const expenseSchemas = {
   create: Joi.object({
@@ -234,7 +216,6 @@ export const expenseSchemas = {
     groupId: commonSchemas.mongoId.optional().label("ID nhóm"),
     budgetId: commonSchemas.mongoId.optional().label("ID ngân sách"),
   }).messages(vietnameseMessages),
-
   update: Joi.object({
     title: Joi.string().min(1).max(100).optional().label("Tiêu đề"),
     description: commonSchemas.vietnameseText
@@ -261,7 +242,6 @@ export const expenseSchemas = {
       .label("Thẻ"),
     receipt: Joi.string().uri().optional().label("Hóa đơn"),
   }).messages(vietnameseMessages),
-
   query: Joi.object({
     ...commonSchemas.pagination,
     ...commonSchemas.dateRange,
@@ -282,7 +262,6 @@ export const expenseSchemas = {
     search: Joi.string().max(100).optional().label("Tìm kiếm"),
   }).messages(vietnameseMessages),
 };
-
 // Budget validation schemas
 export const budgetSchemas = {
   create: Joi.object({
@@ -324,7 +303,6 @@ export const budgetSchemas = {
     isActive: Joi.boolean().default(true).label("Trạng thái hoạt động"),
     groupId: commonSchemas.mongoId.optional().label("ID nhóm"),
   }).messages(vietnameseMessages),
-
   update: Joi.object({
     name: Joi.string().min(1).max(100).optional().label("Tên ngân sách"),
     description: commonSchemas.vietnameseText
@@ -362,7 +340,6 @@ export const budgetSchemas = {
       .label("Ngưỡng cảnh báo (%)"),
     isActive: Joi.boolean().optional().label("Trạng thái hoạt động"),
   }).messages(vietnameseMessages),
-
   query: Joi.object({
     ...commonSchemas.pagination,
     ...commonSchemas.dateRange,
@@ -376,7 +353,6 @@ export const budgetSchemas = {
     search: Joi.string().max(100).optional().label("Tìm kiếm"),
   }).messages(vietnameseMessages),
 };
-
 // Challenge validation schemas
 export const challengeSchemas = {
   create: Joi.object({
@@ -443,7 +419,6 @@ export const challengeSchemas = {
       .optional()
       .label("Thẻ"),
   }).messages(vietnameseMessages),
-
   update: Joi.object({
     title: Joi.string().min(1).max(100).optional().label("Tiêu đề thử thách"),
     description: commonSchemas.vietnameseText
@@ -482,16 +457,13 @@ export const challengeSchemas = {
       .optional()
       .label("Thẻ"),
   }).messages(vietnameseMessages),
-
   join: Joi.object({
     personalGoal: commonSchemas.vndAmount.optional().label("Mục tiêu cá nhân"),
   }).messages(vietnameseMessages),
-
   updateProgress: Joi.object({
     progressValue: Joi.number().min(0).required().label("Giá trị tiến độ"),
     notes: commonSchemas.vietnameseText.max(500).optional().label("Ghi chú"),
   }).messages(vietnameseMessages),
-
   query: Joi.object({
     ...commonSchemas.pagination,
     type: Joi.string()
@@ -514,7 +486,6 @@ export const challengeSchemas = {
     search: Joi.string().max(100).optional().label("Tìm kiếm"),
   }).messages(vietnameseMessages),
 };
-
 // Group validation schemas
 export const groupSchemas = {
   create: Joi.object({
@@ -544,7 +515,6 @@ export const groupSchemas = {
       .optional()
       .label("Cài đặt nhóm"),
   }).messages(vietnameseMessages),
-
   update: Joi.object({
     name: Joi.string().min(1).max(100).optional().label("Tên nhóm"),
     description: commonSchemas.vietnameseText
@@ -569,7 +539,6 @@ export const groupSchemas = {
       .optional()
       .label("Cài đặt nhóm"),
   }).messages(vietnameseMessages),
-
   inviteMember: Joi.object({
     email: Joi.string().email().required().label("Email"),
     role: Joi.string()
@@ -577,14 +546,12 @@ export const groupSchemas = {
       .default("member")
       .label("Vai trò"),
   }).messages(vietnameseMessages),
-
   updateMemberRole: Joi.object({
     role: Joi.string()
       .valid("admin", "member", "viewer")
       .required()
       .label("Vai trò"),
   }).messages(vietnameseMessages),
-
   query: Joi.object({
     ...commonSchemas.pagination,
     type: Joi.string()
@@ -595,7 +562,6 @@ export const groupSchemas = {
     search: Joi.string().max(100).optional().label("Tìm kiếm"),
   }).messages(vietnameseMessages),
 };
-
 // Notification validation schemas
 export const notificationSchemas = {
   create: Joi.object({
@@ -623,7 +589,6 @@ export const notificationSchemas = {
       .label("Người nhận"),
     scheduledFor: Joi.date().iso().min("now").optional().label("Lên lịch gửi"),
   }).messages(vietnameseMessages),
-
   query: Joi.object({
     ...commonSchemas.pagination,
     type: Joi.string()
@@ -641,7 +606,6 @@ export const notificationSchemas = {
     isRead: Joi.boolean().optional().label("Đã đọc"),
     ...commonSchemas.dateRange,
   }).messages(vietnameseMessages),
-
   markAsRead: Joi.object({
     notificationIds: Joi.array()
       .items(commonSchemas.mongoId)
@@ -650,7 +614,6 @@ export const notificationSchemas = {
       .label("ID thông báo"),
   }).messages(vietnameseMessages),
 };
-
 // File upload validation
 export const uploadSchemas = {
   image: Joi.object({
@@ -673,7 +636,6 @@ export const uploadSchemas = {
       .required()
       .label("File"),
   }).messages(vietnameseMessages),
-
   receipt: Joi.object({
     file: Joi.object({
       mimetype: Joi.string()
@@ -701,58 +663,29 @@ export const uploadSchemas = {
       .label("File"),
   }).messages(vietnameseMessages),
 };
-
 // Generic validation middleware
 export const validate = (schema, property = "body") => {
   return (req, res, next) => {
     const validationStartTime = Date.now();
-    console.log("🔍 DEBUG: ===== VALIDATION MIDDLEWARE STARTED =====");
-    console.log(`🔍 DEBUG: Validating ${property} data`);
-
     const dataToValidate =
       property === "query"
         ? req.query
         : property === "params"
           ? req.params
           : req.body;
-
-    console.log(
-      "🔍 DEBUG: Data to validate:",
-      JSON.stringify(dataToValidate, null, 2)
-    );
-
     try {
       const { error, value } = schema.validate(dataToValidate, {
         abortEarly: false,
         stripUnknown: true,
         convert: true,
       });
-
       const validationDuration = Date.now() - validationStartTime;
-
       if (error) {
-        console.log(
-          `❌ DEBUG: Validation failed in ${validationDuration}ms:`,
-          error.message
-        );
-        console.log(
-          "📋 DEBUG: Validation error details:",
-          error.details.map((d) => ({
-            field: d.path.join("."),
-            message: d.message,
-            value: d.context?.value,
-          }))
-        );
-
         const errorMessage = error.details
           .map((detail) => detail.message)
           .join(", ");
-        console.log(`❌ DEBUG: Throwing BadRequestError: ${errorMessage}`);
         throw new BadRequestError(errorMessage);
       }
-
-      console.log(`✅ DEBUG: Validation passed in ${validationDuration}ms`);
-
       // Update request with validated data
       if (property === "query") {
         req.query = value;
@@ -761,8 +694,6 @@ export const validate = (schema, property = "body") => {
       } else {
         req.body = value;
       }
-
-      console.log("🔍 DEBUG: ===== VALIDATION MIDDLEWARE COMPLETED =====");
       next();
     } catch (validationError) {
       const validationDuration = Date.now() - validationStartTime;
@@ -774,7 +705,6 @@ export const validate = (schema, property = "body") => {
     }
   };
 };
-
 // Validate MongoDB ObjectId parameter
 export const validateObjectId = (paramName = "id") => {
   return validate(
@@ -784,19 +714,16 @@ export const validateObjectId = (paramName = "id") => {
     "params"
   );
 };
-
 // Validate pagination query
 export const validatePagination = validate(
   Joi.object(commonSchemas.pagination),
   "query"
 );
-
 // Validate date range query
 export const validateDateRange = validate(
   Joi.object(commonSchemas.dateRange),
   "query"
 );
-
 // Combine multiple validation schemas
 export const combineValidation = (...schemas) => {
   return (req, res, next) => {
@@ -804,24 +731,19 @@ export const combineValidation = (...schemas) => {
     return validate(combinedSchema)(req, res, next);
   };
 };
-
 // File validation middleware
 export const validateFile = (schema) => {
   return (req, res, next) => {
     if (!req.file) {
       throw new BadRequestError("Không có file được tải lên");
     }
-
     const { error } = schema.validate({ file: req.file });
-
     if (error) {
       throw new BadRequestError(error.details[0].message);
     }
-
     next();
   };
 };
-
 // Custom validation for business rules
 export const businessRuleValidation = {
   // Validate expense date is not in the future (allow 24h for timezone differences)
@@ -835,52 +757,41 @@ export const businessRuleValidation = {
     }
     next();
   },
-
   // Validate budget dates
   budgetDates: (req, res, next) => {
     const { startDate, endDate } = req.body;
-
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
       const now = new Date();
-
       if (start >= end) {
         throw new BadRequestError("Ngày bắt đầu phải trước ngày kết thúc");
       }
-
       if (end < now) {
         throw new BadRequestError("Ngày kết thúc không được ở quá khứ");
       }
-
       // Maximum budget period is 1 year
       const oneYear = 365 * 24 * 60 * 60 * 1000;
       if (end - start > oneYear) {
         throw new BadRequestError("Chu kỳ ngân sách không được vượt quá 1 năm");
       }
     }
-
     next();
   },
-
   // Validate challenge dates
   challengeDates: (req, res, next) => {
     const { startDate, endDate } = req.body;
-
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
-
       if (start >= end) {
         throw new BadRequestError("Ngày bắt đầu phải trước ngày kết thúc");
       }
-
       // Challenge minimum duration is 1 day
       const oneDay = 24 * 60 * 60 * 1000;
       if (end - start < oneDay) {
         throw new BadRequestError("Thời gian thử thách phải ít nhất 1 ngày");
       }
-
       // Challenge maximum duration is 1 year
       const oneYear = 365 * 24 * 60 * 60 * 1000;
       if (end - start > oneYear) {
@@ -889,11 +800,9 @@ export const businessRuleValidation = {
         );
       }
     }
-
     next();
   },
 };
-
 // Settings validation schemas
 export const settingsSchemas = {
   updateSettings: Joi.object({
@@ -944,7 +853,6 @@ export const settingsSchemas = {
       .optional()
       .label("Cài đặt bảo mật"),
   }).messages(vietnameseMessages),
-
   updateCurrency: Joi.object({
     primary: Joi.string()
       .valid("VND", "USD", "EUR", "JPY", "KRW", "CNY", "THB", "SGD")
@@ -961,7 +869,6 @@ export const settingsSchemas = {
       .required()
       .label("Số chữ số thập phân"),
   }).messages(vietnameseMessages),
-
   updateNotifications: Joi.object({
     notifications: Joi.object({
       isGlobalEnabled: Joi.boolean().optional().label("Bật/tắt thông báo"),
@@ -993,7 +900,6 @@ export const settingsSchemas = {
       .required()
       .label("Cài đặt thông báo"),
   }).messages(vietnameseMessages),
-
   updateSecurity: Joi.object({
     security: Joi.object({
       // Authentication
@@ -1010,7 +916,6 @@ export const settingsSchemas = {
         .items(Joi.string().valid("password", "biometric", "pin", "pattern"))
         .optional()
         .label("Các phương thức xác thực"),
-
       // Session Management
       isAutoLockEnabled: Joi.boolean().optional().label("Tự động khóa"),
       sessionTimeout: Joi.number()
@@ -1022,7 +927,6 @@ export const settingsSchemas = {
       isLoginNotificationEnabled: Joi.boolean()
         .optional()
         .label("Thông báo đăng nhập"),
-
       // Privacy & Protection
       isDataEncryptionEnabled: Joi.boolean().optional().label("Mã hóa dữ liệu"),
       maxFailedAttempts: Joi.number()
@@ -1036,7 +940,6 @@ export const settingsSchemas = {
       .required()
       .label("Cài đặt bảo mật"),
   }).messages(vietnameseMessages),
-
   // Security-specific validations
   changePassword: Joi.object({
     currentPassword: Joi.string().required().label("Mật khẩu hiện tại"),
@@ -1060,7 +963,6 @@ export const settingsSchemas = {
         "any.only": "Mật khẩu xác nhận không khớp",
       }),
   }).messages(vietnameseMessages),
-
   setup2FA: Joi.object({
     secret: Joi.string().required().label("Mã bí mật 2FA"),
     token: Joi.string()
@@ -1069,7 +971,6 @@ export const settingsSchemas = {
       .required()
       .label("Mã xác thực 6 số"),
   }).messages(vietnameseMessages),
-
   verify2FA: Joi.object({
     token: Joi.string()
       .length(6)
@@ -1077,22 +978,18 @@ export const settingsSchemas = {
       .required()
       .label("Mã xác thực 6 số"),
   }).messages(vietnameseMessages),
-
   terminateSession: Joi.object({
     sessionId: Joi.string().required().label("ID phiên đăng nhập"),
   }).messages(vietnameseMessages),
-
   updateTheme: Joi.object({
     theme: Joi.string()
       .valid("light", "dark", "system")
       .required()
       .label("Giao diện"),
   }).messages(vietnameseMessages),
-
   updateLanguage: Joi.object({
     language: Joi.string().valid("vi", "en").required().label("Ngôn ngữ"),
   }).messages(vietnameseMessages),
-
   // Profile validation schemas
   updateProfile: Joi.object({
     name: Joi.string()
@@ -1118,11 +1015,9 @@ export const settingsSchemas = {
       .optional()
       .label("Địa chỉ"),
   }).messages(vietnameseMessages),
-
   updateAvatar: Joi.object({
     avatar: Joi.string().uri().required().label("URL Avatar"),
   }).messages(vietnameseMessages),
-
   updateStats: Joi.object({
     level: Joi.number().integer().min(1).max(100).optional().label("Cấp độ"),
     points: Joi.number().integer().min(0).optional().label("Điểm số"),
@@ -1148,7 +1043,6 @@ export const settingsSchemas = {
       .label("Hạng"),
   }).messages(vietnameseMessages),
 };
-
 export default {
   validate,
   validateObjectId,

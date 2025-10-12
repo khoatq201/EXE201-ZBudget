@@ -1,3 +1,13 @@
+/// Helper function to parse ID fields that might be populated
+String parseIdField(dynamic value) {
+  if (value == null) return '';
+  if (value is String) return value;
+  if (value is Map) {
+    return value['_id']?.toString() ?? value['id']?.toString() ?? '';
+  }
+  return value.toString();
+}
+
 enum Currency { vnd, usd, eur }
 
 enum ExpenseCategory {
@@ -80,7 +90,7 @@ class Expense {
               orElse: () => PaymentMethod.cash,
             )
           : null,
-      groupId: json['groupId']?.toString(),
+      groupId: parseIdField(json['groupId']),
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
