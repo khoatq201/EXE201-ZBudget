@@ -1,7 +1,6 @@
 import { Expense, Income, Budget } from "../models/index.js";
 import { successResponse } from "../middleware/errorHandler.js";
 import mongoose from "mongoose";
-
 /**
  * Get date range based on period type
  * Returns UTC dates to match database stored dates
@@ -9,7 +8,6 @@ import mongoose from "mongoose";
 function getDateRange(period) {
   const now = new Date();
   let startDate, endDate;
-
   switch (period) {
     case "week":
       // Last 7 days from today (UTC)
@@ -20,13 +18,11 @@ function getDateRange(period) {
         Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
       );
       break;
-
     case "year":
       // Current year: Jan 1 00:00:00 to Dec 31 23:59:59 (UTC)
       startDate = new Date(Date.UTC(now.getFullYear(), 0, 1, 0, 0, 0, 0));
       endDate = new Date(Date.UTC(now.getFullYear(), 11, 31, 23, 59, 59, 999));
       break;
-
     case "month":
     default:
       // Current month: 1st 00:00:00 to last day 23:59:59 (UTC)
@@ -36,24 +32,19 @@ function getDateRange(period) {
       );
       break;
   }
-
   return { startDate, endDate };
 }
-
 /**
  * Get date range for custom period
  */
 function getCustomDateRange(startDateStr, endDateStr) {
   const start = startDateStr ? new Date(startDateStr) : new Date(Date.UTC(new Date().getFullYear(), 0, 1));
   const end = endDateStr ? new Date(endDateStr) : new Date();
-
   // Set to start of day for startDate, end of day for endDate
   const startDate = new Date(Date.UTC(start.getFullYear(), start.getMonth(), start.getDate(), 0, 0, 0, 0));
   const endDate = new Date(Date.UTC(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59, 999));
-
   return { startDate, endDate };
 }
-
 /**
  * @desc    Get trend report - Income vs Expense trends by period
  * @route   GET /api/reports/trend
@@ -65,16 +56,12 @@ function getCustomDateRange(startDateStr, endDateStr) {
 export const getTrendReport = async (req, res) => {
   const userId = req.userId;
   const { period = "month", startDate: customStart, endDate: customEnd } = req.query;
-
   try {
-    console.log("📈 getTrendReport called:", { userId, period, customStart, customEnd });
-
     // Get date range
     const dateRange = customStart || customEnd
       ? getCustomDateRange(customStart, customEnd)
       : getDateRange(period);
     const { startDate, endDate } = dateRange;
-
     // Determine grouping format based on period
     let groupByFormat;
     let dateFormat;
@@ -93,7 +80,6 @@ export const getTrendReport = async (req, res) => {
         dateFormat = "daily";
         break;
     }
-
     // Parallel queries for income and expense trends
     const [incomeTrend, expenseTrend] = await Promise.all([
       Income.aggregate([
@@ -113,7 +99,6 @@ export const getTrendReport = async (req, res) => {
         },
         { $sort: { _id: 1 } },
       ]),
-
       Expense.aggregate([
         {
           $match: {
@@ -131,10 +116,8 @@ export const getTrendReport = async (req, res) => {
         { $sort: { _id: 1 } },
       ]),
     ]);
-
     // Combine trends into a unified timeline
     const trendMap = new Map();
-
     incomeTrend.forEach((item) => {
       trendMap.set(item._id, {
         date: item._id,
@@ -145,7 +128,6 @@ export const getTrendReport = async (req, res) => {
         balance: item.total,
       });
     });
-
     expenseTrend.forEach((item) => {
       if (trendMap.has(item._id)) {
         const existing = trendMap.get(item._id);
@@ -163,21 +145,17 @@ export const getTrendReport = async (req, res) => {
         });
       }
     });
-
     // Convert map to array and sort
     const trendData = Array.from(trendMap.values()).sort((a, b) =>
       a.date.localeCompare(b.date)
     );
-
     // Calculate totals
     const totalIncome = incomeTrend.reduce((sum, item) => sum + item.total, 0);
     const totalExpense = expenseTrend.reduce((sum, item) => sum + item.total, 0);
     const totalBalance = totalIncome - totalExpense;
-
     // Calculate averages
     const avgIncome = trendData.length > 0 ? totalIncome / trendData.length : 0;
     const avgExpense = trendData.length > 0 ? totalExpense / trendData.length : 0;
-
     res.status(200).json({
       success: true,
       message: "Trend report retrieved successfully",
@@ -208,7 +186,6 @@ export const getTrendReport = async (req, res) => {
     });
   }
 };
-
 /**
  * @desc    Get category report - Detailed breakdown by category
  * @route   GET /api/reports/categories
@@ -221,28 +198,22 @@ export const getTrendReport = async (req, res) => {
 export const getCategoryReport = async (req, res) => {
   const userId = req.userId;
   const { period = "month", type = "expense", startDate: customStart, endDate: customEnd } = req.query;
-
   try {
-    console.log("📊 getCategoryReport called:", { userId, period, type });
-
     // Get date range
     const dateRange = customStart || customEnd
       ? getCustomDateRange(customStart, customEnd)
       : getDateRange(period);
     const { startDate, endDate } = dateRange;
-
     // Choose model based on type
     const Model = type === "income" ? Income : Expense;
     const matchFilter = {
       userId: new mongoose.Types.ObjectId(userId),
       date: { $gte: startDate, $lte: endDate },
     };
-
     // Add isConfirmed filter for income
     if (type === "income") {
       matchFilter.isConfirmed = true;
     }
-
     // Get category breakdown
     const categoryData = await Model.aggregate([
       { $match: matchFilter },
@@ -256,10 +227,8 @@ export const getCategoryReport = async (req, res) => {
       },
       { $sort: { total: -1 } },
     ]);
-
     // Calculate total for percentage
     const grandTotal = categoryData.reduce((sum, cat) => sum + cat.total, 0);
-
     // Format category data with percentages and icons
     const categories = categoryData.map((cat) => ({
       category: cat._id,
@@ -268,13 +237,10 @@ export const getCategoryReport = async (req, res) => {
       avgAmount: cat.avgAmount,
       percentage: grandTotal > 0 ? (cat.total / grandTotal) * 100 : 0,
     }));
-
     // Get top 3 categories
     const topCategories = categories.slice(0, 3);
-
     // Get category trends (last 6 periods)
     const categoryTrends = await getCategoryTrends(userId, type, period);
-
     res.status(200).json({
       success: true,
       message: "Category report retrieved successfully",
@@ -304,7 +270,6 @@ export const getCategoryReport = async (req, res) => {
     });
   }
 };
-
 /**
  * Helper function to get category trends over last 6 periods
  */
@@ -312,11 +277,9 @@ async function getCategoryTrends(userId, type, period) {
   const Model = type === "income" ? Income : Expense;
   const trends = [];
   const now = new Date();
-
   // Generate date ranges for last 6 periods
   for (let i = 5; i >= 0; i--) {
     let startDate, endDate, label;
-
     if (period === "month") {
       const targetMonth = new Date(now.getFullYear(), now.getMonth() - i, 1);
       startDate = new Date(Date.UTC(targetMonth.getFullYear(), targetMonth.getMonth(), 1, 0, 0, 0, 0));
@@ -334,16 +297,13 @@ async function getCategoryTrends(userId, type, period) {
       endDate = new Date(Date.UTC(targetYear, 11, 31, 23, 59, 59, 999));
       label = String(targetYear);
     }
-
     const matchFilter = {
       userId: new mongoose.Types.ObjectId(userId),
       date: { $gte: startDate, $lte: endDate },
     };
-
     if (type === "income") {
       matchFilter.isConfirmed = true;
     }
-
     const categoryData = await Model.aggregate([
       { $match: matchFilter },
       {
@@ -353,18 +313,14 @@ async function getCategoryTrends(userId, type, period) {
         },
       },
     ]);
-
     const periodData = { period: label, categories: {} };
     categoryData.forEach((cat) => {
       periodData.categories[cat._id] = cat.total;
     });
-
     trends.push(periodData);
   }
-
   return trends;
 }
-
 /**
  * @desc    Get comparison report - Compare periods
  * @route   GET /api/reports/comparison
@@ -375,18 +331,13 @@ async function getCategoryTrends(userId, type, period) {
 export const getComparisonReport = async (req, res) => {
   const userId = req.userId;
   const { period = "month", compareCount = 3 } = req.query;
-
   try {
-    console.log("🔄 getComparisonReport called:", { userId, period, compareCount });
-
     const count = Math.min(parseInt(compareCount) || 3, 12);
     const comparisons = [];
     const now = new Date();
-
     // Generate comparison data for each period
     for (let i = 0; i < count; i++) {
       let startDate, endDate, label;
-
       if (period === "month") {
         const targetMonth = new Date(now.getFullYear(), now.getMonth() - i, 1);
         startDate = new Date(Date.UTC(targetMonth.getFullYear(), targetMonth.getMonth(), 1, 0, 0, 0, 0));
@@ -404,7 +355,6 @@ export const getComparisonReport = async (req, res) => {
         endDate = new Date(Date.UTC(targetYear, 11, 31, 23, 59, 59, 999));
         label = String(targetYear);
       }
-
       // Get stats for this period
       const [incomeStats, expenseStats] = await Promise.all([
         Income.aggregate([
@@ -423,7 +373,6 @@ export const getComparisonReport = async (req, res) => {
             },
           },
         ]),
-
         Expense.aggregate([
           {
             $match: {
@@ -440,12 +389,10 @@ export const getComparisonReport = async (req, res) => {
           },
         ]),
       ]);
-
       const income = incomeStats[0]?.total || 0;
       const expense = expenseStats[0]?.total || 0;
       const balance = income - expense;
       const savingsRate = income > 0 ? ((income - expense) / income) * 100 : 0;
-
       comparisons.push({
         period: label,
         startDate,
@@ -459,11 +406,9 @@ export const getComparisonReport = async (req, res) => {
         isCurrent: i === 0,
       });
     }
-
     // Calculate period-over-period changes
     const changes = comparisons.map((current, index) => {
       if (index === comparisons.length - 1) return null;
-
       const previous = comparisons[index + 1];
       return {
         period: current.period,
@@ -472,7 +417,6 @@ export const getComparisonReport = async (req, res) => {
         balanceChange: current.balance - previous.balance,
       };
     }).filter(Boolean);
-
     res.status(200).json({
       success: true,
       message: "Comparison report retrieved successfully",
@@ -491,7 +435,6 @@ export const getComparisonReport = async (req, res) => {
     });
   }
 };
-
 /**
  * @desc    Get spending patterns - Day of week, time of day analysis
  * @route   GET /api/reports/patterns
@@ -501,12 +444,8 @@ export const getComparisonReport = async (req, res) => {
 export const getSpendingPatterns = async (req, res) => {
   const userId = req.userId;
   const { period = "month" } = req.query;
-
   try {
-    console.log("🔍 getSpendingPatterns called:", { userId, period });
-
     const { startDate, endDate } = getDateRange(period);
-
     // Get expenses with day of week analysis
     const dayOfWeekPattern = await Expense.aggregate([
       {
@@ -525,7 +464,6 @@ export const getSpendingPatterns = async (req, res) => {
       },
       { $sort: { _id: 1 } },
     ]);
-
     // Map day numbers to names (Vietnamese)
     const dayNames = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
     const dayOfWeekData = dayOfWeekPattern.map((day) => ({
@@ -535,7 +473,6 @@ export const getSpendingPatterns = async (req, res) => {
       count: day.count,
       avgAmount: day.avgAmount,
     }));
-
     // Get payment method distribution
     const paymentMethodPattern = await Expense.aggregate([
       {
@@ -553,7 +490,6 @@ export const getSpendingPatterns = async (req, res) => {
       },
       { $sort: { total: -1 } },
     ]);
-
     // Get most frequent expense categories
     const frequentCategories = await Expense.aggregate([
       {
@@ -572,7 +508,6 @@ export const getSpendingPatterns = async (req, res) => {
       { $sort: { count: -1 } },
       { $limit: 5 },
     ]);
-
     // Get expense distribution by hour (for detailed analysis)
     const hourlyPattern = await Expense.aggregate([
       {
@@ -590,13 +525,11 @@ export const getSpendingPatterns = async (req, res) => {
       },
       { $sort: { _id: 1 } },
     ]);
-
     // Find peak spending hour
     const peakHour = hourlyPattern.reduce(
       (max, hour) => (hour.total > max.total ? hour : max),
       { _id: 0, total: 0, count: 0 }
     );
-
     res.status(200).json({
       success: true,
       message: "Spending patterns retrieved successfully",
@@ -635,7 +568,6 @@ export const getSpendingPatterns = async (req, res) => {
     });
   }
 };
-
 /**
  * @desc    Get forecast report - Predictive analytics
  * @route   GET /api/reports/forecast
@@ -645,21 +577,15 @@ export const getSpendingPatterns = async (req, res) => {
 export const getForecastReport = async (req, res) => {
   const userId = req.userId;
   const { months = 3 } = req.query;
-
   try {
-    console.log("🔮 getForecastReport called:", { userId, months });
-
     const forecastMonths = Math.min(parseInt(months) || 3, 12);
-
     // Get historical data for last 6 months
     const historicalData = [];
     const now = new Date();
-
     for (let i = 5; i >= 0; i--) {
       const targetMonth = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const startDate = new Date(Date.UTC(targetMonth.getFullYear(), targetMonth.getMonth(), 1, 0, 0, 0, 0));
       const endDate = new Date(Date.UTC(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0, 23, 59, 59, 999));
-
       const [incomeStats, expenseStats] = await Promise.all([
         Income.aggregate([
           {
@@ -676,7 +602,6 @@ export const getForecastReport = async (req, res) => {
             },
           },
         ]),
-
         Expense.aggregate([
           {
             $match: {
@@ -692,31 +617,25 @@ export const getForecastReport = async (req, res) => {
           },
         ]),
       ]);
-
       historicalData.push({
         month: `${targetMonth.getFullYear()}-${String(targetMonth.getMonth() + 1).padStart(2, "0")}`,
         income: incomeStats[0]?.total || 0,
         expense: expenseStats[0]?.total || 0,
       });
     }
-
     // Simple moving average forecast
     const avgIncome = historicalData.reduce((sum, d) => sum + d.income, 0) / historicalData.length;
     const avgExpense = historicalData.reduce((sum, d) => sum + d.expense, 0) / historicalData.length;
-
     // Calculate trend (simple linear regression)
     const incomeTrend = calculateTrend(historicalData.map((d) => d.income));
     const expenseTrend = calculateTrend(historicalData.map((d) => d.expense));
-
     // Generate forecast
     const forecast = [];
     for (let i = 1; i <= forecastMonths; i++) {
       const targetMonth = new Date(now.getFullYear(), now.getMonth() + i, 1);
       const label = `${targetMonth.getFullYear()}-${String(targetMonth.getMonth() + 1).padStart(2, "0")}`;
-
       const forecastIncome = avgIncome + incomeTrend * i;
       const forecastExpense = avgExpense + expenseTrend * i;
-
       forecast.push({
         month: label,
         forecastIncome: Math.max(0, forecastIncome),
@@ -725,7 +644,6 @@ export const getForecastReport = async (req, res) => {
         confidence: Math.max(0, 100 - i * 10), // Decreasing confidence over time
       });
     }
-
     res.status(200).json({
       success: true,
       message: "Forecast report retrieved successfully",
@@ -752,29 +670,23 @@ export const getForecastReport = async (req, res) => {
     });
   }
 };
-
 /**
  * Helper function to calculate trend (simple linear regression slope)
  */
 function calculateTrend(data) {
   const n = data.length;
   if (n === 0) return 0;
-
   const xValues = Array.from({ length: n }, (_, i) => i);
   const xMean = xValues.reduce((sum, x) => sum + x, 0) / n;
   const yMean = data.reduce((sum, y) => sum + y, 0) / n;
-
   let numerator = 0;
   let denominator = 0;
-
   for (let i = 0; i < n; i++) {
     numerator += (xValues[i] - xMean) * (data[i] - yMean);
     denominator += (xValues[i] - xMean) ** 2;
   }
-
   return denominator === 0 ? 0 : numerator / denominator;
 }
-
 export default {
   getTrendReport,
   getCategoryReport,

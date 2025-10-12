@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import validator from "validator";
-
 // Sub-schemas cho nested objects
 const ProfileSchema = new mongoose.Schema(
   {
@@ -51,7 +50,6 @@ const ProfileSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const CurrencySettingsSchema = new mongoose.Schema(
   {
     primary: {
@@ -73,7 +71,6 @@ const CurrencySettingsSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 // Notification Types Schema
 const NotificationTypeSettingSchema = new mongoose.Schema(
   {
@@ -105,7 +102,6 @@ const NotificationTypeSettingSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 // Quiet Hours Schema
 const QuietHoursSchema = new mongoose.Schema(
   {
@@ -116,7 +112,6 @@ const QuietHoursSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const NotificationSettingsSchema = new mongoose.Schema(
   {
     // Global Settings
@@ -126,16 +121,13 @@ const NotificationSettingsSchema = new mongoose.Schema(
     notificationSound: { type: String, default: "default" },
     maxNotificationsPerDay: { type: Number, default: 50 },
     enableSmartNotifications: { type: Boolean, default: true },
-
     // Individual notification type settings
     notificationSettings: {
       type: [NotificationTypeSettingSchema],
       default: [],
     },
-
     // Quiet hours
     quietHours: { type: QuietHoursSchema, default: () => ({}) },
-
     // Legacy fields for backward compatibility
     challenges: { type: Boolean, default: true },
     budgetAlerts: { type: Boolean, default: true },
@@ -145,7 +137,6 @@ const NotificationSettingsSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 // Login Session Schema for tracking active sessions
 const SessionSchema = new mongoose.Schema(
   {
@@ -166,7 +157,6 @@ const SessionSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const SecuritySettingsSchema = new mongoose.Schema(
   {
     // Authentication
@@ -186,7 +176,6 @@ const SecuritySettingsSchema = new mongoose.Schema(
         default: ["password"],
       },
     ],
-
     // Session Management
     isAutoLockEnabled: { type: Boolean, default: true },
     sessionTimeout: {
@@ -218,7 +207,6 @@ const SecuritySettingsSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const SettingsSchema = new mongoose.Schema(
   {
     currency: {
@@ -246,7 +234,6 @@ const SettingsSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const StatsSchema = new mongoose.Schema(
   {
     level: {
@@ -286,7 +273,6 @@ const StatsSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const FinancialSummarySchema = new mongoose.Schema(
   {
     monthlyAllowance: {
@@ -315,7 +301,6 @@ const FinancialSummarySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Decimal128,
       default: 0,
     },
-
     // YNAB-style Budget Fields
     readyToAssign: {
       type: mongoose.Schema.Types.Decimal128,
@@ -336,7 +321,6 @@ const FinancialSummarySchema = new mongoose.Schema(
       type: Date,
       description: "Lần cuối cùng user phân bổ thu nhập",
     },
-
     lastUpdated: {
       type: Date,
       default: Date.now,
@@ -344,7 +328,6 @@ const FinancialSummarySchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 // Main User Schema
 const UserSchema = new mongoose.Schema(
   {
@@ -364,32 +347,27 @@ const UserSchema = new mongoose.Schema(
       minlength: [8, "Mật khẩu phải có ít nhất 8 ký tự"],
       select: false,
     },
-
     // Profile Information
     profile: {
       type: ProfileSchema,
       required: true,
       default: () => ({}),
     },
-
     // App Settings
     settings: {
       type: SettingsSchema,
       default: () => ({}),
     },
-
     // Gamification Stats
     stats: {
       type: StatsSchema,
       default: () => ({}),
     },
-
     // Financial Summary
     financialSummary: {
       type: FinancialSummarySchema,
       default: () => ({}),
     },
-
     // Auth & Security
     emailVerified: {
       type: Boolean,
@@ -423,7 +401,6 @@ const UserSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
-
     // Google OAuth fields
     googleId: {
       type: String,
@@ -434,7 +411,6 @@ const UserSchema = new mongoose.Schema(
       enum: ["local", "google"],
       default: "local",
     },
-
     deviceTokens: [
       {
         type: String,
@@ -446,7 +422,6 @@ const UserSchema = new mongoose.Schema(
         },
       },
     ],
-
     // Audit fields
     isActive: {
       type: Boolean,
@@ -472,25 +447,20 @@ const UserSchema = new mongoose.Schema(
     },
   }
 );
-
 // Indexes
 UserSchema.index({ "profile.phone": 1 }, { sparse: true });
 UserSchema.index({ "stats.points": -1 }); // Leaderboards
 UserSchema.index({ isActive: 1, createdAt: -1 });
-
 // Instance methods
 UserSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.passwordHash);
 };
-
 UserSchema.methods.addPoints = function (points) {
   this.stats.points += points;
-
   // Update level based on points
   const newLevel = Math.floor(this.stats.points / 1000) + 1;
   if (newLevel > this.stats.level) {
     this.stats.level = newLevel;
-
     // Update rank based on level
     if (newLevel >= 50) this.stats.rank = "Platinum";
     else if (newLevel >= 25) this.stats.rank = "Gold";
@@ -498,7 +468,6 @@ UserSchema.methods.addPoints = function (points) {
     else this.stats.rank = "Bronze";
   }
 };
-
 UserSchema.methods.updateStreak = function (increment = true) {
   if (increment) {
     this.stats.currentStreak += 1;
@@ -509,55 +478,43 @@ UserSchema.methods.updateStreak = function (increment = true) {
     this.stats.currentStreak = 0;
   }
 };
-
 UserSchema.methods.addSavings = function (amount) {
   const currentSaved = parseFloat(this.stats.totalSaved.toString()) || 0;
   this.stats.totalSaved = mongoose.Types.Decimal128.fromString(
     (currentSaved + amount).toFixed(2)
   );
 };
-
 // Pre-save middleware
 UserSchema.pre("save", async function (next) {
   // Only hash password if it's modified
   if (!this.isModified("passwordHash")) return next();
-
   // Check if password is already hashed (bcrypt hashes start with $2a$, $2b$, etc.)
   if (this.passwordHash && this.passwordHash.startsWith("$2")) {
-    console.log("🔐 DEBUG: Password already hashed, skipping re-hash");
     return next();
   }
-
   // Hash password only if it's plain text
-  console.log("🔐 DEBUG: Hashing plain text password in middleware");
   this.passwordHash = await bcrypt.hash(this.passwordHash, 12);
   next();
 });
-
 UserSchema.pre("save", function (next) {
   // Update version on save
   this.version += 1;
   next();
 });
-
 // Static methods
 UserSchema.statics.findByEmail = function (email) {
   return this.findOne({ email: email.toLowerCase(), isActive: true });
 };
-
 UserSchema.statics.findActiveUsers = function (limit = 10) {
   return this.find({ isActive: true })
     .sort({ "stats.points": -1 })
     .limit(limit);
 };
-
 UserSchema.statics.getLeaderboard = function (limit = 100) {
   return this.find({ isActive: true })
     .select("profile.name profile.avatar stats")
     .sort({ "stats.points": -1, "stats.level": -1 })
     .limit(limit);
 };
-
 const User = mongoose.model("User", UserSchema);
-
 export default User;

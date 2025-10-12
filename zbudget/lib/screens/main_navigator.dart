@@ -17,7 +17,7 @@ class _MainNavigatorState extends State<MainNavigator> {
     if (location.startsWith('/home')) return 0;
     if (location.startsWith('/budget')) return 1;
     if (location.startsWith('/savings')) return 2;
-    if (location.startsWith('/groups')) return 3;
+    if (location.startsWith('/group-budgets') || location.startsWith('/groups')) return 3;
     if (location.startsWith('/challenges')) return 4;
     if (location.startsWith('/reports')) return 5;
     if (location.startsWith('/settings')) return 6;
@@ -36,7 +36,7 @@ class _MainNavigatorState extends State<MainNavigator> {
         context.go('/savings');
         break;
       case 3:
-        context.go('/groups');
+        context.go('/group-budgets');
         break;
       case 4:
         context.go('/challenges');

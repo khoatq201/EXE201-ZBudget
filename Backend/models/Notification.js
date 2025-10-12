@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-
 // Sub-schemas
 const NotificationDataSchema = new mongoose.Schema(
   {
@@ -11,7 +10,6 @@ const NotificationDataSchema = new mongoose.Schema(
     challengeName: String,
     milestoneDay: Number,
     pointsEarned: Number,
-
     // Budget related data
     budgetId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -21,14 +19,12 @@ const NotificationDataSchema = new mongoose.Schema(
     category: String,
     spentPercentage: Number,
     remainingAmount: mongoose.Schema.Types.Decimal128,
-
     // Expense related data
     expenseId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Expense",
     },
     expenseAmount: mongoose.Schema.Types.Decimal128,
-
     // Group related data
     groupId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -36,14 +32,12 @@ const NotificationDataSchema = new mongoose.Schema(
     },
     groupName: String,
     memberName: String,
-
     // Social related data
     fromUserId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
     fromUserName: String,
-
     // Generic data for custom notifications
     customData: {
       type: mongoose.Schema.Types.Mixed,
@@ -51,7 +45,6 @@ const NotificationDataSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const ActionButtonSchema = new mongoose.Schema(
   {
     text: {
@@ -79,7 +72,6 @@ const ActionButtonSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 // Main Notification Schema
 const NotificationSchema = new mongoose.Schema(
   {
@@ -89,7 +81,6 @@ const NotificationSchema = new mongoose.Schema(
       required: [true, "User ID là bắt buộc"],
       index: true,
     },
-
     // Notification Type & Category
     type: {
       type: String,
@@ -101,35 +92,30 @@ const NotificationSchema = new mongoose.Schema(
         "milestone_achieved",
         "challenge_reminder",
         "challenge_invitation",
-
         // Budget notifications
         "budget_alert",
         "budget_exceeded",
         "budget_low_funds",
         "budget_category_exceeded",
         "monthly_budget_summary",
-
         // Expense notifications
         "expense_added",
         "expense_approved",
         "expense_rejected",
         "receipt_processed",
         "large_expense_alert",
-
         // Group notifications
         "group_invitation",
         "group_expense_added",
         "member_joined",
         "member_left",
         "group_challenge_started",
-
         // Social notifications
         "encouragement_received",
         "achievement_shared",
         "friend_request",
         "leaderboard_position",
         "streak_milestone",
-
         // System notifications
         "app_update",
         "maintenance_notice",
@@ -140,14 +126,12 @@ const NotificationSchema = new mongoose.Schema(
       required: [true, "Loại thông báo là bắt buộc"],
       index: true,
     },
-
     category: {
       type: String,
       enum: ["challenge", "budget", "expense", "group", "social", "system"],
       required: [true, "Danh mục thông báo là bắt buộc"],
       index: true,
     },
-
     // Content
     title: {
       type: String,
@@ -161,7 +145,6 @@ const NotificationSchema = new mongoose.Schema(
       trim: true,
       maxlength: [1000, "Nội dung không được vượt quá 1000 ký tự"],
     },
-
     // Visual Elements
     icon: {
       type: String,
@@ -185,7 +168,6 @@ const NotificationSchema = new mongoose.Schema(
         message: "Image URL phải là URL hợp lệ",
       },
     },
-
     // Priority & Behavior
     priority: {
       type: String,
@@ -198,13 +180,11 @@ const NotificationSchema = new mongoose.Schema(
       default: false,
     },
     actionButtons: [ActionButtonSchema],
-
     // Data & Context
     data: {
       type: NotificationDataSchema,
       default: () => ({}),
     },
-
     // Delivery & Status
     deliveryMethod: {
       type: String,
@@ -227,7 +207,6 @@ const NotificationSchema = new mongoose.Schema(
     archivedAt: {
       type: Date,
     },
-
     // Scheduling
     scheduledFor: {
       type: Date,
@@ -236,13 +215,11 @@ const NotificationSchema = new mongoose.Schema(
     sentAt: {
       type: Date,
     },
-
     // Expiry
     expiresAt: {
       type: Date,
       // index: true, // Removed - using compound index below
     },
-
     version: {
       type: Number,
       default: 1,
@@ -269,14 +246,12 @@ const NotificationSchema = new mongoose.Schema(
     },
   }
 );
-
 // Compound Indexes
 NotificationSchema.index({ userId: 1, isRead: 1, createdAt: -1 });
 NotificationSchema.index({ userId: 1, category: 1, createdAt: -1 });
 NotificationSchema.index({ userId: 1, priority: 1, isRead: 1 });
 NotificationSchema.index({ scheduledFor: 1, sentAt: 1 }); // For scheduled notifications
 NotificationSchema.index({ expiresAt: 1 }); // For cleanup
-
 // Instance Methods
 NotificationSchema.methods.markAsRead = function () {
   if (!this.isRead) {
@@ -285,49 +260,38 @@ NotificationSchema.methods.markAsRead = function () {
   }
   return this;
 };
-
 NotificationSchema.methods.markAsUnread = function () {
   this.isRead = false;
   this.readAt = null;
   return this;
 };
-
 NotificationSchema.methods.archive = function () {
   this.isArchived = true;
   this.archivedAt = new Date();
   return this;
 };
-
 NotificationSchema.methods.unarchive = function () {
   this.isArchived = false;
   this.archivedAt = null;
   return this;
 };
-
 NotificationSchema.methods.isExpired = function () {
   return this.expiresAt && new Date() > this.expiresAt;
 };
-
 NotificationSchema.methods.canBeDelivered = function () {
   const now = new Date();
-
   // Check if expired
   if (this.isExpired()) return false;
-
   // Check if already sent
   if (this.sentAt) return false;
-
   // Check if scheduled for future
   if (this.scheduledFor && now < this.scheduledFor) return false;
-
   return true;
 };
-
 NotificationSchema.methods.markAsSent = function () {
   this.sentAt = new Date();
   return this;
 };
-
 NotificationSchema.methods.addActionButton = function (
   text,
   action,
@@ -336,20 +300,16 @@ NotificationSchema.methods.addActionButton = function (
   if (this.actionButtons.length >= 3) {
     throw new Error("Không được có quá 3 action buttons");
   }
-
   this.actionButtons.push({
     text,
     action,
     actionData,
   });
-
   if (!this.requiresAction) {
     this.requiresAction = true;
   }
-
   return this;
 };
-
 // Pre-save middleware
 NotificationSchema.pre("save", function (next) {
   // Set default icon and color based on category
@@ -358,15 +318,12 @@ NotificationSchema.pre("save", function (next) {
     if (!this.icon) this.icon = defaults.icon;
     if (!this.color) this.color = defaults.color;
   }
-
   // Update version
   if (this.isModified() && !this.isNew) {
     this.version += 1;
   }
-
   next();
 });
-
 NotificationSchema.methods.getCategoryDefaults = function () {
   const categoryDefaults = {
     challenge: { icon: "🏆", color: "#FFD700" },
@@ -376,10 +333,8 @@ NotificationSchema.methods.getCategoryDefaults = function () {
     social: { icon: "❤️", color: "#FF69B4" },
     system: { icon: "⚙️", color: "#708090" },
   };
-
   return categoryDefaults[this.category] || categoryDefaults.system;
 };
-
 // Static Methods
 NotificationSchema.statics.findUnreadForUser = function (userId, limit = 50) {
   return this.find({
@@ -394,7 +349,6 @@ NotificationSchema.statics.findUnreadForUser = function (userId, limit = 50) {
     .sort({ priority: -1, createdAt: -1 })
     .limit(limit);
 };
-
 NotificationSchema.statics.findByCategory = function (
   userId,
   category,
@@ -412,7 +366,6 @@ NotificationSchema.statics.findByCategory = function (
     .sort({ createdAt: -1 })
     .limit(limit);
 };
-
 NotificationSchema.statics.markAllAsReadForUser = function (
   userId,
   category = null
@@ -422,11 +375,9 @@ NotificationSchema.statics.markAllAsReadForUser = function (
     isRead: false,
     isArchived: false,
   };
-
   if (category) {
     query.category = category;
   }
-
   return this.updateMany(query, {
     $set: {
       isRead: true,
@@ -434,7 +385,6 @@ NotificationSchema.statics.markAllAsReadForUser = function (
     },
   });
 };
-
 NotificationSchema.statics.getUnreadCount = function (userId) {
   return this.countDocuments({
     userId,
@@ -446,7 +396,6 @@ NotificationSchema.statics.getUnreadCount = function (userId) {
     ],
   });
 };
-
 NotificationSchema.statics.getUnreadCountByCategory = function (userId) {
   return this.aggregate([
     {
@@ -468,7 +417,6 @@ NotificationSchema.statics.getUnreadCountByCategory = function (userId) {
     },
   ]);
 };
-
 NotificationSchema.statics.findScheduledNotifications = function () {
   const now = new Date();
   return this.find({
@@ -477,14 +425,12 @@ NotificationSchema.statics.findScheduledNotifications = function () {
     $or: [{ expiresAt: { $exists: false } }, { expiresAt: { $gt: now } }],
   });
 };
-
 NotificationSchema.statics.cleanupExpiredNotifications = function () {
   const now = new Date();
   return this.deleteMany({
     expiresAt: { $lt: now },
   });
 };
-
 NotificationSchema.statics.createChallengeNotification = function (
   userId,
   type,
@@ -509,12 +455,10 @@ NotificationSchema.statics.createChallengeNotification = function (
       priority: "high",
     },
   };
-
   const template = notificationMap[type];
   if (!template) {
     throw new Error(`Không tìm thấy template cho loại thông báo: ${type}`);
   }
-
   return new this({
     userId,
     type,
@@ -525,7 +469,6 @@ NotificationSchema.statics.createChallengeNotification = function (
     data: challengeData,
   });
 };
-
 NotificationSchema.statics.createBudgetAlert = function (userId, budgetData) {
   return new this({
     userId,
@@ -537,7 +480,5 @@ NotificationSchema.statics.createBudgetAlert = function (userId, budgetData) {
     data: budgetData,
   });
 };
-
 const Notification = mongoose.model("Notification", NotificationSchema);
-
 export default Notification;

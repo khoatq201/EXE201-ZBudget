@@ -7,12 +7,9 @@ import {
   getForecastReport,
 } from "../controllers/reportController.js";
 import { authenticate } from "../middleware/auth.js";
-
 const router = express.Router();
-
 // Apply authentication to all report routes
 router.use(authenticate);
-
 /**
  * @route   GET /api/reports/trend
  * @desc    Get income vs expense trend report
@@ -22,7 +19,6 @@ router.use(authenticate);
  * @query   endDate - ISO date string (optional, for custom range)
  */
 router.get("/trend", getTrendReport);
-
 /**
  * @route   GET /api/reports/categories
  * @desc    Get category breakdown report
@@ -33,7 +29,6 @@ router.get("/trend", getTrendReport);
  * @query   endDate - ISO date string (optional)
  */
 router.get("/categories", getCategoryReport);
-
 /**
  * @route   GET /api/reports/comparison
  * @desc    Get period-over-period comparison report
@@ -42,7 +37,6 @@ router.get("/categories", getCategoryReport);
  * @query   compareCount - number of periods to compare (default: 3, max: 12)
  */
 router.get("/comparison", getComparisonReport);
-
 /**
  * @route   GET /api/reports/patterns
  * @desc    Get spending patterns analysis
@@ -50,7 +44,6 @@ router.get("/comparison", getComparisonReport);
  * @query   period - month|week|year (default: month)
  */
 router.get("/patterns", getSpendingPatterns);
-
 /**
  * @route   GET /api/reports/forecast
  * @desc    Get financial forecast based on historical data
@@ -58,5 +51,4 @@ router.get("/patterns", getSpendingPatterns);
  * @query   months - number of months to forecast (default: 3, max: 12)
  */
 router.get("/forecast", getForecastReport);
-
 export default router;

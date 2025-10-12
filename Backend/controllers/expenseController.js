@@ -15,6 +15,9 @@ import {
 import { getFileUrl, deleteFile } from "../middleware/upload.js";
 import mongoose from "mongoose";
 
+// ✅ NEW: Import utilities and services
+import { FinancialSummaryService } from "../services/financialSummaryService.js";
+import { toNumber } from "../utils/currencyHelper.js";
 /**
  * @desc    Tạo chi tiêu mới
  * @route   POST /api/expenses
@@ -23,7 +26,6 @@ import mongoose from "mongoose";
 export const createExpense = async (req, res) => {
   const startTime = Date.now();
   const userId = req.userId;
-
   const {
     title,
     description,
@@ -38,16 +40,12 @@ export const createExpense = async (req, res) => {
     budgetId,
     receiptFile,
   } = req.body;
-
   // Handle receipt upload
   let receipt = null;
   if (req.file || receiptFile) {
     const file = req.file || receiptFile;
     receipt = getFileUrl(file);
   }
-
-  console.log('🔥 Creating expense:', { title, amount, category, paymentMethod });
-
   try {
     // Create expense
     const expense = new Expense({
@@ -65,50 +63,29 @@ export const createExpense = async (req, res) => {
       groupId: groupId || null,
       budgetId: budgetId || null,
     });
-
-    console.log('💾 Saving expense...');
     await expense.save();
-    console.log('✅ Expense saved:', expense._id);
-
     // Update user financial summary
-    console.log('💰 Updating user financial summary...');
     try {
-      await User.findByIdAndUpdate(
-        userId,
-        {
-          $inc: {
-            'financialSummary.totalExpenses': amount,
-            'financialSummary.currentBalance': -amount,
-          },
-          'financialSummary.lastUpdated': new Date(),
-        },
-        { new: true }
-      );
-      console.log('✅ Financial summary updated');
+      await FinancialSummaryService.addExpense(userId, amount); // ✅ Using FinancialSummaryService
     } catch (summaryError) {
       console.error('⚠️ Financial summary update failed:', summaryError.message);
     }
-
     // Update budget if specified (simplified without transaction)
     if (budgetId) {
-      console.log('🔄 Updating budget:', budgetId);
       try {
         const budget = await Budget.findOne({
           _id: budgetId,
           userId,
           isActive: true,
         });
-
         if (budget) {
           // Note: Budget model uses categoryAllocations, not categories
           const categoryAllocation = budget.categoryAllocations?.find(
             (cat) => cat.category === category
           );
-
           if (categoryAllocation) {
             categoryAllocation.spent = (categoryAllocation.spent || 0) + amount;
             await budget.save();
-            console.log('✅ Budget updated');
           }
         }
       } catch (budgetError) {
@@ -116,29 +93,21 @@ export const createExpense = async (req, res) => {
         // Don't fail the whole request if budget update fails
       }
     }
-
-    console.log('📤 Preparing response...');
-
     res.locals.expenseId = expense._id;
-
     dbLogger("CREATE", "expenses", {
       expenseId: expense._id,
       userId,
       amount,
       category,
     });
-
     performanceLogger("create_expense", Date.now() - startTime, {
       userId,
       hasReceipt: !!receipt,
       hasBudget: !!budgetId,
     });
-
-    console.log('✅ Sending success response');
     return successResponse(res, "Tạo chi tiêu thành công!", { expense }, 201);
   } catch (error) {
     console.error('❌ Create expense error:', error);
-
     // Clean up uploaded file if failed
     if (receipt) {
       try {
@@ -150,11 +119,9 @@ export const createExpense = async (req, res) => {
         );
       }
     }
-
     throw error;
   }
 };
-
 /**
  * @desc    Lấy danh sách chi tiêu
  * @route   GET /api/expenses
@@ -163,7 +130,6 @@ export const createExpense = async (req, res) => {
 export const getExpenses = async (req, res) => {
   const startTime = Date.now();
   const userId = req.userId;
-
   const {
     page = 1,
     limit = 20,
@@ -180,41 +146,33 @@ export const getExpenses = async (req, res) => {
     budgetId,
     search,
   } = req.query;
-
   // Build query
   const query = { userId };
-
   // Date range filter
   if (startDate || endDate) {
     query.date = {};
     if (startDate) query.date.$gte = new Date(startDate);
     if (endDate) query.date.$lte = new Date(endDate);
   }
-
   // Category filters
   if (category) query.category = category;
   if (subcategory) query.subcategory = subcategory;
-
   // Amount range
   if (minAmount || maxAmount) {
     query.amount = {};
     if (minAmount) query.amount.$gte = parseInt(minAmount);
     if (maxAmount) query.amount.$lte = parseInt(maxAmount);
   }
-
   // Payment method
   if (paymentMethod) query.paymentMethod = paymentMethod;
-
   // Tags filter
   if (tags) {
     const tagArray = Array.isArray(tags) ? tags : [tags];
     query.tags = { $in: tagArray };
   }
-
   // Group and budget filters
   if (groupId) query.groupId = groupId;
   if (budgetId) query.budgetId = budgetId;
-
   // Text search
   if (search) {
     query.$or = [
@@ -223,11 +181,9 @@ export const getExpenses = async (req, res) => {
       { location: { $regex: search, $options: "i" } },
     ];
   }
-
   // Calculate pagination
   const skip = (parseInt(page) - 1) * parseInt(limit);
   const sortOrder = sort === "asc" ? 1 : -1;
-
   // Execute query
   const [expenses, total] = await Promise.all([
     Expense.find(query)
@@ -241,13 +197,11 @@ export const getExpenses = async (req, res) => {
       .lean(),
     Expense.countDocuments(query),
   ]);
-
   // Calculate totals for current filter
   const totalAmount = await Expense.aggregate([
     { $match: query },
     { $group: { _id: null, total: { $sum: "$amount" } } },
   ]);
-
   const pagination = {
     currentPage: parseInt(page),
     totalPages: Math.ceil(total / parseInt(limit)),
@@ -256,13 +210,11 @@ export const getExpenses = async (req, res) => {
     hasNextPage: parseInt(page) < Math.ceil(total / parseInt(limit)),
     hasPrevPage: parseInt(page) > 1,
   };
-
   performanceLogger("get_expenses", Date.now() - startTime, {
     userId,
     resultCount: expenses.length,
     hasFilters: Object.keys(query).length > 1,
   });
-
   return successResponse(res, "Lấy danh sách chi tiêu thành công", {
     expenses,
     pagination,
@@ -278,7 +230,6 @@ export const getExpenses = async (req, res) => {
     },
   });
 };
-
 /**
  * @desc    Lấy chi tiết một chi tiêu
  * @route   GET /api/expenses/:id
@@ -287,19 +238,15 @@ export const getExpenses = async (req, res) => {
 export const getExpenseById = async (req, res) => {
   const { id } = req.params;
   const userId = req.userId;
-
   const expense = await Expense.findOne({ _id: id, userId }).populate([
     { path: "budgetId", select: "name totalAmount categories" },
     { path: "groupId", select: "name type members" },
   ]);
-
   if (!expense) {
     throw new NotFoundError("Không tìm thấy chi tiêu");
   }
-
   return successResponse(res, "Lấy chi tiết chi tiêu thành công", { expense });
 };
-
 /**
  * @desc    Cập nhật chi tiêu
  * @route   PUT /api/expenses/:id
@@ -309,7 +256,6 @@ export const updateExpense = async (req, res) => {
   const startTime = Date.now();
   const { id } = req.params;
   const userId = req.userId;
-
   const {
     title,
     description,
@@ -323,20 +269,15 @@ export const updateExpense = async (req, res) => {
     receiptFile,
     removeReceipt,
   } = req.body;
-
   const expense = await Expense.findOne({ _id: id, userId });
-
   if (!expense) {
     throw new NotFoundError("Không tìm thấy chi tiêu");
   }
-
   const session = await mongoose.startSession();
   session.startTransaction();
-
   try {
     const oldAmount = expense.amount;
     const oldCategory = expense.category;
-
     // Handle receipt update
     if (receiptFile || req.file) {
       // Delete old receipt if exists
@@ -347,7 +288,6 @@ export const updateExpense = async (req, res) => {
           console.error("Error deleting old receipt:", error);
         }
       }
-
       // Set new receipt
       const file = receiptFile || req.file;
       expense.receipt = getFileUrl(file);
@@ -362,7 +302,6 @@ export const updateExpense = async (req, res) => {
       }
       expense.receipt = null;
     }
-
     // Update expense fields
     if (title !== undefined) expense.title = title;
     if (description !== undefined) expense.description = description;
@@ -373,13 +312,10 @@ export const updateExpense = async (req, res) => {
     if (paymentMethod !== undefined) expense.paymentMethod = paymentMethod;
     if (location !== undefined) expense.location = location;
     if (tags !== undefined) expense.tags = tags;
-
     await expense.save({ session });
-
     // Update budget if amount or category changed
     if (expense.budgetId && (amount !== undefined || category !== undefined)) {
       const budget = await Budget.findById(expense.budgetId).session(session);
-
       if (budget) {
         // Remove old amount from old category
         const oldCategoryBudget = budget.categories.find(
@@ -391,7 +327,6 @@ export const updateExpense = async (req, res) => {
             (oldCategoryBudget.spent || 0) - oldAmount
           );
         }
-
         // Add new amount to new category
         const newCategoryBudget = budget.categories.find(
           (cat) => cat.category === expense.category
@@ -400,41 +335,33 @@ export const updateExpense = async (req, res) => {
           newCategoryBudget.spent =
             (newCategoryBudget.spent || 0) + expense.amount;
         }
-
         // Recalculate total spent
         budget.totalSpent = budget.categories.reduce(
           (total, cat) => total + (cat.spent || 0),
           0
         );
-
         await budget.save({ session });
       }
     }
-
     await session.commitTransaction();
-
     // Populate for response
     await expense.populate([
       { path: "budgetId", select: "name totalAmount" },
       { path: "groupId", select: "name type" },
     ]);
-
     dbLogger("UPDATE", "expenses", {
       expenseId: expense._id,
       userId,
       oldAmount,
       newAmount: expense.amount,
     });
-
     performanceLogger("update_expense", Date.now() - startTime, {
       userId,
       hasReceiptUpdate: !!(receiptFile || req.file || removeReceipt),
     });
-
     return successResponse(res, "Cập nhật chi tiêu thành công!", { expense });
   } catch (error) {
     await session.abortTransaction();
-
     // Clean up new file if transaction failed
     if (receiptFile || req.file) {
       const file = receiptFile || req.file;
@@ -447,13 +374,11 @@ export const updateExpense = async (req, res) => {
         );
       }
     }
-
     throw error;
   } finally {
     session.endSession();
   }
 };
-
 /**
  * @desc    Xóa chi tiêu
  * @route   DELETE /api/expenses/:id
@@ -462,26 +387,20 @@ export const updateExpense = async (req, res) => {
 export const deleteExpense = async (req, res) => {
   const { id } = req.params;
   const userId = req.userId;
-
   const expense = await Expense.findOne({ _id: id, userId });
-
   if (!expense) {
     throw new NotFoundError("Không tìm thấy chi tiêu");
   }
-
   const session = await mongoose.startSession();
   session.startTransaction();
-
   try {
     // Update budget if expense was linked
     if (expense.budgetId) {
       const budget = await Budget.findById(expense.budgetId).session(session);
-
       if (budget) {
         const categoryBudget = budget.categories.find(
           (cat) => cat.category === expense.category
         );
-
         if (categoryBudget) {
           categoryBudget.spent = Math.max(
             0,
@@ -495,7 +414,6 @@ export const deleteExpense = async (req, res) => {
         }
       }
     }
-
     // Delete receipt file if exists
     if (expense.receipt) {
       try {
@@ -504,19 +422,15 @@ export const deleteExpense = async (req, res) => {
         console.error("Error deleting receipt file:", error);
       }
     }
-
     // Delete expense
     await Expense.deleteOne({ _id: id }, { session });
-
     await session.commitTransaction();
-
     dbLogger("DELETE", "expenses", {
       expenseId: id,
       userId,
       amount: expense.amount,
       category: expense.category,
     });
-
     return successResponse(res, "Xóa chi tiêu thành công!");
   } catch (error) {
     await session.abortTransaction();
@@ -525,7 +439,6 @@ export const deleteExpense = async (req, res) => {
     session.endSession();
   }
 };
-
 /**
  * @desc    Lấy thống kê chi tiêu
  * @route   GET /api/expenses/stats
@@ -534,23 +447,17 @@ export const deleteExpense = async (req, res) => {
 export const getExpenseStats = async (req, res) => {
   const startTime = Date.now();
   const userId = req.userId;
-
   const { startDate, endDate, groupBy = "category", category } = req.query;
-
   // Build base query
   const baseQuery = { userId };
-
   if (startDate || endDate) {
     baseQuery.date = {};
     if (startDate) baseQuery.date.$gte = new Date(startDate);
     if (endDate) baseQuery.date.$lte = new Date(endDate);
   }
-
   if (category) baseQuery.category = category;
-
   let groupStage;
   let sortStage = { totalAmount: -1 };
-
   switch (groupBy) {
     case "day":
       groupStage = {
@@ -565,7 +472,6 @@ export const getExpenseStats = async (req, res) => {
       };
       sortStage = { "_id.year": -1, "_id.month": -1, "_id.day": -1 };
       break;
-
     case "week":
       groupStage = {
         _id: {
@@ -578,7 +484,6 @@ export const getExpenseStats = async (req, res) => {
       };
       sortStage = { "_id.year": -1, "_id.week": -1 };
       break;
-
     case "month":
       groupStage = {
         _id: {
@@ -591,7 +496,6 @@ export const getExpenseStats = async (req, res) => {
       };
       sortStage = { "_id.year": -1, "_id.month": -1 };
       break;
-
     case "year":
       groupStage = {
         _id: { year: { $year: "$date" } },
@@ -601,7 +505,6 @@ export const getExpenseStats = async (req, res) => {
       };
       sortStage = { "_id.year": -1 };
       break;
-
     case "paymentMethod":
       groupStage = {
         _id: "$paymentMethod",
@@ -610,7 +513,6 @@ export const getExpenseStats = async (req, res) => {
         avgAmount: { $avg: "$amount" },
       };
       break;
-
     default: // category
       groupStage = {
         _id: "$category",
@@ -626,14 +528,12 @@ export const getExpenseStats = async (req, res) => {
       };
       break;
   }
-
   const pipeline = [
     { $match: baseQuery },
     { $group: groupStage },
     { $sort: sortStage },
     { $limit: 100 }, // Limit results for performance
   ];
-
   const [stats, summary] = await Promise.all([
     Expense.aggregate(pipeline),
     Expense.aggregate([
@@ -650,14 +550,12 @@ export const getExpenseStats = async (req, res) => {
       },
     ]),
   ]);
-
   performanceLogger("get_expense_stats", Date.now() - startTime, {
     userId,
     groupBy,
     hasDateFilter: !!(startDate || endDate),
     resultCount: stats.length,
   });
-
   return successResponse(res, "Lấy thống kê chi tiêu thành công", {
     stats,
     summary: summary[0] || {
@@ -671,7 +569,6 @@ export const getExpenseStats = async (req, res) => {
     period: { startDate, endDate },
   });
 };
-
 /**
  * @desc    Lấy chi tiêu theo danh mục
  * @route   GET /api/expenses/by-category
@@ -680,15 +577,12 @@ export const getExpenseStats = async (req, res) => {
 export const getExpensesByCategory = async (req, res) => {
   const userId = req.userId;
   const { startDate, endDate, includeSubcategories = false } = req.query;
-
   const baseQuery = { userId };
-
   if (startDate || endDate) {
     baseQuery.date = {};
     if (startDate) baseQuery.date.$gte = new Date(startDate);
     if (endDate) baseQuery.date.$lte = new Date(endDate);
   }
-
   let pipeline = [
     { $match: baseQuery },
     {
@@ -701,7 +595,6 @@ export const getExpensesByCategory = async (req, res) => {
     },
     { $sort: { totalAmount: -1 } },
   ];
-
   if (includeSubcategories) {
     pipeline = [
       { $match: baseQuery },
@@ -732,15 +625,12 @@ export const getExpensesByCategory = async (req, res) => {
       { $sort: { totalAmount: -1 } },
     ];
   }
-
   const categories = await Expense.aggregate(pipeline);
-
   return successResponse(res, "Lấy chi tiêu theo danh mục thành công", {
     categories,
     includeSubcategories,
   });
 };
-
 /**
  * @desc    Lấy chi tiêu theo khoảng thời gian
  * @route   GET /api/expenses/by-date-range
@@ -749,7 +639,6 @@ export const getExpensesByCategory = async (req, res) => {
 export const getExpensesByDateRange = async (req, res) => {
   const userId = req.userId;
   const { startDate, endDate, groupBy = "day" } = req.query;
-
   const baseQuery = {
     userId,
     date: {
@@ -757,9 +646,7 @@ export const getExpensesByDateRange = async (req, res) => {
       $lte: new Date(endDate),
     },
   };
-
   let groupStage;
-
   switch (groupBy) {
     case "week":
       groupStage = {
@@ -787,23 +674,19 @@ export const getExpensesByDateRange = async (req, res) => {
       };
       break;
   }
-
   groupStage.totalAmount = { $sum: "$amount" };
   groupStage.count = { $sum: 1 };
-
   const expenses = await Expense.aggregate([
     { $match: baseQuery },
     { $group: groupStage },
     { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1, "_id.week": 1 } },
   ]);
-
   return successResponse(res, "Lấy chi tiêu theo thời gian thành công", {
     expenses,
     groupBy,
     period: { startDate, endDate },
   });
 };
-
 /**
  * @desc    Xuất dữ liệu chi tiêu
  * @route   GET /api/expenses/export
@@ -818,22 +701,17 @@ export const exportExpenses = async (req, res) => {
     category,
     includeReceipts = false,
   } = req.query;
-
   const query = { userId };
-
   if (startDate || endDate) {
     query.date = {};
     if (startDate) query.date.$gte = new Date(startDate);
     if (endDate) query.date.$lte = new Date(endDate);
   }
-
   if (category) query.category = category;
-
   const expenses = await Expense.find(query)
     .populate("budgetId", "name")
     .populate("groupId", "name")
     .sort({ date: -1 });
-
   // Format data for export
   const exportData = expenses.map((expense) => ({
     Ngày: expense.date.toLocaleDateString("vi-VN"),
@@ -849,7 +727,6 @@ export const exportExpenses = async (req, res) => {
     Nhóm: expense.groupId?.name || "",
     ...(includeReceipts && { "Hóa đơn": expense.receipt || "" }),
   }));
-
   if (format === "csv") {
     // Convert to CSV (simplified implementation)
     const headers = Object.keys(exportData[0] || {});
@@ -864,7 +741,6 @@ export const exportExpenses = async (req, res) => {
           .join(",")
       ),
     ].join("\n");
-
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader(
       "Content-Disposition",
@@ -880,7 +756,6 @@ export const exportExpenses = async (req, res) => {
     });
   }
 };
-
 /**
  * @desc    Xóa nhiều chi tiêu
  * @route   DELETE /api/expenses
@@ -889,53 +764,43 @@ export const exportExpenses = async (req, res) => {
 export const bulkDeleteExpenses = async (req, res) => {
   const { expenseIds } = req.body;
   const userId = req.userId;
-
   const session = await mongoose.startSession();
   session.startTransaction();
-
   try {
     // Find expenses to delete
     const expenses = await Expense.find({
       _id: { $in: expenseIds },
       userId,
     }).session(session);
-
     if (expenses.length === 0) {
       throw new NotFoundError("Không tìm thấy chi tiêu nào để xóa");
     }
-
     // Update budgets
     const budgetUpdates = {};
     const receiptFiles = [];
-
     for (const expense of expenses) {
       // Collect receipt files for deletion
       if (expense.receipt) {
         receiptFiles.push(expense.receipt);
       }
-
       // Calculate budget updates
       if (expense.budgetId) {
         const budgetId = expense.budgetId.toString();
         if (!budgetUpdates[budgetId]) {
           budgetUpdates[budgetId] = {};
         }
-
         const category = expense.category;
         if (!budgetUpdates[budgetId][category]) {
           budgetUpdates[budgetId][category] = 0;
         }
-
         budgetUpdates[budgetId][category] += expense.amount;
       }
     }
-
     // Update budgets
     for (const [budgetId, categories] of Object.entries(budgetUpdates)) {
       const budget = await Budget.findById(budgetId).session(session);
       if (budget) {
         let totalReduction = 0;
-
         for (const [category, amount] of Object.entries(categories)) {
           const categoryBudget = budget.categories.find(
             (cat) => cat.category === category
@@ -948,7 +813,6 @@ export const bulkDeleteExpenses = async (req, res) => {
             totalReduction += amount;
           }
         }
-
         budget.totalSpent = Math.max(
           0,
           (budget.totalSpent || 0) - totalReduction
@@ -956,7 +820,6 @@ export const bulkDeleteExpenses = async (req, res) => {
         await budget.save({ session });
       }
     }
-
     // Delete expenses
     const result = await Expense.deleteMany(
       {
@@ -965,9 +828,7 @@ export const bulkDeleteExpenses = async (req, res) => {
       },
       { session }
     );
-
     await session.commitTransaction();
-
     // Delete receipt files
     for (const receiptUrl of receiptFiles) {
       try {
@@ -976,13 +837,11 @@ export const bulkDeleteExpenses = async (req, res) => {
         console.error("Error deleting receipt file:", error);
       }
     }
-
     dbLogger("BULK_DELETE", "expenses", {
       userId,
       deletedCount: result.deletedCount,
       expenseIds,
     });
-
     return successResponse(res, `Xóa thành công ${result.deletedCount} chi tiêu!`, {
       deletedCount: result.deletedCount,
     });
@@ -993,7 +852,6 @@ export const bulkDeleteExpenses = async (req, res) => {
     session.endSession();
   }
 };
-
 /**
  * @desc    Nhân bản chi tiêu
  * @route   POST /api/expenses/:id/duplicate
@@ -1003,13 +861,10 @@ export const duplicateExpense = async (req, res) => {
   const { id } = req.params;
   const userId = req.userId;
   const { date, title, amount } = req.body;
-
   const originalExpense = await Expense.findOne({ _id: id, userId });
-
   if (!originalExpense) {
     throw new NotFoundError("Không tìm thấy chi tiêu");
   }
-
   // Create duplicate with modified fields
   const duplicateData = {
     ...originalExpense.toObject(),
@@ -1021,17 +876,13 @@ export const duplicateExpense = async (req, res) => {
     createdAt: new Date(),
     updatedAt: new Date(),
   };
-
   const duplicatedExpense = await Expense.create(duplicateData);
-
   // Populate for response
   await duplicatedExpense.populate([
     { path: "budgetId", select: "name totalAmount" },
     { path: "groupId", select: "name type" },
   ]);
-
   res.locals.expenseId = duplicatedExpense._id;
-
   return successResponse(res, "Nhân bản chi tiêu thành công!", {
     expense: duplicatedExpense,
   }, 201);

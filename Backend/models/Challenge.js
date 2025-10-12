@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import validator from "validator";
-
 // Sub-schemas
 const DurationSchema = new mongoose.Schema(
   {
@@ -20,7 +19,6 @@ const DurationSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const TargetsSchema = new mongoose.Schema(
   {
     estimatedSaving: {
@@ -49,7 +47,6 @@ const TargetsSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const MilestoneSchema = new mongoose.Schema(
   {
     day: {
@@ -82,7 +79,6 @@ const MilestoneSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const StatsSchema = new mongoose.Schema(
   {
     totalParticipants: {
@@ -112,7 +108,6 @@ const StatsSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const RulesSchema = new mongoose.Schema(
   {
     allowedExpenses: [
@@ -158,7 +153,6 @@ const RulesSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 // Main Challenge Schema
 const ChallengeSchema = new mongoose.Schema(
   {
@@ -191,7 +185,6 @@ const ChallengeSchema = new mongoose.Schema(
       trim: true,
       maxlength: [1000, "Mô tả không được vượt quá 1000 ký tự"],
     },
-
     // Visual & Branding
     emoji: {
       type: String,
@@ -215,7 +208,6 @@ const ChallengeSchema = new mongoose.Schema(
         message: "Banner image phải là URL hợp lệ",
       },
     },
-
     // Challenge Configuration
     type: {
       type: String,
@@ -241,19 +233,16 @@ const ChallengeSchema = new mongoose.Schema(
       required: [true, "Độ khó là bắt buộc"],
       index: true,
     },
-
     // Duration & Timeline
     duration: {
       type: DurationSchema,
       required: [true, "Thời gian thách thức là bắt buộc"],
     },
-
     // Financial Targets
     targets: {
       type: TargetsSchema,
       required: [true, "Mục tiêu tài chính là bắt buộc"],
     },
-
     // Milestones & Rewards
     milestones: {
       type: [MilestoneSchema],
@@ -264,19 +253,16 @@ const ChallengeSchema = new mongoose.Schema(
         message: "Phải có ít nhất 1 milestone",
       },
     },
-
     // Participation & Stats
     stats: {
       type: StatsSchema,
       default: () => ({}),
     },
-
     // Rules & Guidelines
     rules: {
       type: RulesSchema,
       default: () => ({}),
     },
-
     // Challenge Status
     isActive: {
       type: Boolean,
@@ -296,13 +282,11 @@ const ChallengeSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
-
     // Creator Info
     createdBy: {
       type: String,
       default: "system", // 'system' or userId
     },
-
     version: {
       type: Number,
       default: 1,
@@ -341,24 +325,20 @@ const ChallengeSchema = new mongoose.Schema(
     },
   }
 );
-
 // Indexes
 ChallengeSchema.index({ isActive: 1, featured: 1 });
 ChallengeSchema.index({ category: 1, difficulty: 1 });
 ChallengeSchema.index({ startDate: 1, endDate: 1 });
-
 // Instance Methods
 ChallengeSchema.methods.addParticipant = function () {
   this.stats.totalParticipants += 1;
   this.stats.activeParticipants += 1;
 };
-
 ChallengeSchema.methods.removeParticipant = function () {
   if (this.stats.activeParticipants > 0) {
     this.stats.activeParticipants -= 1;
   }
 };
-
 ChallengeSchema.methods.updateCompletionRate = function () {
   if (this.stats.totalParticipants > 0) {
     const completed =
@@ -367,7 +347,6 @@ ChallengeSchema.methods.updateCompletionRate = function () {
       (completed / this.stats.totalParticipants) * 100;
   }
 };
-
 ChallengeSchema.methods.updateAverageSaving = function (
   totalSavings,
   participantCount
@@ -378,7 +357,6 @@ ChallengeSchema.methods.updateAverageSaving = function (
     );
   }
 };
-
 ChallengeSchema.methods.updateTopSaver = function (savingAmount) {
   const currentTop = parseFloat(this.stats.topSaver.toString()) || 0;
   if (savingAmount > currentTop) {
@@ -387,21 +365,17 @@ ChallengeSchema.methods.updateTopSaver = function (savingAmount) {
     );
   }
 };
-
 ChallengeSchema.methods.getMilestoneByDay = function (day) {
   return this.milestones.find((milestone) => milestone.day === day);
 };
-
 ChallengeSchema.methods.isExpired = function () {
   return new Date() > this.endDate;
 };
-
 ChallengeSchema.methods.getDaysRemaining = function () {
   const now = new Date();
   const diffTime = this.endDate - now;
   return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 };
-
 // Pre-save middleware
 ChallengeSchema.pre("save", function (next) {
   // Calculate daily saving target
@@ -415,7 +389,6 @@ ChallengeSchema.pre("save", function (next) {
       dailyTarget.toFixed(2)
     );
   }
-
   // Update duration display text
   if (this.isModified("duration.days")) {
     const days = this.duration.days;
@@ -429,15 +402,12 @@ ChallengeSchema.pre("save", function (next) {
       this.duration.displayText = `${days} ngày`;
     }
   }
-
   // Update version
   if (this.isModified() && !this.isNew) {
     this.version += 1;
   }
-
   next();
 });
-
 // Static Methods
 ChallengeSchema.statics.findActive = function () {
   const now = new Date();
@@ -447,7 +417,6 @@ ChallengeSchema.statics.findActive = function () {
     endDate: { $gte: now },
   }).sort({ featured: -1, createdAt: -1 });
 };
-
 ChallengeSchema.statics.findFeatured = function (limit = 5) {
   const now = new Date();
   return this.find({
@@ -459,7 +428,6 @@ ChallengeSchema.statics.findFeatured = function (limit = 5) {
     .sort({ createdAt: -1 })
     .limit(limit);
 };
-
 ChallengeSchema.statics.findByCategory = function (category) {
   const now = new Date();
   return this.find({
@@ -469,7 +437,6 @@ ChallengeSchema.statics.findByCategory = function (category) {
     endDate: { $gte: now },
   }).sort({ difficulty: 1, createdAt: -1 });
 };
-
 ChallengeSchema.statics.findByDifficulty = function (difficulty) {
   const now = new Date();
   return this.find({
@@ -479,13 +446,11 @@ ChallengeSchema.statics.findByDifficulty = function (difficulty) {
     endDate: { $gte: now },
   }).sort({ featured: -1, createdAt: -1 });
 };
-
 ChallengeSchema.statics.getPopularChallenges = function (limit = 10) {
   return this.find({ isActive: true })
     .sort({ "stats.totalParticipants": -1, featured: -1 })
     .limit(limit);
 };
-
 ChallengeSchema.statics.getChallengeStats = function () {
   return this.aggregate([
     {
@@ -508,7 +473,5 @@ ChallengeSchema.statics.getChallengeStats = function () {
     },
   ]);
 };
-
 const Challenge = mongoose.model("Challenge", ChallengeSchema);
-
 export default Challenge;

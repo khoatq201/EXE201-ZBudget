@@ -17,6 +17,12 @@ import '../screens/budget/budget_detail_screen.dart';
 import '../screens/budget/create_budget_screen.dart';
 import '../screens/group/group_list_screen.dart';
 import '../screens/group/create_group_screen.dart';
+import '../screens/group_budget/group_budget_list_screen.dart';
+import '../screens/group_budget/create_group_budget_screen.dart';
+import '../screens/group_budget/join_by_code_screen.dart';
+import '../screens/group_budget/group_budget_detail_screen.dart';
+import '../screens/group_budget/add_group_expense_screen.dart';
+import '../screens/group_budget/settlement_screen.dart';
 import '../screens/challenge_screen.dart';
 import '../screens/challenge_detail_screen.dart';
 import '../screens/reports_screen.dart';
@@ -163,6 +169,46 @@ final router = GoRouter(
           builder: (context, state) {
             final id = state.pathParameters['id'];
             return BudgetDetailScreen(budgetId: id ?? '');
+          },
+          redirect: AuthGuard.checkAuthentication,
+        ),
+        // Group Budget routes
+        GoRoute(
+          path: '/group-budgets',
+          builder: (context, state) => const GroupBudgetListScreen(),
+          redirect: AuthGuard.checkAuthentication,
+        ),
+        GoRoute(
+          path: '/group-budgets/create',
+          builder: (context, state) => const CreateGroupBudgetScreen(),
+          redirect: AuthGuard.checkAuthentication,
+        ),
+        GoRoute(
+          path: '/group-budgets/join',
+          builder: (context, state) => const JoinByCodeScreen(),
+          redirect: AuthGuard.checkAuthentication,
+        ),
+        GoRoute(
+          path: '/group-budgets/:id',
+          builder: (context, state) {
+            final id = state.pathParameters['id'];
+            return GroupBudgetDetailScreen(budgetId: id ?? '');
+          },
+          redirect: AuthGuard.checkAuthentication,
+        ),
+        GoRoute(
+          path: '/group-budgets/:id/add-expense',
+          builder: (context, state) {
+            final id = state.pathParameters['id'];
+            return AddGroupExpenseScreen(budgetId: id ?? '');
+          },
+          redirect: AuthGuard.checkAuthentication,
+        ),
+        GoRoute(
+          path: '/group-budgets/:id/settlement',
+          builder: (context, state) {
+            final id = state.pathParameters['id'];
+            return SettlementScreen(budgetId: id ?? '');
           },
           redirect: AuthGuard.checkAuthentication,
         ),

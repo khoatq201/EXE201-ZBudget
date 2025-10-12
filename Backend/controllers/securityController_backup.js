@@ -5,7 +5,6 @@ import QRCode from "qrcode";
 import { successResponse, errorResponse } from "../middleware/errorHandler.js";
 import { successResponse as successResp, errorResponse as errorResp } from "../utils/responseHelpers.js";
 import SessionService from "../services/SessionService.js";
-
 // Setup Two-Factor Authentication
 export const setup2FA = async (req, res) => {
   try {
@@ -23,14 +22,11 @@ export const setup2FA = async (req, res) => {
       ip: session.ip,
     }));
     user = await User.findById(userId);
-
     if (!user) {
       return errorResponse(res, "User not found", 404);
     }
-
     // For demo purposes, return a mock secret
     const mockSecret = "JBSWY3DPEHPK3PXP";
-
     return successResponse(res, "Thiết lập 2FA thành công", {
       secret: mockSecret,
       qrCode: "data:image/png;base64,mock_qr_code",
@@ -41,55 +37,44 @@ export const setup2FA = async (req, res) => {
     return errorResponse(res, "Lỗi server khi thiết lập 2FA", 500);
   }
 };
-
 // Enable Two-Factor Authentication
 export const enable2FA = async (req, res) => {
   try {
     const userId = req.userId; // Use req.userId instead of req.user.userId
     const { otp } = req.body;
-
     if (!otp || otp.length !== 6) {
       return errorResponse(res, "Mã OTP không hợp lệ", 400);
     }
-
     const user = await User.findById(userId);
-
     if (!user) {
       return errorResponse(res, "User not found", 404);
     }
-
     // For demo purposes, accept any 6-digit OTP
     user.twoFactorEnabled = true;
     await user.save();
-
     return successResponse(res, "Kích hoạt 2FA thành công");
   } catch (error) {
     console.error("Enable 2FA error:", error);
     return errorResponse(res, "Lỗi server khi kích hoạt 2FA", 500);
   }
 };
-
 // Disable Two-Factor Authentication
 export const disable2FA = async (req, res) => {
   try {
     const userId = req.userId; // Use req.userId instead of req.user.userId
     const user = await User.findById(userId);
-
     if (!user) {
       return errorResponse(res, "User not found", 404);
     }
-
     // Disable 2FA
     user.twoFactorEnabled = false;
     await user.save();
-
     return successResponse(res, "Tắt 2FA thành công");
   } catch (error) {
     console.error("Disable 2FA error:", error);
     return errorResponse(res, "Lỗi server khi tắt 2FA", 500);
   }
 };
-
 /**
  * @desc    Thay đổi mật khẩu
  * @route   PUT /api/security/change-password
@@ -99,22 +84,17 @@ export const changePassword = async (req, res) => {
   try {
     const userId = req.userId;
     const { currentPassword, newPassword } = req.body;
-
     // Validate input
     if (!currentPassword || !newPassword) {
       return errorResponse(res, "Vui lòng nhập đầy đủ thông tin", 400);
     }
-
     if (newPassword.length < 8) {
       return errorResponse(res, "Mật khẩu mới phải có ít nhất 8 ký tự", 400);
     }
-
     const user = await User.findById(userId);
-
     if (!user) {
       return errorResponse(res, "User not found", 404);
     }
-
     // Verify current password
     const isValidPassword = await bcrypt.compare(
       currentPassword,
@@ -123,34 +103,27 @@ export const changePassword = async (req, res) => {
     if (!isValidPassword) {
       return errorResponse(res, "Mật khẩu hiện tại không chính xác", 400);
     }
-
     // Hash new password
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-
     // Update password
     user.password = hashedPassword;
     user.lastPasswordChange = new Date();
     await user.save();
-
     return successResponse(res, "Đổi mật khẩu thành công");
   } catch (error) {
     console.error("Change password error:", error);
     return errorResponse(res, "Lỗi server khi đổi mật khẩu", 500);
   }
 };
-
 // Update security settings
 export const updateSecuritySettings = async (req, res) => {
   try {
     const userId = req.userId; // Use req.userId instead of req.user.userId
-
     const user = await User.findById(userId);
-
     if (!user) {
       return errorResponse(res, "User not found", 404);
     }
-
     // Initialize settings if not exists
     if (!user.settings) {
       user.settings = {};
@@ -158,7 +131,6 @@ export const updateSecuritySettings = async (req, res) => {
     if (!user.settings.security) {
       user.settings.security = {};
     }
-
     // Map frontend fields to backend schema
     const {
       // Frontend field names
@@ -172,7 +144,6 @@ export const updateSecuritySettings = async (req, res) => {
       isScreenshotBlocked,
       isAppPinEnabled,
       primaryAuthMethod,
-
       // Legacy fields for backward compatibility
       sessionPersistence,
       keepSessionsAcrossDevices,
@@ -180,7 +151,6 @@ export const updateSecuritySettings = async (req, res) => {
       enhancedProtection,
       biometricAuth,
     } = req.body;
-
     // Update new security fields
     if (isBiometricEnabled !== undefined) {
       user.settings.security.biometricEnabled = isBiometricEnabled;
@@ -213,7 +183,6 @@ export const updateSecuritySettings = async (req, res) => {
     if (primaryAuthMethod !== undefined) {
       user.settings.security.primaryAuthMethod = primaryAuthMethod;
     }
-
     // Update legacy fields for backward compatibility
     if (sessionPersistence !== undefined) {
       user.settings.security.sessionPersistence = sessionPersistence;
@@ -233,9 +202,7 @@ export const updateSecuritySettings = async (req, res) => {
       // Also update the new field for consistency
       user.settings.security.biometricEnabled = biometricAuth;
     }
-
     await user.save();
-
     return successResponse(res, "Cập nhật cài đặt bảo mật thành công", {
       securitySettings: user.settings.security,
     });
@@ -244,17 +211,14 @@ export const updateSecuritySettings = async (req, res) => {
     return errorResponse(res, "Lỗi server khi cập nhật cài đặt", 500);
   }
 };
-
 // Get security settings
 export const getSecuritySettings = async (req, res) => {
   try {
     const userId = req.userId; // Use req.userId instead of req.user.userId
     const user = await User.findById(userId);
-
     if (!user) {
       return errorResponse(res, "User not found", 404);
     }
-
     // Helper function to convert minutes to SessionTimeout enum name
     const getSessionTimeoutEnum = (minutes) => {
       switch (minutes) {
@@ -274,7 +238,6 @@ export const getSecuritySettings = async (req, res) => {
           return "minutes30";
       }
     };
-
     // Return security settings with proper mapping from schema to frontend format
     const securitySettings = {
       // From SecuritySettingsSchema
@@ -295,16 +258,13 @@ export const getSecuritySettings = async (req, res) => {
         user.settings?.security?.primaryAuthMethod ?? "password",
       lastPasswordChange:
         user.settings?.security?.lastPasswordChange ?? user.createdAt,
-
       // Frontend expects enabledAuthMethods as array of names
       enabledAuthMethods: ["password"], // For now, default to password
-
       // Real active sessions from SessionService
       activeSessions: await (async () => {
         try {
           const sessions = await SessionService.getActiveSessions(userId);
           const currentSessionId = req.sessionId;
-
           return sessions.map((session) => ({
             id: session.sessionId,
             deviceName: session.deviceName,
@@ -333,7 +293,6 @@ export const getSecuritySettings = async (req, res) => {
         }
       })(),
     };
-
     return successResponse(
       res,
       "Lấy cài đặt bảo mật thành công",
@@ -344,13 +303,11 @@ export const getSecuritySettings = async (req, res) => {
     if (newPassword.length < 6) {
       return errorResponse(res, "Mật khẩu mới phải có ít nhất 6 ký tự", 400);
     }
-
     // Get user with password
     const user = await User.findById(userId).select("+password");
     if (!user) {
       return errorResponse(res, "Không tìm thấy người dùng", 404);
     }
-
     // Verify current password
     const isCurrentPasswordValid = await bcrypt.compare(
       currentPassword,
@@ -359,16 +316,13 @@ export const getSecuritySettings = async (req, res) => {
     if (!isCurrentPasswordValid) {
       return errorResponse(res, "Mật khẩu hiện tại không đúng", 400);
     }
-
     // Hash new password
     const hashedNewPassword = await bcrypt.hash(newPassword, 12);
-
     // Update password and security settings
     user.password = hashedNewPassword;
     user.settings.security.lastPasswordChange = new Date();
     user.settings.security.failedLoginAttempts = 0;
     user.settings.security.accountLockedUntil = null;
-
     // Log security event
     user.settings.security.securityEvents.push({
       type: "password_changed",
@@ -377,16 +331,13 @@ export const getSecuritySettings = async (req, res) => {
       ipAddress: req.ip || "unknown",
       userAgent: req.get("User-Agent") || "unknown",
     });
-
     await user.save();
-
     return successResponse(res, null, "Thay đổi mật khẩu thành công");
   } catch (error) {
     console.error("Error in changePassword:", error);
     return errorResponse(res, "Lỗi server", 500);
   }
 };
-
 // Terminate specific session
 /**
  * @desc    Lấy danh sách phiên đăng nhập đang hoạt động
@@ -396,17 +347,13 @@ export const getSecuritySettings = async (req, res) => {
 export const getActiveSessions = async (req, res) => {
   try {
     const userId = req.userId;
-
     const user = await User.findById(userId).select(
       "settings.security.activeSessions"
     );
-
     if (!user) {
       return errorResponse(res, "Không tìm thấy người dùng", 404);
     }
-
     const activeSessions = user.settings.security.activeSessions || [];
-
     return successResponse(
       res,
       {
@@ -420,7 +367,6 @@ export const getActiveSessions = async (req, res) => {
     return errorResponse(res, "Lỗi server", 500);
   }
 };
-
 /**
  * @desc    Kết thúc một phiên đăng nhập cụ thể
  * @route   DELETE /api/security/sessions/:sessionId
@@ -430,11 +376,7 @@ export const terminateSession = async (req, res) => {
   try {
     const userId = req.userId;
     const { sessionId } = req.params;
-
-    console.log(`Terminating session ${sessionId} for user ${userId}`);
-
     const success = await SessionService.terminateSession(sessionId, userId);
-
     if (success) {
       return successResponse(res, "Kết thúc phiên thành công");
     } else {
@@ -449,22 +391,15 @@ export const terminateSession = async (req, res) => {
     return errorResponse(res, "Lỗi server khi kết thúc phiên", 500);
   }
 };
-
 // Terminate all sessions
 export const terminateAllSessions = async (req, res) => {
   try {
     const userId = req.userId;
     const currentSessionId = req.sessionId;
-
-    console.log(
-      `Terminating all sessions for user ${userId} except ${currentSessionId}`
-    );
-
     const terminatedCount = await SessionService.terminateAllSessions(
       userId,
       currentSessionId
     );
-
     return successResponse(
       res,
       `Kết thúc thành công ${terminatedCount} phiên khác`
@@ -474,15 +409,12 @@ export const terminateAllSessions = async (req, res) => {
     return errorResponse(res, "Lỗi server khi kết thúc phiên", 500);
   }
 };
-
 // Get active sessions
 export const getActiveSessions = async (req, res) => {
   try {
     const userId = req.userId;
     const currentSessionId = req.sessionId;
-
     const sessions = await SessionService.getActiveSessions(userId);
-
     // Mark current session and format for frontend
     const formattedSessions = sessions.map((session) => ({
       id: session.sessionId,
@@ -496,7 +428,6 @@ export const getActiveSessions = async (req, res) => {
       securityLevel: session.securityLevel,
       ip: session.ip,
     }));
-
     return successResponse(
       res,
       "Lấy danh sách phiên thành công",
@@ -508,13 +439,11 @@ export const getActiveSessions = async (req, res) => {
     if (!user) {
       return errorResponse(res, "Không tìm thấy người dùng", 404);
     }
-
     // Remove the session
     user.settings.security.activeSessions =
       user.settings.security.activeSessions.filter(
         (session) => session.sessionId !== sessionId
       );
-
     // Log security event
     user.settings.security.securityEvents.push({
       type: "session_terminated",
@@ -523,16 +452,13 @@ export const getActiveSessions = async (req, res) => {
       ipAddress: req.ip || "unknown",
       userAgent: req.get("User-Agent") || "unknown",
     });
-
     await user.save();
-
     return successResponse(res, null, "Kết thúc phiên đăng nhập thành công");
   } catch (error) {
     console.error("Error in terminateSession:", error);
     return errorResponse(res, "Lỗi server", 500);
   }
 };
-
 /**
  * @desc    Kết thúc tất cả phiên đăng nhập khác
  * @route   DELETE /api/security/sessions
@@ -541,19 +467,16 @@ export const getActiveSessions = async (req, res) => {
 export const terminateAllOtherSessions = async (req, res) => {
   try {
     const userId = req.userId;
-
     const user = await User.findById(userId);
     if (!user) {
       return errorResponse(res, "Không tìm thấy người dùng", 404);
     }
-
     // Keep only current session (if exists)
     const currentToken = req.headers.authorization?.replace("Bearer ", "");
     user.settings.security.activeSessions =
       user.settings.security.activeSessions.filter(
         (session) => session.token === currentToken
       );
-
     // Log security event
     user.settings.security.securityEvents.push({
       type: "all_sessions_terminated",
@@ -562,9 +485,7 @@ export const terminateAllOtherSessions = async (req, res) => {
       ipAddress: req.ip || "unknown",
       userAgent: req.get("User-Agent") || "unknown",
     });
-
     await user.save();
-
     return successResponse(
       res,
       null,
@@ -575,7 +496,6 @@ export const terminateAllOtherSessions = async (req, res) => {
     return errorResponse(res, "Lỗi server", 500);
   }
 };
-
 /**
  * @desc    Tạo mã QR cho xác thực 2 bước
  * @route   POST /api/security/setup-2fa
@@ -584,29 +504,23 @@ export const terminateAllOtherSessions = async (req, res) => {
 export const setup2FA = async (req, res) => {
   try {
     const userId = req.userId;
-
     const user = await User.findById(userId);
     if (!user) {
       return errorResponse(res, "Không tìm thấy người dùng", 404);
     }
-
     if (user.settings.security.twoFactorEnabled) {
       return errorResponse(res, "Xác thực 2 bước đã được kích hoạt", 400);
     }
-
     // Generate secret
     const secret = speakeasy.generateSecret({
       name: `ZBudget (${user.email})`,
       issuer: "ZBudget",
     });
-
     // Generate QR Code
     const qrCode = await QRCode.toDataURL(secret.otpauth_url);
-
     // Store secret temporarily
     user.settings.security.twoFactorSecret = secret.base32;
     await user.save();
-
     return successResponse(
       res,
       {
@@ -621,7 +535,6 @@ export const setup2FA = async (req, res) => {
     return errorResponse(res, "Lỗi server", 500);
   }
 };
-
 /**
  * @desc    Kích hoạt xác thực 2 bước
  * @route   POST /api/security/enable-2fa
@@ -631,20 +544,16 @@ export const enable2FA = async (req, res) => {
   try {
     const userId = req.userId;
     const { token } = req.body;
-
     if (!token) {
       return errorResponse(res, "Vui lòng nhập mã xác thực", 400);
     }
-
     const user = await User.findById(userId);
     if (!user) {
       return errorResponse(res, "Không tìm thấy người dùng", 404);
     }
-
     if (!user.settings.security.twoFactorSecret) {
       return errorResponse(res, "Vui lòng thiết lập 2FA trước", 400);
     }
-
     // Verify token
     const verified = speakeasy.totp.verify({
       secret: user.settings.security.twoFactorSecret,
@@ -652,14 +561,11 @@ export const enable2FA = async (req, res) => {
       token,
       window: 2,
     });
-
     if (!verified) {
       return errorResponse(res, "Mã xác thực không đúng", 400);
     }
-
     // Enable 2FA
     user.settings.security.twoFactorEnabled = true;
-
     // Log security event
     user.settings.security.securityEvents.push({
       type: "two_factor_enabled",
@@ -668,16 +574,13 @@ export const enable2FA = async (req, res) => {
       ipAddress: req.ip || "unknown",
       userAgent: req.get("User-Agent") || "unknown",
     });
-
     await user.save();
-
     return successResponse(res, null, "Kích hoạt xác thực 2 bước thành công");
   } catch (error) {
     console.error("Error in enable2FA:", error);
     return errorResponse(res, "Lỗi server", 500);
   }
 };
-
 /**
  * @desc    Tắt xác thực 2 bước
  * @route   POST /api/security/disable-2fa
@@ -687,16 +590,13 @@ export const disable2FA = async (req, res) => {
   try {
     const userId = req.userId;
     const { currentPassword } = req.body;
-
     if (!currentPassword) {
       return errorResponse(res, "Vui lòng nhập mật khẩu hiện tại", 400);
     }
-
     const user = await User.findById(userId).select("+password");
     if (!user) {
       return errorResponse(res, "Không tìm thấy người dùng", 404);
     }
-
     // Verify password
     const isPasswordValid = await bcrypt.compare(
       currentPassword,
@@ -705,11 +605,9 @@ export const disable2FA = async (req, res) => {
     if (!isPasswordValid) {
       return errorResponse(res, "Mật khẩu không đúng", 400);
     }
-
     // Disable 2FA
     user.settings.security.twoFactorEnabled = false;
     user.settings.security.twoFactorSecret = null;
-
     // Log security event
     user.settings.security.securityEvents.push({
       type: "two_factor_disabled",
@@ -718,9 +616,7 @@ export const disable2FA = async (req, res) => {
       ipAddress: req.ip || "unknown",
       userAgent: req.get("User-Agent") || "unknown",
     });
-
     await user.save();
-
     return successResponse(
       res,
       {
@@ -735,7 +631,6 @@ export const disable2FA = async (req, res) => {
     return errorResponse(res, "Lỗi server", 500);
   }
 };
-
 /**
  * @desc    Xác thực mã 2FA
  * @route   POST /api/security/verify-2fa
@@ -745,23 +640,19 @@ export const verify2FA = async (req, res) => {
   try {
     const userId = req.userId;
     const { token } = req.body;
-
     if (!token) {
       return errorResponse(res, "Vui lòng nhập mã xác thực", 400);
     }
-
     const user = await User.findById(userId);
     if (!user) {
       return errorResponse(res, "Không tìm thấy người dùng", 404);
     }
-
     if (
       !user.settings.security.twoFactorEnabled ||
       !user.settings.security.twoFactorSecret
     ) {
       return errorResponse(res, "Xác thực 2 bước chưa được kích hoạt", 400);
     }
-
     // Verify token
     const isValid = speakeasy.totp.verify({
       secret: user.settings.security.twoFactorSecret,
@@ -769,7 +660,6 @@ export const verify2FA = async (req, res) => {
       token,
       window: 2,
     });
-
     return successResponse(
       res,
       {
@@ -783,7 +673,6 @@ export const verify2FA = async (req, res) => {
     return errorResponse(res, "Lỗi server", 500);
   }
 };
-
 /**
  * @desc    Lấy thống kê bảo mật
  * @route   GET /api/security/stats
@@ -792,14 +681,11 @@ export const verify2FA = async (req, res) => {
 export const getSecurityStats = async (req, res) => {
   try {
     const userId = req.userId;
-
     const user = await User.findById(userId);
     if (!user) {
       return errorResponse(res, "Không tìm thấy người dùng", 404);
     }
-
     const securitySettings = user.settings.security;
-
     const stats = {
       lastPasswordChange: securitySettings.lastPasswordChange,
       twoFactorEnabled: securitySettings.twoFactorEnabled,
@@ -812,14 +698,12 @@ export const getSecurityStats = async (req, res) => {
         failedLoginAttempts: securitySettings.failedLoginAttempts,
       },
     };
-
     return successResponse(res, stats, "Lấy thống kê bảo mật thành công");
   } catch (error) {
     console.error("Error in getSecurityStats:", error);
     return errorResponse(res, "Lỗi server", 500);
   }
 };
-
 /**
  * @desc    Lấy cài đặt bảo mật
  * @route   GET /api/security/settings
@@ -828,12 +712,10 @@ export const getSecurityStats = async (req, res) => {
 export const getSecuritySettings = async (req, res) => {
   try {
     const userId = req.userId;
-
     const user = await User.findById(userId);
     if (!user) {
       return errorResponse(res, "Không tìm thấy người dùng", 404);
     }
-
     const settings = {
       biometricEnabled: user.settings.security.biometricEnabled || false,
       twoFactorEnabled: user.settings.security.twoFactorEnabled || false,
@@ -841,7 +723,6 @@ export const getSecuritySettings = async (req, res) => {
       privacyProtection: user.settings.security.privacyProtection || false,
       loginDevices: user.settings.security.activeSessions || [],
     };
-
     return successResponse(res, settings, "Lấy cài đặt bảo mật thành công");
   } catch (error) {
     console.error("Error in getSecuritySettings:", error);

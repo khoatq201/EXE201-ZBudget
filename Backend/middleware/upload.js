@@ -5,23 +5,12 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { ValidationError } from "./errorHandler.js";
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 // Configure Cloudinary - moved to function to ensure env vars are loaded
 let cloudinaryConfigured = false;
 const configureCloudinary = () => {
   if (!cloudinaryConfigured) {
-    console.log("🔧 Cloudinary Config Debug:", {
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY ? "***exists***" : "missing",
-      api_secret: process.env.CLOUDINARY_API_SECRET
-        ? "***exists***"
-        : "missing",
-      use_cloudinary: process.env.USE_CLOUDINARY,
-    });
-
     cloudinary.config({
       cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "zbudget",
       api_key: process.env.CLOUDINARY_API_KEY,
@@ -31,17 +20,14 @@ const configureCloudinary = () => {
     cloudinaryConfigured = true;
   }
 };
-
 // Local storage configuration (fallback)
 const localStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadDir = path.join(__dirname, "../../uploads");
-
     // Create upload directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
-
     // Create subdirectories based on file type
     let subDir = "";
     if (file.fieldname === "avatar") {
@@ -53,12 +39,10 @@ const localStorage = multer.diskStorage({
     } else {
       subDir = "misc";
     }
-
     const finalDir = path.join(uploadDir, subDir);
     if (!fs.existsSync(finalDir)) {
       fs.mkdirSync(finalDir, { recursive: true });
     }
-
     cb(null, finalDir);
   },
   filename: function (req, file, cb) {
@@ -69,17 +53,14 @@ const localStorage = multer.diskStorage({
     cb(null, name);
   },
 });
-
 // Cloudinary storage configuration
 const getCloudinaryStorage = () => {
   configureCloudinary(); // Ensure cloudinary is configured first
-
   return new CloudinaryStorage({
     cloudinary: cloudinary,
     params: async (req, file) => {
       let folder = "zbudget";
       let allowedFormats = ["jpeg", "jpg", "png", "webp"];
-
       // Configure based on file type
       if (file.fieldname === "avatar") {
         folder = "zbudget/avatars";
@@ -91,7 +72,6 @@ const getCloudinaryStorage = () => {
         folder = "zbudget/groups";
         allowedFormats = ["jpeg", "jpg", "png", "webp"];
       }
-
       return {
         folder: folder,
         allowed_formats: allowedFormats,
@@ -110,17 +90,9 @@ const getCloudinaryStorage = () => {
     },
   });
 };
-
 // File filter function
 const fileFilter = (req, file, cb) => {
   // Debug: Log the actual MIME type received
-  console.log(`🔍 File upload debug:`, {
-    originalname: file.originalname,
-    mimetype: file.mimetype,
-    fieldname: file.fieldname,
-    size: file.size,
-  });
-
   // Allowed mime types
   const allowedMimes = {
     "image/jpeg": true,
@@ -131,13 +103,10 @@ const fileFilter = (req, file, cb) => {
     "image/bmp": true, // Add BMP support
     "application/pdf": true,
   };
-
   // Check if file type is allowed
   if (allowedMimes[file.mimetype]) {
-    console.log(`✅ File type ${file.mimetype} is allowed`);
     cb(null, true);
   } else {
-    console.log(`❌ File type ${file.mimetype} is NOT allowed`);
     cb(
       new ValidationError(
         `Loại file không được hỗ trợ. Chỉ chấp nhận: ${Object.keys(allowedMimes).join(", ")}`
@@ -146,27 +115,19 @@ const fileFilter = (req, file, cb) => {
     );
   }
 };
-
 // Size limits for different file types
 const limits = {
   fileSize: 10 * 1024 * 1024, // 10MB default
   files: 5, // Maximum 5 files per request
   fields: 10, // Maximum 10 non-file fields
 };
-
 // Create multer instance with appropriate storage
 const getStorage = () => {
   configureCloudinary(); // Ensure env vars are loaded
-  console.log("📦 Storage Debug:", {
-    USE_CLOUDINARY: process.env.USE_CLOUDINARY,
-    storageType: process.env.USE_CLOUDINARY === "true" ? "Cloudinary" : "Local",
-  });
-
   return process.env.USE_CLOUDINARY === "true"
     ? getCloudinaryStorage()
     : localStorage;
 };
-
 const upload = multer({
   storage: getStorage(),
   fileFilter: fileFilter,
@@ -176,46 +137,36 @@ const upload = multer({
     next(new ValidationError("Lỗi tải file: " + err.message));
   },
 });
-
 // Middleware for different file upload scenarios
 export const uploadMiddleware = {
   // Single avatar upload
   avatar: upload.single("avatar"),
-
   // Single receipt upload
   receipt: upload.single("receipt"),
-
   // Single group avatar upload
   groupAvatar: upload.single("groupAvatar"),
-
   // Multiple receipts (max 5)
   receipts: upload.array("receipts", 5),
-
   // Mixed upload (avatar + receipts)
   mixed: upload.fields([
     { name: "avatar", maxCount: 1 },
     { name: "receipts", maxCount: 5 },
   ]),
-
   // Any single file
   any: upload.any(),
-
   // No file upload (just form data)
   none: upload.none(),
 };
-
 // Custom file size limits for specific use cases
 export const createUploadMiddleware = (options = {}) => {
   const customLimits = {
     ...limits,
     ...options.limits,
   };
-
   const customStorage =
     options.useCloudinary !== false && process.env.USE_CLOUDINARY === "true"
       ? cloudinaryStorage
       : localStorage;
-
   return multer({
     storage: customStorage,
     fileFilter: options.fileFilter || fileFilter,
@@ -228,19 +179,16 @@ export const createUploadMiddleware = (options = {}) => {
       },
   });
 };
-
 // Image processing middleware (if not using Cloudinary)
 export const processImage = async (req, res, next) => {
   if (!req.file || process.env.USE_CLOUDINARY === "true") {
     return next();
   }
-
   try {
     // Only process images, not PDFs
     if (!req.file.mimetype.startsWith("image/")) {
       return next();
     }
-
     // Here you could add image processing logic using sharp or similar
     // For now, we'll just pass through
     next();
@@ -248,7 +196,6 @@ export const processImage = async (req, res, next) => {
     next(new ValidationError("Lỗi xử lý ảnh: " + error.message));
   }
 };
-
 // Clean up temporary files (for local storage)
 export const cleanupTempFiles = (req, res, next) => {
   const cleanup = () => {
@@ -257,7 +204,6 @@ export const cleanupTempFiles = (req, res, next) => {
         if (err) console.error("Error cleaning up temp file:", err);
       });
     }
-
     if (req.files && !process.env.USE_CLOUDINARY) {
       const files = Array.isArray(req.files)
         ? req.files
@@ -269,14 +215,11 @@ export const cleanupTempFiles = (req, res, next) => {
       });
     }
   };
-
   // Cleanup on response finish (success or error)
   res.on("finish", cleanup);
   res.on("close", cleanup);
-
   next();
 };
-
 // Delete file from storage (both local and cloudinary)
 export const deleteFile = async (fileUrl) => {
   try {
@@ -288,13 +231,11 @@ export const deleteFile = async (fileUrl) => {
       const urlParts = fileUrl.split("/");
       const filename = urlParts[urlParts.length - 1];
       const publicId = filename.split(".")[0];
-
       await cloudinary.uploader.destroy(publicId);
     } else if (!fileUrl.includes("cloudinary.com")) {
       // Local file deletion
       const filename = path.basename(fileUrl);
       const filePath = path.join(__dirname, "../../uploads", filename);
-
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
@@ -303,7 +244,6 @@ export const deleteFile = async (fileUrl) => {
     console.error("Error deleting file:", error);
   }
 };
-
 // Get file URL (local or cloudinary)
 export const getFileUrl = (file) => {
   if (process.env.USE_CLOUDINARY === "true") {
@@ -314,7 +254,6 @@ export const getFileUrl = (file) => {
     return `${baseUrl}/uploads/${file.filename}`;
   }
 };
-
 // Validate file size before upload
 export const validateFileSize = (maxSize) => (req, res, next) => {
   if (req.file && req.file.size > maxSize) {
@@ -322,7 +261,6 @@ export const validateFileSize = (maxSize) => (req, res, next) => {
       `File quá lớn. Kích thước tối đa: ${maxSize / (1024 * 1024)}MB`
     );
   }
-
   if (req.files) {
     const files = Array.isArray(req.files)
       ? req.files
@@ -335,22 +273,18 @@ export const validateFileSize = (maxSize) => (req, res, next) => {
       }
     }
   }
-
   next();
 };
-
 // Validate image dimensions (requires sharp for local files)
 export const validateImageDimensions =
   (maxWidth, maxHeight) => async (req, res, next) => {
     if (!req.file || !req.file.mimetype.startsWith("image/")) {
       return next();
     }
-
     // Skip validation for Cloudinary as it handles transformation
     if (process.env.USE_CLOUDINARY === "true") {
       return next();
     }
-
     try {
       // Here you would use sharp or similar to get image dimensions
       // For now, we'll skip this validation
@@ -361,6 +295,5 @@ export const validateImageDimensions =
       );
     }
   };
-
 // Export default upload instance
 export default uploadMiddleware;

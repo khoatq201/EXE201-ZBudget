@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-
 // Sub-schemas
 const GroupMemberSchema = new mongoose.Schema(
   {
@@ -29,7 +28,6 @@ const GroupMemberSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const GroupSettingsSchema = new mongoose.Schema(
   {
     privacy: {
@@ -65,7 +63,6 @@ const GroupSettingsSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const GroupStatsSchema = new mongoose.Schema(
   {
     totalExpenses: {
@@ -90,7 +87,6 @@ const GroupStatsSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 // Main Group Schema
 const GroupSchema = new mongoose.Schema(
   {
@@ -114,7 +110,6 @@ const GroupSchema = new mongoose.Schema(
         message: "Avatar phải là URL hợp lệ",
       },
     },
-
     // Group Members
     members: {
       type: [GroupMemberSchema],
@@ -127,19 +122,16 @@ const GroupSchema = new mongoose.Schema(
         },
       },
     },
-
     // Group Settings
     settings: {
       type: GroupSettingsSchema,
       default: () => ({}),
     },
-
     // Group Statistics
     stats: {
       type: GroupStatsSchema,
       default: () => ({}),
     },
-
     // Invite System
     inviteCode: {
       type: String,
@@ -156,7 +148,6 @@ const GroupSchema = new mongoose.Schema(
       type: Date,
       index: true,
     },
-
     // Status
     isActive: {
       type: Boolean,
@@ -192,19 +183,16 @@ const GroupSchema = new mongoose.Schema(
     },
   }
 );
-
 // Indexes
 GroupSchema.index({ "members.userId": 1 });
 // GroupSchema.index({ inviteCode: 1 }, { sparse: true }); // Removed duplicate - already has unique: true
 GroupSchema.index({ isActive: 1, createdAt: -1 });
-
 // Instance Methods
 GroupSchema.methods.addMember = function (userId, role = "member") {
   // Check if user is already a member
   const existingMember = this.members.find(
     (member) => member.userId.toString() === userId.toString()
   );
-
   if (existingMember) {
     if (existingMember.isActive) {
       throw new Error("Người dùng đã là thành viên của nhóm");
@@ -215,7 +203,6 @@ GroupSchema.methods.addMember = function (userId, role = "member") {
       return existingMember;
     }
   }
-
   // Check member limit
   const activeMembers = this.members.filter((member) => member.isActive);
   if (activeMembers.length >= this.settings.maxMembers) {
@@ -223,7 +210,6 @@ GroupSchema.methods.addMember = function (userId, role = "member") {
       `Nhóm đã đạt giới hạn ${this.settings.maxMembers} thành viên`
     );
   }
-
   // Add new member
   const newMember = {
     userId,
@@ -232,49 +218,38 @@ GroupSchema.methods.addMember = function (userId, role = "member") {
     isActive: true,
     permissions: this.getDefaultPermissions(role),
   };
-
   this.members.push(newMember);
   return newMember;
 };
-
 GroupSchema.methods.removeMember = function (userId) {
   const member = this.members.find(
     (member) => member.userId.toString() === userId.toString()
   );
-
   if (!member) {
     throw new Error("Người dùng không phải thành viên của nhóm");
   }
-
   if (member.role === "owner") {
     throw new Error("Không thể xóa chủ sở hữu nhóm");
   }
-
   member.isActive = false;
   return member;
 };
-
 GroupSchema.methods.updateMemberRole = function (userId, newRole) {
   const member = this.members.find(
     (member) =>
       member.userId.toString() === userId.toString() && member.isActive
   );
-
   if (!member) {
     throw new Error("Không tìm thấy thành viên");
   }
-
   // Don't allow changing owner role
   if (member.role === "owner" || newRole === "owner") {
     throw new Error("Không thể thay đổi quyền chủ sở hữu");
   }
-
   member.role = newRole;
   member.permissions = this.getDefaultPermissions(newRole);
-
   return member;
 };
-
 GroupSchema.methods.getDefaultPermissions = function (role) {
   const permissionSets = {
     owner: {
@@ -293,10 +268,8 @@ GroupSchema.methods.getDefaultPermissions = function (role) {
       canViewReports: true,
     },
   };
-
   return permissionSets[role] || permissionSets.member;
 };
-
 GroupSchema.methods.generateInviteCode = function (expiryHours = 24) {
   // Generate random 8-character code
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -304,19 +277,15 @@ GroupSchema.methods.generateInviteCode = function (expiryHours = 24) {
   for (let i = 0; i < 8; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-
   this.inviteCode = code;
   this.inviteExpiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
-
   return code;
 };
-
 GroupSchema.methods.isInviteCodeValid = function () {
   return (
     this.inviteCode && this.inviteExpiresAt && new Date() < this.inviteExpiresAt
   );
 };
-
 GroupSchema.methods.addExpense = function (amount) {
   const currentTotal = parseFloat(this.stats.totalExpenses.toString()) || 0;
   this.stats.totalExpenses = mongoose.Types.Decimal128.fromString(
@@ -324,7 +293,6 @@ GroupSchema.methods.addExpense = function (amount) {
   );
   this.stats.totalTransactions += 1;
   this.stats.lastActivity = new Date();
-
   // Update average expense per member
   const activeMembers = this.members.filter((member) => member.isActive);
   if (activeMembers.length > 0) {
@@ -334,11 +302,9 @@ GroupSchema.methods.addExpense = function (amount) {
     );
   }
 };
-
 GroupSchema.methods.getActiveMembersCount = function () {
   return this.members.filter((member) => member.isActive).length;
 };
-
 GroupSchema.methods.getMemberRole = function (userId) {
   const member = this.members.find(
     (member) =>
@@ -346,40 +312,32 @@ GroupSchema.methods.getMemberRole = function (userId) {
   );
   return member ? member.role : null;
 };
-
 GroupSchema.methods.canUserInvite = function (userId) {
   const member = this.members.find(
     (member) =>
       member.userId.toString() === userId.toString() && member.isActive
   );
-
   return member && member.permissions.canInviteMembers;
 };
-
 GroupSchema.methods.canUserManageExpenses = function (userId) {
   const member = this.members.find(
     (member) =>
       member.userId.toString() === userId.toString() && member.isActive
   );
-
   return member && member.permissions.canManageExpenses;
 };
-
 GroupSchema.methods.archive = function () {
   this.isActive = false;
   this.archivedAt = new Date();
 };
-
 // Pre-save middleware
 GroupSchema.pre("save", function (next) {
   // Update version
   if (this.isModified() && !this.isNew) {
     this.version += 1;
   }
-
   next();
 });
-
 // Static Methods
 GroupSchema.statics.findUserGroups = function (userId) {
   return this.find({
@@ -388,7 +346,6 @@ GroupSchema.statics.findUserGroups = function (userId) {
     isActive: true,
   }).sort({ "stats.lastActivity": -1 });
 };
-
 GroupSchema.statics.findByInviteCode = function (inviteCode) {
   return this.findOne({
     inviteCode,
@@ -396,7 +353,6 @@ GroupSchema.statics.findByInviteCode = function (inviteCode) {
     inviteExpiresAt: { $gt: new Date() },
   });
 };
-
 GroupSchema.statics.findGroupsByOwner = function (userId) {
   return this.find({
     "members.userId": userId,
@@ -405,7 +361,6 @@ GroupSchema.statics.findGroupsByOwner = function (userId) {
     isActive: true,
   }).sort({ createdAt: -1 });
 };
-
 GroupSchema.statics.getGroupStats = function (groupId) {
   return this.aggregate([
     {
@@ -433,7 +388,5 @@ GroupSchema.statics.getGroupStats = function (groupId) {
     },
   ]);
 };
-
 const Group = mongoose.model("Group", GroupSchema);
-
 export default Group;

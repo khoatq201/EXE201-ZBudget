@@ -2,7 +2,6 @@
 // import geoipPkg from 'geoip-lite';
 // import UAParserPkg from 'ua-parser-js';
 import crypto from "crypto";
-
 // Fallback implementations
 const lookup = (ip) => {
   // Simple fallback - in production would use actual geoip
@@ -11,7 +10,6 @@ const lookup = (ip) => {
   }
   return { country: "Unknown", city: "Unknown", region: "Unknown" };
 };
-
 const UAParser = (userAgent) => {
   // Simple fallback parser
   return {
@@ -20,7 +18,6 @@ const UAParser = (userAgent) => {
     getDevice: () => ({ type: "desktop", vendor: "Unknown", model: "Unknown" }),
   };
 };
-
 /**
  * Advanced Device and Location Tracking Service
  * Provides comprehensive device fingerprinting and geographic location detection
@@ -35,7 +32,6 @@ class DeviceTrackingService {
     const userAgent = req.get("User-Agent") || "";
     const parser = new UAParser(userAgent);
     const deviceInfo = parser.getResult();
-
     // Enhanced device identification
     const deviceFingerprint = {
       // Basic device info
@@ -57,13 +53,11 @@ class DeviceTrackingService {
         name: deviceInfo.engine.name || "Unknown",
         version: deviceInfo.engine.version || "Unknown",
       },
-
       // Network & Request info
       userAgent: userAgent,
       acceptLanguage: req.get("Accept-Language") || "",
       acceptEncoding: req.get("Accept-Encoding") || "",
       connection: req.get("Connection") || "",
-
       // Generate unique fingerprint hash
       fingerprintHash: this.generateFingerprintHash({
         userAgent,
@@ -73,10 +67,8 @@ class DeviceTrackingService {
         browser: deviceInfo.browser.name,
       }),
     };
-
     return deviceFingerprint;
   }
-
   /**
    * Get geographic location from IP address
    * @param {string} ipAddress - Client IP address
@@ -98,9 +90,7 @@ class DeviceTrackingService {
           isPrivateIP: true,
         };
       }
-
       const geo = lookup(ipAddress);
-
       if (!geo) {
         return {
           country: "Unknown",
@@ -114,7 +104,6 @@ class DeviceTrackingService {
           isPrivateIP: false,
         };
       }
-
       return {
         country: geo.country,
         countryName: this.getCountryName(geo.country),
@@ -142,7 +131,6 @@ class DeviceTrackingService {
       };
     }
   }
-
   /**
    * Check if IP is private/local
    * @param {string} ip - IP address
@@ -150,7 +138,6 @@ class DeviceTrackingService {
    */
   static isPrivateIP(ip) {
     if (!ip) return true;
-
     // Common local/private IP patterns
     const privatePatterns = [
       /^127\./, // 127.x.x.x (localhost)
@@ -160,14 +147,12 @@ class DeviceTrackingService {
       /^::1$/, // IPv6 localhost
       /^fe80:/, // IPv6 link-local
     ];
-
     return (
       privatePatterns.some((pattern) => pattern.test(ip)) ||
       ip === "localhost" ||
       ip === "::1"
     );
   }
-
   /**
    * Generate device fingerprint hash
    * @param {Object} data - Fingerprint data
@@ -177,7 +162,6 @@ class DeviceTrackingService {
     const fingerprint = JSON.stringify(data);
     return crypto.createHash("sha256").update(fingerprint).digest("hex");
   }
-
   /**
    * Get friendly device name
    * @param {Object} deviceInfo - Device information
@@ -185,7 +169,6 @@ class DeviceTrackingService {
    */
   static getFriendlyDeviceName(deviceInfo) {
     const { browser, os, device } = deviceInfo;
-
     // Mobile devices
     if (device.type === "mobile") {
       if (device.vendor && device.model) {
@@ -196,7 +179,6 @@ class DeviceTrackingService {
       }
       return "Mobile Device";
     }
-
     // Tablets
     if (device.type === "tablet") {
       if (device.vendor && device.model) {
@@ -204,19 +186,15 @@ class DeviceTrackingService {
       }
       return "Tablet";
     }
-
     // Desktop/laptop
     if (browser.name && os.name) {
       return `${browser.name} - ${os.name}`;
     }
-
     if (browser.name) {
       return browser.name;
     }
-
     return "Unknown Device";
   }
-
   /**
    * Generate comprehensive session info
    * @param {Object} req - Express request object
@@ -226,7 +204,6 @@ class DeviceTrackingService {
     const ipAddress = this.getClientIP(req);
     const deviceFingerprint = this.generateDeviceFingerprint(req);
     const location = this.getLocationFromIP(ipAddress);
-
     return {
       sessionId: this.generateSessionId(),
       deviceName: this.getFriendlyDeviceName(deviceFingerprint),
@@ -242,7 +219,6 @@ class DeviceTrackingService {
       isRevoked: false,
     };
   }
-
   /**
    * Get client IP address from request
    * @param {Object} req - Express request object
@@ -259,7 +235,6 @@ class DeviceTrackingService {
       "127.0.0.1"
     );
   }
-
   /**
    * Generate unique session ID
    * @returns {string} Session ID
@@ -267,7 +242,6 @@ class DeviceTrackingService {
   static generateSessionId() {
     return crypto.randomBytes(32).toString("hex");
   }
-
   /**
    * Format location string for display
    * @param {Object} location - Location data
@@ -277,18 +251,14 @@ class DeviceTrackingService {
     if (location.isPrivateIP) {
       return "Hồ Chí Minh, Việt Nam";
     }
-
     if (location.city && location.countryName) {
       return `${location.city}, ${location.countryName}`;
     }
-
     if (location.countryName) {
       return location.countryName;
     }
-
     return "Unknown Location";
   }
-
   /**
    * Get country name from country code
    * @param {string} countryCode - ISO country code
@@ -308,10 +278,8 @@ class DeviceTrackingService {
       ID: "Indonesia",
       PH: "Philippines",
     };
-
     return countries[countryCode] || countryCode;
   }
-
   /**
    * Detect suspicious login patterns
    * @param {Array} sessions - User's active sessions
@@ -325,30 +293,25 @@ class DeviceTrackingService {
       reasons: [],
       recommendations: [],
     };
-
     // Check for multiple locations
     const locations = sessions.map((s) => s.location);
     const uniqueLocations = [...new Set(locations)];
-
     if (uniqueLocations.length > 3) {
       analysis.isSuspicious = true;
       analysis.riskLevel = "medium";
       analysis.reasons.push("Multiple geographic locations detected");
       analysis.recommendations.push("Review recent login activity");
     }
-
     // Check for rapid location changes
     const recentSessions = sessions.filter(
       (s) => new Date(s.loginTime) > new Date(Date.now() - 24 * 60 * 60 * 1000)
     );
-
     if (recentSessions.length > 5) {
       analysis.isSuspicious = true;
       analysis.riskLevel = "high";
       analysis.reasons.push("Unusually high login frequency");
       analysis.recommendations.push("Consider enabling 2FA");
     }
-
     // Check for new device
     const deviceHashes = sessions.map(
       (s) => s.deviceFingerprint?.fingerprintHash
@@ -357,9 +320,7 @@ class DeviceTrackingService {
       analysis.reasons.push("New device detected");
       analysis.recommendations.push("Verify this login attempt");
     }
-
     return analysis;
   }
 }
-
 export default DeviceTrackingService;

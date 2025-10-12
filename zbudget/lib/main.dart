@@ -7,6 +7,7 @@ import 'services/expense_service.dart';
 import 'services/savings_service.dart';
 import 'services/budget_service.dart';
 import 'services/group_service.dart';
+import 'services/group_budget_service.dart';
 import 'services/challenge_service.dart';
 import 'services/profile_service.dart';
 import 'services/currency_service.dart';
@@ -39,6 +40,7 @@ class ZBudgetApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SavingsService()),
         ChangeNotifierProvider(create: (_) => BudgetService()),
         ChangeNotifierProvider(create: (_) => GroupService()),
+        ChangeNotifierProvider(create: (_) => GroupBudgetService()),
         ChangeNotifierProvider(create: (_) => ChallengeService()),
         ChangeNotifierProvider(create: (_) => ProfileService()),
         ChangeNotifierProvider(create: (_) => CurrencyService()),

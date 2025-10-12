@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import validator from "validator";
-
 // Sub-schemas
 const RecurringDetailsSchema = new mongoose.Schema(
   {
@@ -27,7 +26,6 @@ const RecurringDetailsSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const SourceDetailsSchema = new mongoose.Schema(
   {
     name: {
@@ -45,7 +43,6 @@ const SourceDetailsSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const TaxInfoSchema = new mongoose.Schema(
   {
     isTaxable: {
@@ -69,7 +66,6 @@ const TaxInfoSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 // YNAB-style Income Allocation Schema
 const AllocationSchema = new mongoose.Schema(
   {
@@ -112,7 +108,6 @@ const AllocationSchema = new mongoose.Schema(
   },
   { _id: true }
 );
-
 // Main Income Schema
 const IncomeSchema = new mongoose.Schema(
   {
@@ -122,7 +117,6 @@ const IncomeSchema = new mongoose.Schema(
       required: [true, "User ID là bắt buộc"],
       index: true,
     },
-
     // Core Income Data
     amount: {
       type: mongoose.Schema.Types.Decimal128,
@@ -159,7 +153,6 @@ const IncomeSchema = new mongoose.Schema(
       required: [true, "Danh mục thu nhập là bắt buộc"],
       index: true,
     },
-
     // Description & Details
     title: {
       type: String,
@@ -171,7 +164,6 @@ const IncomeSchema = new mongoose.Schema(
       type: String,
       maxlength: [1000, "Mô tả không được vượt quá 1000 ký tự"],
     },
-
     // Date & Time
     date: {
       type: Date,
@@ -179,7 +171,6 @@ const IncomeSchema = new mongoose.Schema(
       index: true,
       default: Date.now,
     },
-
     // Payment Method
     paymentMethod: {
       type: String,
@@ -187,12 +178,10 @@ const IncomeSchema = new mongoose.Schema(
       required: [true, "Phương thức thanh toán là bắt buộc"],
       default: "banking",
     },
-
     // Source Details
     source: {
       type: SourceDetailsSchema,
     },
-
     // Recurring Income
     isRecurring: {
       type: Boolean,
@@ -202,13 +191,11 @@ const IncomeSchema = new mongoose.Schema(
     recurringDetails: {
       type: RecurringDetailsSchema,
     },
-
     // Tax Information
     taxInfo: {
       type: TaxInfoSchema,
       default: () => ({}),
     },
-
     // Proof/Documentation
     receiptUrl: {
       type: String,
@@ -219,7 +206,6 @@ const IncomeSchema = new mongoose.Schema(
         message: "Receipt URL phải là URL hợp lệ",
       },
     },
-
     // Status
     isConfirmed: {
       type: Boolean,
@@ -229,7 +215,6 @@ const IncomeSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-
     // Notes & Tags
     tags: [
       {
@@ -241,33 +226,28 @@ const IncomeSchema = new mongoose.Schema(
       type: String,
       maxlength: [500, "Ghi chú không được vượt quá 500 ký tự"],
     },
-
     // YNAB-style Budget Allocations
     allocations: {
       type: [AllocationSchema],
       default: [],
       description: "Danh sách phân bổ thu nhập vào budgets/savings",
     },
-
     // Allocation Tracking
     totalAllocated: {
       type: mongoose.Schema.Types.Decimal128,
       default: 0,
       description: "Tổng số tiền đã phân bổ",
     },
-
     unallocated: {
       type: mongoose.Schema.Types.Decimal128,
       default: 0,
       description: "Số tiền chưa phân bổ (Ready to Assign)",
     },
-
     isFullyAllocated: {
       type: Boolean,
       default: false,
       description: "Đã phân bổ hết thu nhập chưa",
     },
-
     // Metadata
     createdBy: {
       type: String,
@@ -279,13 +259,11 @@ const IncomeSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-
 // Indexes for performance
 IncomeSchema.index({ userId: 1, date: -1 });
 IncomeSchema.index({ userId: 1, category: 1 });
 IncomeSchema.index({ userId: 1, isRecurring: 1 });
 IncomeSchema.index({ date: 1 });
-
 // Virtual for net amount (after tax)
 IncomeSchema.virtual("netAmount").get(function () {
   const amount = parseFloat(this.amount.toString());
@@ -295,7 +273,6 @@ IncomeSchema.virtual("netAmount").get(function () {
   }
   return amount;
 });
-
 // Static methods
 IncomeSchema.statics = {
   // Get total income for user
@@ -304,14 +281,12 @@ IncomeSchema.statics = {
       userId: mongoose.Types.ObjectId(userId),
       isConfirmed: true,
     };
-
     if (startDate && endDate) {
       match.date = {
         $gte: new Date(startDate),
         $lte: new Date(endDate),
       };
     }
-
     const result = await this.aggregate([
       { $match: match },
       {
@@ -322,26 +297,22 @@ IncomeSchema.statics = {
         },
       },
     ]);
-
     return result.length > 0
       ? { total: result[0].total, count: result[0].count }
       : { total: 0, count: 0 };
   },
-
   // Get income by category
   async getTotalByCategory(userId, startDate, endDate) {
     const match = {
       userId: mongoose.Types.ObjectId(userId),
       isConfirmed: true,
     };
-
     if (startDate && endDate) {
       match.date = {
         $gte: new Date(startDate),
         $lte: new Date(endDate),
       };
     }
-
     return await this.aggregate([
       { $match: match },
       {
@@ -355,7 +326,6 @@ IncomeSchema.statics = {
       { $sort: { total: -1 } },
     ]);
   },
-
   // Get monthly income stats
   async getMonthlyStats(userId, year) {
     return await this.aggregate([
@@ -380,7 +350,6 @@ IncomeSchema.statics = {
       { $sort: { _id: 1 } },
     ]);
   },
-
   // Get recurring incomes due for processing
   async getDueRecurringIncomes() {
     const now = new Date();
@@ -394,11 +363,9 @@ IncomeSchema.statics = {
       ],
     }).populate("userId", "email profile.name");
   },
-
   // Find by user with filters
   async findByUser(userId, filters = {}) {
     const query = { userId };
-
     if (filters.category) query.category = filters.category;
     if (filters.isRecurring !== undefined)
       query.isRecurring = filters.isRecurring;
@@ -408,21 +375,17 @@ IncomeSchema.statics = {
         $lte: new Date(filters.endDate),
       };
     }
-
     return await this.find(query).sort({ date: -1 }).limit(filters.limit || 100);
   },
 };
-
 // Instance methods
 IncomeSchema.methods = {
   // Calculate next occurrence for recurring income
   calculateNextOccurrence() {
     if (!this.isRecurring || !this.recurringDetails) return null;
-
     const current = this.recurringDetails.nextOccurrence || this.date;
     const frequency = this.recurringDetails.frequency;
     const next = new Date(current);
-
     switch (frequency) {
       case "daily":
         next.setDate(next.getDate() + 1);
@@ -443,14 +406,11 @@ IncomeSchema.methods = {
         next.setFullYear(next.getFullYear() + 1);
         break;
     }
-
     return next;
   },
-
   // Update recurring income's next occurrence
   async updateNextOccurrence() {
     if (!this.isRecurring) return;
-
     const next = this.calculateNextOccurrence();
     if (next) {
       this.recurringDetails.nextOccurrence = next;
@@ -458,7 +418,6 @@ IncomeSchema.methods = {
     }
   },
 };
-
 // Middleware
 IncomeSchema.pre("save", function (next) {
   // Calculate tax if taxable
@@ -470,21 +429,17 @@ IncomeSchema.pre("save", function (next) {
     );
     this.taxInfo.grossAmount = this.amount;
   }
-
   // Set next occurrence for recurring income
   if (this.isRecurring && this.recurringDetails && !this.recurringDetails.nextOccurrence) {
     this.recurringDetails.nextOccurrence = this.calculateNextOccurrence();
   }
-
   // Calculate allocation totals
   if (this.allocations && this.allocations.length > 0) {
     const totalAllocated = this.allocations.reduce((sum, alloc) => {
       return sum + parseFloat(alloc.amount.toString());
     }, 0);
-
     const incomeAmount = parseFloat(this.amount.toString());
     const unallocatedAmount = incomeAmount - totalAllocated;
-
     this.totalAllocated = mongoose.Types.Decimal128.fromString(totalAllocated.toString());
     this.unallocated = mongoose.Types.Decimal128.fromString(unallocatedAmount.toString());
     this.isFullyAllocated = unallocatedAmount <= 0;
@@ -494,10 +449,7 @@ IncomeSchema.pre("save", function (next) {
     this.unallocated = this.amount;
     this.isFullyAllocated = false;
   }
-
   next();
 });
-
 const Income = mongoose.model("Income", IncomeSchema);
-
 export default Income;

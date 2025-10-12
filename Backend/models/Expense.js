@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import validator from "validator";
-
 // Sub-schemas
 const LocationSchema = new mongoose.Schema(
   {
@@ -27,7 +26,6 @@ const LocationSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const PaymentDetailsSchema = new mongoose.Schema(
   {
     accountLast4: {
@@ -47,7 +45,6 @@ const PaymentDetailsSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const ReceiptSchema = new mongoose.Schema(
   {
     imageUrl: {
@@ -71,7 +68,6 @@ const ReceiptSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const SplitDetailsSchema = new mongoose.Schema(
   {
     isShared: {
@@ -93,7 +89,6 @@ const SplitDetailsSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 const CategoryDisplaySchema = new mongoose.Schema(
   {
     icon: {
@@ -120,7 +115,6 @@ const CategoryDisplaySchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
 // Main Expense Schema
 const ExpenseSchema = new mongoose.Schema(
   {
@@ -130,7 +124,6 @@ const ExpenseSchema = new mongoose.Schema(
       required: [true, "User ID là bắt buộc"],
       index: true,
     },
-
     // Core Expense Data
     amount: {
       type: mongoose.Schema.Types.Decimal128,
@@ -167,7 +160,6 @@ const ExpenseSchema = new mongoose.Schema(
       type: String,
       maxlength: [50, "Danh mục con không được vượt quá 50 ký tự"],
     },
-
     // Description & Details
     title: {
       type: String,
@@ -188,7 +180,6 @@ const ExpenseSchema = new mongoose.Schema(
         maxlength: [30, "Tag không được vượt quá 30 ký tự"],
       },
     ],
-
     // Date & Location
     date: {
       type: Date,
@@ -198,7 +189,6 @@ const ExpenseSchema = new mongoose.Schema(
     location: {
       type: LocationSchema,
     },
-
     // Payment Information
     paymentMethod: {
       type: String,
@@ -208,12 +198,10 @@ const ExpenseSchema = new mongoose.Schema(
     paymentDetails: {
       type: PaymentDetailsSchema,
     },
-
     // Receipt & Proof
     receipt: {
       type: ReceiptSchema,
     },
-
     // Group & Sharing
     groupId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -224,7 +212,6 @@ const ExpenseSchema = new mongoose.Schema(
       type: SplitDetailsSchema,
       default: () => ({ isShared: false }),
     },
-
     // Challenge Integration
     challengeId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -235,7 +222,6 @@ const ExpenseSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Decimal128,
       default: 0,
     },
-
     // Budget Integration
     budgetId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -251,6 +237,24 @@ const ExpenseSchema = new mongoose.Schema(
       },
     },
 
+    // GroupBudget Integration (Option B: Track group expenses in personal records)
+    groupBudgetId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "GroupBudget",
+      index: { sparse: true },
+      comment: "Link to GroupBudget if this expense is part of a group budget",
+    },
+    isGroupExpense: {
+      type: Boolean,
+      default: false,
+      index: true,
+      comment: "Flag to indicate this is a group expense",
+    },
+    groupShareAmount: {
+      type: mongoose.Schema.Types.Decimal128,
+      comment: "User's share in the group expense (their portion)",
+    },
+
     // Denormalization for Performance
     userEmail: {
       type: String,
@@ -259,7 +263,6 @@ const ExpenseSchema = new mongoose.Schema(
     categoryDisplay: {
       type: CategoryDisplaySchema,
     },
-
     // Status & Metadata
     isDeleted: {
       type: Boolean,
@@ -299,70 +302,64 @@ const ExpenseSchema = new mongoose.Schema(
             ret.splitDetails.userShare.toString()
           );
         }
+        if (ret.groupShareAmount) {
+          ret.groupShareAmount = parseFloat(ret.groupShareAmount.toString());
+        }
         return ret;
       },
     },
   }
 );
-
 // Compound Indexes
 ExpenseSchema.index({ userId: 1, date: -1 }); // User's expenses by date
 ExpenseSchema.index({ userId: 1, category: 1, date: -1 }); // Category expenses by date
 ExpenseSchema.index({ groupId: 1, date: -1 }, { sparse: true }); // Group expenses
 ExpenseSchema.index({ budgetId: 1, date: -1 }, { sparse: true }); // Budget expenses
 ExpenseSchema.index({ challengeId: 1, date: -1 }, { sparse: true }); // Challenge expenses
+ExpenseSchema.index({ groupBudgetId: 1, date: -1 }, { sparse: true }); // GroupBudget expenses
 ExpenseSchema.index({ isDeleted: 1, syncStatus: 1 }); // Sync management
 ExpenseSchema.index({ date: -1, category: 1 }); // Analytics queries
-
+ExpenseSchema.index({ userId: 1, isGroupExpense: 1 }); // Filter group expenses
 // Instance Methods
 ExpenseSchema.methods.updateBudgetImpact = function () {
   this.budgetImpact = mongoose.Types.Decimal128.fromString(
     (-parseFloat(this.amount.toString())).toFixed(2)
   );
 };
-
 ExpenseSchema.methods.markAsDeleted = function () {
   this.isDeleted = true;
   this.version += 1;
 };
-
 ExpenseSchema.methods.addTag = function (tag) {
   if (this.tags.length >= 10) {
     throw new Error("Không được có quá 10 tags");
   }
-
   const normalizedTag = tag.toLowerCase().trim();
   if (!this.tags.includes(normalizedTag)) {
     this.tags.push(normalizedTag);
   }
 };
-
 ExpenseSchema.methods.removeTag = function (tag) {
   const normalizedTag = tag.toLowerCase().trim();
   this.tags = this.tags.filter((t) => t !== normalizedTag);
 };
-
 // Pre-save middleware
 ExpenseSchema.pre("save", function (next) {
   // Auto-set budget impact
   if (this.isModified("amount")) {
     this.updateBudgetImpact();
   }
-
   // Set category display based on category
   if (this.isModified("category")) {
     this.categoryDisplay = getCategoryDisplay(this.category);
   }
-
   // Update sync status
   if (this.isModified() && !this.isModified("syncStatus")) {
     this.syncStatus = "pending";
     this.lastSyncAt = new Date();
   }
-
   next();
 });
-
 ExpenseSchema.pre("save", function (next) {
   // Update version
   if (this.isModified() && !this.isNew) {
@@ -370,11 +367,9 @@ ExpenseSchema.pre("save", function (next) {
   }
   next();
 });
-
 // Static Methods
 ExpenseSchema.statics.findByUser = function (userId, options = {}) {
   const query = { userId, isDeleted: false };
-
   // Add date filters if provided
   if (options.startDate) {
     query.date = { $gte: options.startDate };
@@ -382,17 +377,14 @@ ExpenseSchema.statics.findByUser = function (userId, options = {}) {
   if (options.endDate) {
     query.date = { ...query.date, $lte: options.endDate };
   }
-
   // Add category filter if provided
   if (options.category) {
     query.category = options.category;
   }
-
   return this.find(query)
     .sort({ date: -1 })
     .limit(options.limit || 50);
 };
-
 ExpenseSchema.statics.getTotalByCategory = function (
   userId,
   startDate,
@@ -423,11 +415,9 @@ ExpenseSchema.statics.getTotalByCategory = function (
     },
   ]);
 };
-
 ExpenseSchema.statics.getMonthlyStats = function (userId, year, month) {
   const startDate = new Date(year, month - 1, 1);
   const endDate = new Date(year, month, 0, 23, 59, 59);
-
   return this.aggregate([
     {
       $match: {
@@ -449,7 +439,6 @@ ExpenseSchema.statics.getMonthlyStats = function (userId, year, month) {
     },
   ]);
 };
-
 // Helper function for category display
 function getCategoryDisplay(category) {
   const categoryMap = {
@@ -492,10 +481,7 @@ function getCategoryDisplay(category) {
     },
     other: { icon: "📦", nameVi: "Khác", nameEn: "Other", color: "#85C1E9" },
   };
-
   return categoryMap[category] || categoryMap.other;
 }
-
 const Expense = mongoose.model("Expense", ExpenseSchema);
-
 export default Expense;
