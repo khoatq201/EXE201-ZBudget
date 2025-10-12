@@ -15,7 +15,8 @@ class BudgetListScreenYNAB extends StatefulWidget {
   State<BudgetListScreenYNAB> createState() => _BudgetListScreenYNABState();
 }
 
-class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB> with AutomaticKeepAliveClientMixin {
+class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
@@ -55,7 +56,11 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB> with Automa
             return CustomScrollView(
               slivers: [
                 _buildSliverAppBar(budgetService),
-                SliverToBoxAdapter(child: _buildReadyToAssignCard(budgetService)),
+                // Only show Ready to Assign card when there are no active budgets
+                if (budgetService.activeBudgets.isEmpty)
+                  SliverToBoxAdapter(
+                    child: _buildReadyToAssignCard(budgetService),
+                  ),
                 SliverToBoxAdapter(child: _buildFilterTabs()),
                 _buildBudgetList(budgetService),
               ],
@@ -89,10 +94,7 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB> with Automa
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                context.headerGradientStart,
-                context.headerGradientEnd,
-              ],
+              colors: [context.headerGradientStart, context.headerGradientEnd],
             ),
           ),
           child: Row(
@@ -113,7 +115,9 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB> with Automa
                   Text(
                     'Quản lý chi tiêu hiệu quả',
                     style: AppTypography.bodySmall.copyWith(
-                      color: context.colorScheme.onPrimary.withValues(alpha: 0.9),
+                      color: context.colorScheme.onPrimary.withValues(
+                        alpha: 0.9,
+                      ),
                     ),
                   ),
                 ],
@@ -156,7 +160,11 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB> with Automa
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.account_balance_wallet, color: Colors.white, size: 28),
+                child: const Icon(
+                  Icons.account_balance_wallet,
+                  color: Colors.white,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -165,7 +173,9 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB> with Automa
                   children: [
                     Text(
                       'Ready to Assign',
-                      style: AppTypography.bodySmall.copyWith(color: Colors.white70),
+                      style: AppTypography.bodySmall.copyWith(
+                        color: Colors.white70,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     RichText(
@@ -174,7 +184,9 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB> with Automa
                       text: TextSpan(
                         children: [
                           TextSpan(
-                            text: CurrencyFormatter.format(budgetService.readyToAssign).replaceAll(' ₫', ''),
+                            text: CurrencyFormatter.format(
+                              budgetService.readyToAssign,
+                            ).replaceAll(' ₫', ''),
                             style: AppTypography.h2.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -235,10 +247,14 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB> with Automa
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? context.colorScheme.primary : context.cardBackground,
+          color: isSelected
+              ? context.colorScheme.primary
+              : context.cardBackground,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? context.colorScheme.primary : Colors.grey.shade300,
+            color: isSelected
+                ? context.colorScheme.primary
+                : Colors.grey.shade300,
           ),
         ),
         child: Text(
@@ -260,13 +276,19 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB> with Automa
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.account_balance_wallet_outlined, size: 64, color: Colors.grey.shade400),
+              Icon(
+                Icons.account_balance_wallet_outlined,
+                size: 64,
+                color: Colors.grey.shade400,
+              ),
               const SizedBox(height: 16),
               Text('Chưa có ngân sách nào', style: AppTypography.h4),
               const SizedBox(height: 8),
               Text(
                 'Tạo ngân sách đầu tiên của bạn!',
-                style: AppTypography.bodySmall.copyWith(color: Colors.grey.shade600),
+                style: AppTypography.bodySmall.copyWith(
+                  color: Colors.grey.shade600,
+                ),
               ),
             ],
           ),
@@ -277,13 +299,10 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB> with Automa
     return SliverPadding(
       padding: const EdgeInsets.all(16),
       sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            final budget = budgets[index];
-            return _buildBudgetCard(budget);
-          },
-          childCount: budgets.length,
-        ),
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final budget = budgets[index];
+          return _buildBudgetCard(budget);
+        }, childCount: budgets.length),
       ),
     );
   }
@@ -334,12 +353,18 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB> with Automa
                   ),
                   if (!budget.isActive)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.grey.shade300,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text('Không hoạt động', style: AppTypography.caption),
+                      child: Text(
+                        'Không hoạt động',
+                        style: AppTypography.caption,
+                      ),
                     ),
                 ],
               ),
@@ -390,8 +415,12 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB> with Automa
 
   Widget _buildYNABStatus(Budget budget) {
     final fundingStatus = budget.fundingStatus;
-    final percentage = fundingStatus.fundingPercentage;
     final isFullyFunded = budget.isFullyFunded;
+
+    // Calculate percentage based on local logic for consistency
+    final percentage = budget.totalAllocated > 0
+        ? (budget.totalFunded / budget.totalAllocated) * 100
+        : 0;
 
     Color statusColor;
     String statusText;
@@ -421,7 +450,10 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB> with Automa
               children: [
                 Icon(statusIcon, size: 16, color: statusColor),
                 const SizedBox(width: 8),
-                Text(statusText, style: AppTypography.bodySmall.copyWith(color: statusColor)),
+                Text(
+                  statusText,
+                  style: AppTypography.bodySmall.copyWith(color: statusColor),
+                ),
               ],
             ),
             Text(
@@ -432,7 +464,7 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB> with Automa
         ),
         const SizedBox(height: 8),
         LinearProgressIndicator(
-          value: percentage / 100,
+          value: (percentage / 100).clamp(0.0, 1.0),
           backgroundColor: Colors.grey.shade200,
           color: statusColor,
           minHeight: 8,
@@ -514,12 +546,13 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB> with Automa
           const SizedBox(height: 16),
           Text('Đã xảy ra lỗi', style: AppTypography.h4),
           const SizedBox(height: 8),
-          Text(error, style: AppTypography.bodySmall, textAlign: TextAlign.center),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _loadBudgets,
-            child: const Text('Thử lại'),
+          Text(
+            error,
+            style: AppTypography.bodySmall,
+            textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 16),
+          ElevatedButton(onPressed: _loadBudgets, child: const Text('Thử lại')),
         ],
       ),
     );

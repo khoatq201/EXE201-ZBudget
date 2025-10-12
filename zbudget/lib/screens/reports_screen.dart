@@ -287,13 +287,23 @@ class _ReportsScreenState extends State<ReportsScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      isPositive ? '💰 Tài chính tích cực' : '⚠️ Cần chú ý',
-                      style: TextStyle(
-                        color: context.colorScheme.onPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Icon(
+                          isPositive ? Icons.trending_up : Icons.warning,
+                          color: context.colorScheme.onPrimary,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          isPositive ? 'Tài chính tích cực' : 'Cần chú ý',
+                          style: TextStyle(
+                            color: context.colorScheme.onPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -323,6 +333,10 @@ class _ReportsScreenState extends State<ReportsScreen>
                     // Use cardBackground with subtle opacity so it adapts to dark/light themes
                     color: context.cardBackground.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: context.cardBorder.withOpacity(0.2),
+                      width: 0.5,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -377,6 +391,10 @@ class _ReportsScreenState extends State<ReportsScreen>
                     // Use cardBackground with subtle opacity so it adapts to dark/light themes
                     color: context.cardBackground.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: context.cardBorder.withOpacity(0.2),
+                      width: 0.5,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,6 +450,10 @@ class _ReportsScreenState extends State<ReportsScreen>
               // Slightly lighter card background for the balance row so it adapts with theme
               color: context.cardBackground.withOpacity(0.06),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: context.cardBorder.withOpacity(0.15),
+                width: 0.5,
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -543,13 +565,14 @@ class _ReportsScreenState extends State<ReportsScreen>
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
+                              Icon(
                                 savingsRate >= 20
-                                    ? '🎉'
+                                    ? Icons.celebration
                                     : savingsRate >= 10
-                                    ? '👍'
-                                    : '⚠️',
-                                style: const TextStyle(fontSize: 12),
+                                    ? Icons.thumb_up
+                                    : Icons.warning,
+                                size: 12,
+                                color: context.colorScheme.onPrimary,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -1875,18 +1898,21 @@ class _ReportsScreenState extends State<ReportsScreen>
             ),
             child: Column(
               children: [
-                _buildInsightRow(
-                  '📅 Ngày chi nhiều nhất',
+                _buildInsightRowWithIcon(
+                  Icons.calendar_today,
+                  'Ngày chi nhiều nhất',
                   patterns.insights.mostExpensiveDay,
                 ),
                 const Divider(height: 16),
-                _buildInsightRow(
-                  '🔄 Ngày giao dịch nhiều nhất',
+                _buildInsightRowWithIcon(
+                  Icons.repeat,
+                  'Ngày giao dịch nhiều nhất',
                   patterns.insights.mostFrequentDay,
                 ),
                 const Divider(height: 16),
-                _buildInsightRow(
-                  '💳 Phương thức thanh toán ưa thích',
+                _buildInsightRowWithIcon(
+                  Icons.credit_card,
+                  'Phương thức thanh toán ưa thích',
                   patterns.insights.preferredPaymentMethod,
                 ),
               ],
@@ -1978,6 +2004,30 @@ class _ReportsScreenState extends State<ReportsScreen>
     );
   }
 
+  Widget _buildInsightRowWithIcon(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: context.colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(label, style: AppTypography.bodySmall),
+            ],
+          ),
+          Text(
+            value,
+            style: AppTypography.bodySmall.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildForecastSection(ForecastReportData forecast) {
     // Helper to format month label
     String formatMonthLabel(String month) {
@@ -2049,15 +2099,15 @@ class _ReportsScreenState extends State<ReportsScreen>
                     const SizedBox(height: 4),
                     Text(
                       'Thu: ${forecast.trends.incomeTrend == "increasing"
-                          ? "📈 Tăng"
+                          ? "Tăng"
                           : forecast.trends.incomeTrend == "decreasing"
-                          ? "📉 Giảm"
-                          : "➡️ Ổn định"} • '
+                          ? "Giảm"
+                          : "Ổn định"} • '
                       'Chi: ${forecast.trends.expenseTrend == "increasing"
-                          ? "📈 Tăng"
+                          ? "Tăng"
                           : forecast.trends.expenseTrend == "decreasing"
-                          ? "📉 Giảm"
-                          : "➡️ Ổn định"}',
+                          ? "Giảm"
+                          : "Ổn định"}',
                       style: AppTypography.caption.copyWith(
                         color: context.settingsItemSubtitleColor,
                       ),
@@ -2095,9 +2145,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                         Row(
                           children: [
                             Icon(
-                              Icons.offline_bolt,
+                              Icons.analytics,
                               size: 14,
-                              color: Colors.grey[600],
+                              color: context.colorScheme.primary,
                             ),
                             const SizedBox(width: 4),
                             Text(
