@@ -6,6 +6,8 @@ import '../../services/auth_service.dart';
 import '../../constants/typography.dart';
 import '../../constants/spacing.dart';
 import '../../utils/theme_extensions.dart';
+import '../../utils/currency_input_formatter.dart';
+import '../../utils/currency_formatter.dart';
 
 class MemberInput {
   final TextEditingController nameController;
@@ -22,18 +24,17 @@ class MemberInput {
     this.email,
     this.avatar,
     this.isCurrentUser = false,
-  })  : nameController = TextEditingController(text: name),
-        percentageController = TextEditingController(
-          text: percentage != null ? percentage.toString() : '',
-        );
+  }) : nameController = TextEditingController(text: name),
+       percentageController = TextEditingController(
+         text: percentage != null ? percentage.toString() : '',
+       );
 
   void dispose() {
     nameController.dispose();
     percentageController.dispose();
   }
 
-  double get percentage =>
-      double.tryParse(percentageController.text) ?? 0.0;
+  double get percentage => double.tryParse(percentageController.text) ?? 0.0;
 }
 
 class CreateGroupBudgetScreen extends StatefulWidget {
@@ -69,13 +70,15 @@ class _CreateGroupBudgetScreenState extends State<CreateGroupBudgetScreen> {
     final authService = Provider.of<AuthService>(context, listen: false);
     final currentUser = authService.currentUser;
 
-    _members.add(MemberInput(
-      name: currentUser?.name ?? 'Bạn',
-      percentage: 0,
-      userId: currentUser?.id,
-      email: currentUser?.email,
-      isCurrentUser: true,
-    ));
+    _members.add(
+      MemberInput(
+        name: currentUser?.name ?? 'Bạn',
+        percentage: 0,
+        userId: currentUser?.id,
+        email: currentUser?.email,
+        isCurrentUser: true,
+      ),
+    );
   }
 
   @override
@@ -125,13 +128,15 @@ class _CreateGroupBudgetScreenState extends State<CreateGroupBudgetScreen> {
 
   void _addUserAsMember(Map<String, dynamic> user) {
     setState(() {
-      _members.add(MemberInput(
-        name: user['name'],
-        userId: user['id'],
-        email: user['email'],
-        avatar: user['avatar'],
-        percentage: 0,
-      ));
+      _members.add(
+        MemberInput(
+          name: user['name'],
+          userId: user['id'],
+          email: user['email'],
+          avatar: user['avatar'],
+          percentage: 0,
+        ),
+      );
       _searchController.clear();
       _searchResults = [];
     });
@@ -181,7 +186,7 @@ class _CreateGroupBudgetScreenState extends State<CreateGroupBudgetScreen> {
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
-        totalBudget: double.parse(_totalBudgetController.text.replaceAll(',', '')),
+        totalBudget: CurrencyFormatter.parse(_totalBudgetController.text),
         members: membersData,
         autoSplitByContribution: _autoSplitByContribution,
       );
@@ -207,10 +212,7 @@ class _CreateGroupBudgetScreenState extends State<CreateGroupBudgetScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Lỗi: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) {
@@ -292,17 +294,18 @@ class _CreateGroupBudgetScreenState extends State<CreateGroupBudgetScreen> {
               controller: _totalBudgetController,
               decoration: const InputDecoration(
                 labelText: 'Tổng ngân sách',
-                hintText: '0',
+                hintText: '1.000.000',
                 prefixIcon: Icon(Icons.attach_money),
                 suffixText: 'VND',
               ),
               keyboardType: TextInputType.number,
+              inputFormatters: [VNDInputFormatter()],
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'Vui lòng nhập tổng ngân sách';
                 }
-                final amount = double.tryParse(value.replaceAll(',', ''));
-                if (amount == null || amount <= 0) {
+                final amount = CurrencyFormatter.parse(value);
+                if (amount <= 0) {
                   return 'Số tiền không hợp lệ';
                 }
                 return null;
@@ -323,13 +326,13 @@ class _CreateGroupBudgetScreenState extends State<CreateGroupBudgetScreen> {
           children: [
             Row(
               children: [
-                Expanded(
-                  child: Text('Thành viên', style: AppTypography.h3),
-                ),
+                Expanded(child: Text('Thành viên', style: AppTypography.h3)),
                 Text(
                   'Tổng: ${_totalPercentage.toStringAsFixed(0)}%',
                   style: AppTypography.bodyMedium.copyWith(
-                    color: _totalPercentage == 100 ? Colors.green : Colors.orange,
+                    color: _totalPercentage == 100
+                        ? Colors.green
+                        : Colors.orange,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -425,9 +428,11 @@ class _CreateGroupBudgetScreenState extends State<CreateGroupBudgetScreen> {
                 else
                   CircleAvatar(
                     radius: 20,
-                    child: Text(member.nameController.text.isNotEmpty
-                        ? member.nameController.text[0].toUpperCase()
-                        : '?'),
+                    child: Text(
+                      member.nameController.text.isNotEmpty
+                          ? member.nameController.text[0].toUpperCase()
+                          : '?',
+                    ),
                   ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
@@ -483,11 +488,12 @@ class _CreateGroupBudgetScreenState extends State<CreateGroupBudgetScreen> {
               controller: member.percentageController,
               decoration: const InputDecoration(
                 labelText: 'Phần trăm đóng góp',
-                hintText: '0',
+                hintText: '50',
                 suffixText: '%',
                 isDense: true,
               ),
               keyboardType: TextInputType.number,
+              inputFormatters: [PercentageInputFormatter()],
               onChanged: (_) => setState(() {}),
               validator: (value) {
                 final percentage = double.tryParse(value ?? '');
@@ -535,9 +541,7 @@ class _CreateGroupBudgetScreenState extends State<CreateGroupBudgetScreen> {
         backgroundColor: context.colorScheme.primary,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       child: _isLoading
           ? const SizedBox(

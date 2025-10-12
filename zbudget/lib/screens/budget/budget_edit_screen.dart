@@ -4,6 +4,7 @@ import '../../constants/colors.dart';
 import '../../constants/typography.dart';
 import '../../models/budget_models.dart';
 import '../../models/expense.dart';
+import '../../utils/currency_input_formatter.dart';
 
 class BudgetEditScreen extends StatefulWidget {
   final BudgetData budget;
@@ -400,9 +401,7 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
                             child: TextField(
                               controller: _totalAmountController,
                               keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
+                              inputFormatters: [VNDInputFormatter()],
                               style: AppTypography.h4.copyWith(
                                 color: AppColors.primary500,
                                 fontWeight: FontWeight.bold,
@@ -763,7 +762,7 @@ class _AddCategoryDialogState extends State<_AddCategoryDialog> {
           TextField(
             controller: _amountController,
             keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            inputFormatters: [VNDInputFormatter()],
             decoration: const InputDecoration(
               labelText: 'Số tiền (VND)',
               border: OutlineInputBorder(),

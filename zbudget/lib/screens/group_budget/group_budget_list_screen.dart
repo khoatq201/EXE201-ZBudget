@@ -82,7 +82,10 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
         child: FloatingActionButton.extended(
           onPressed: () => _showCreateOptions(context),
           icon: const Icon(Icons.add_rounded),
-          label: const Text('Tạo mới', style: TextStyle(fontWeight: FontWeight.w600)),
+          label: const Text(
+            'Tạo mới',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
           backgroundColor: context.colorScheme.primary,
           elevation: 4,
         ),
@@ -196,9 +199,17 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
         children: [
           _buildFilterChip('all', 'Tất cả', Icons.grid_view_rounded),
           const SizedBox(width: 8),
-          _buildFilterChip('active', 'Hoạt động', Icons.play_circle_outline_rounded),
+          _buildFilterChip(
+            'active',
+            'Hoạt động',
+            Icons.play_circle_outline_rounded,
+          ),
           const SizedBox(width: 8),
-          _buildFilterChip('settled', 'Đã thanh toán', Icons.check_circle_outline_rounded),
+          _buildFilterChip(
+            'settled',
+            'Đã thanh toán',
+            Icons.check_circle_outline_rounded,
+          ),
         ],
       ),
     );
@@ -247,9 +258,7 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
         }
 
         if (service.error != null) {
-          return SliverFillRemaining(
-            child: _buildErrorState(service.error!),
-          );
+          return SliverFillRemaining(child: _buildErrorState(service.error!));
         }
 
         List<GroupBudget> filteredBudgets;
@@ -265,18 +274,24 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
         }
 
         if (filteredBudgets.isEmpty) {
+          // For settled tab, show different empty state
+          if (selectedFilter == 'settled') {
+            return SliverFillRemaining(child: _buildSettledEmptyState());
+          }
           return SliverFillRemaining(child: _buildEmptyState());
         }
 
         return SliverPadding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 8, AppSpacing.lg, 100),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            8,
+            AppSpacing.lg,
+            100,
+          ),
           sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                return _buildModernBudgetCard(filteredBudgets[index], index);
-              },
-              childCount: filteredBudgets.length,
-            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              return _buildModernBudgetCard(filteredBudgets[index], index);
+            }, childCount: filteredBudgets.length),
           ),
         );
       },
@@ -290,10 +305,7 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
       builder: (context, double value, child) {
         return Transform.translate(
           offset: Offset(0, 20 * (1 - value)),
-          child: Opacity(
-            opacity: value,
-            child: child,
-          ),
+          child: Opacity(opacity: value, child: child),
         );
       },
       child: Container(
@@ -346,7 +358,8 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
                               Text(
                                 budget.description!,
                                 style: AppTypography.bodySmall.copyWith(
-                                  color: context.colorScheme.onSurface.withValues(alpha: 0.6),
+                                  color: context.colorScheme.onSurface
+                                      .withValues(alpha: 0.6),
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -371,7 +384,9 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
                             'Đã chi',
                             style: AppTypography.caption.copyWith(
                               fontWeight: FontWeight.w600,
-                              color: context.colorScheme.onSurface.withValues(alpha: 0.7),
+                              color: context.colorScheme.onSurface.withValues(
+                                alpha: 0.7,
+                              ),
                             ),
                           ),
                           Text(
@@ -391,8 +406,12 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
                         child: SizedBox(
                           height: 8,
                           child: LinearProgressIndicator(
-                            value: (budget.spentPercentage / 100).clamp(0.0, 1.0),
-                            backgroundColor: context.colorScheme.surfaceContainerHighest,
+                            value: (budget.spentPercentage / 100).clamp(
+                              0.0,
+                              1.0,
+                            ),
+                            backgroundColor:
+                                context.colorScheme.surfaceContainerHighest,
                             valueColor: AlwaysStoppedAnimation<Color>(
                               budget.isOverBudget
                                   ? Colors.red.shade400
@@ -405,7 +424,9 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
                       Text(
                         'Tổng: ${CurrencyFormatter.format(budget.totalBudget)} • ${budget.spentPercentage.toStringAsFixed(1)}%',
                         style: AppTypography.caption.copyWith(
-                          color: context.colorScheme.onSurface.withValues(alpha: 0.5),
+                          color: context.colorScheme.onSurface.withValues(
+                            alpha: 0.5,
+                          ),
                         ),
                       ),
                     ],
@@ -521,7 +542,9 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
             ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
             duration: const Duration(seconds: 2),
           ),
         );
@@ -572,7 +595,9 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: context.colorScheme.primaryContainer.withValues(alpha: 0.3),
+              color: context.colorScheme.primaryContainer.withValues(
+                alpha: 0.3,
+              ),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -608,7 +633,10 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
                 style: ElevatedButton.styleFrom(
                   backgroundColor: context.colorScheme.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -620,13 +648,54 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
                 icon: const Icon(Icons.qr_code_scanner_rounded),
                 label: const Text('Tham gia'),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettledEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.check_circle_outline_rounded,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Chưa có ngân sách nào đã hoàn thành',
+            style: AppTypography.h5.copyWith(
+              fontWeight: FontWeight.bold,
+              color: context.colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Các ngân sách đã thanh toán sẽ\nxuất hiện ở đây',
+            style: AppTypography.body.copyWith(
+              color: context.colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),

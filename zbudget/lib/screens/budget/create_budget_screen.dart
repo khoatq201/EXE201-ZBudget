@@ -5,6 +5,8 @@ import '../../constants/colors.dart';
 import '../../constants/typography.dart';
 import '../../services/budget_service.dart';
 import '../../models/budget.dart' as budget_model;
+import '../../utils/currency_input_formatter.dart';
+import '../../utils/currency_formatter.dart';
 
 enum BudgetPeriod { daily, weekly, monthly, yearly }
 
@@ -42,7 +44,9 @@ class CategoryBudget {
   });
 
   TextEditingController get percentageController {
-    _percentageController ??= TextEditingController(text: percentage.toStringAsFixed(0));
+    _percentageController ??= TextEditingController(
+      text: percentage.toStringAsFixed(0),
+    );
     return _percentageController!;
   }
 
@@ -92,6 +96,14 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
   bool _smartAlerts = true;
   bool _weeklyReview = false;
   bool _isLoading = false;
+
+  // Custom date selection
+  bool _useCustomDates = false;
+  DateTime? _customStartDate;
+  DateTime? _customEndDate;
+
+  // Year selection for yearly budget
+  int _selectedYear = DateTime.now().year;
 
   late AnimationController _slideController;
   late AnimationController _fadeController;
@@ -471,7 +483,9 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
   }
 
   void _updateCategoryAmounts() {
-    final totalBudget = int.tryParse(_totalBudgetController.text) ?? 0;
+    final totalBudget = CurrencyFormatter.parse(
+      _totalBudgetController.text,
+    ).round();
     if (totalBudget > 0) {
       for (var category in _categories.where((c) => c.isSelected)) {
         category.allocatedAmount = (totalBudget * category.percentage / 100)
@@ -511,33 +525,61 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
       final budgetService = Provider.of<BudgetService>(context, listen: false);
 
       // Parse total budget amount
-      final totalAmount = double.tryParse(_totalBudgetController.text.replaceAll(',', '')) ?? 0;
+      final totalAmount = CurrencyFormatter.parse(_totalBudgetController.text);
 
       if (totalAmount <= 0) {
         throw Exception('Số tiền ngân sách phải lớn hơn 0');
       }
 
+      // Validate custom dates if selected
+      if (_useCustomDates) {
+        if (_customStartDate == null || _customEndDate == null) {
+          throw Exception('Vui lòng chọn đầy đủ ngày bắt đầu và ngày kết thúc');
+        }
+        if (_customStartDate!.isAfter(_customEndDate!)) {
+          throw Exception('Ngày bắt đầu phải trước ngày kết thúc');
+        }
+        if (_customStartDate!.isBefore(
+          DateTime.now().subtract(const Duration(days: 1)),
+        )) {
+          throw Exception('Ngày bắt đầu không được là ngày trong quá khứ');
+        }
+      }
+
       // Calculate period dates
-      final now = DateTime.now();
       DateTime startDate, endDate;
 
-      switch (_selectedPeriod) {
-        case BudgetPeriod.daily:
-          startDate = DateTime(now.year, now.month, now.day);
-          endDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
-          break;
-        case BudgetPeriod.weekly:
-          startDate = now.subtract(Duration(days: now.weekday - 1));
-          endDate = startDate.add(const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
-          break;
-        case BudgetPeriod.monthly:
-          startDate = DateTime(now.year, now.month, 1);
-          endDate = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
-          break;
-        case BudgetPeriod.yearly:
-          startDate = DateTime(now.year, 1, 1);
-          endDate = DateTime(now.year, 12, 31, 23, 59, 59);
-          break;
+      if (_useCustomDates &&
+          _customStartDate != null &&
+          _customEndDate != null) {
+        // Use custom dates
+        startDate = _customStartDate!;
+        endDate = _customEndDate!.add(
+          const Duration(hours: 23, minutes: 59, seconds: 59),
+        );
+      } else {
+        // Use predefined periods
+        final now = DateTime.now();
+        switch (_selectedPeriod) {
+          case BudgetPeriod.daily:
+            startDate = DateTime(now.year, now.month, now.day);
+            endDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
+            break;
+          case BudgetPeriod.weekly:
+            startDate = now.subtract(Duration(days: now.weekday - 1));
+            endDate = startDate.add(
+              const Duration(days: 6, hours: 23, minutes: 59, seconds: 59),
+            );
+            break;
+          case BudgetPeriod.monthly:
+            startDate = DateTime(now.year, now.month, 1);
+            endDate = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+            break;
+          case BudgetPeriod.yearly:
+            startDate = DateTime(_selectedYear, 1, 1);
+            endDate = DateTime(_selectedYear, 12, 31, 23, 59, 59);
+            break;
+        }
       }
 
       // Create category allocations from selected categories
@@ -555,7 +597,9 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
       final period = budget_model.BudgetPeriod(
         startDate: startDate,
         endDate: endDate,
-        type: _mapBudgetPeriodToBudgetPeriodType(_selectedPeriod),
+        type: _useCustomDates
+            ? budget_model.BudgetPeriodType.custom
+            : _mapBudgetPeriodToBudgetPeriodType(_selectedPeriod),
       );
 
       // Call API to create budget
@@ -581,9 +625,9 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $error')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $error')));
       }
     } finally {
       if (mounted) {
@@ -595,7 +639,9 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
   }
 
   // Helper methods to map enums
-  budget_model.BudgetCategory _mapExpenseCategoryToBudgetCategory(ExpenseCategory cat) {
+  budget_model.BudgetCategory _mapExpenseCategoryToBudgetCategory(
+    ExpenseCategory cat,
+  ) {
     switch (cat) {
       case ExpenseCategory.food:
         return budget_model.BudgetCategory.food;
@@ -616,7 +662,9 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
     }
   }
 
-  budget_model.BudgetPeriodType _mapBudgetPeriodToBudgetPeriodType(BudgetPeriod period) {
+  budget_model.BudgetPeriodType _mapBudgetPeriodToBudgetPeriodType(
+    BudgetPeriod period,
+  ) {
     switch (period) {
       case BudgetPeriod.daily:
         return budget_model.BudgetPeriodType.daily;
@@ -794,10 +842,10 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
           TextField(
             controller: _totalBudgetController,
             keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            inputFormatters: [VNDInputFormatter()],
             onChanged: (value) => _updateCategoryAmounts(),
             decoration: InputDecoration(
-              hintText: 'VD: 3000000',
+              hintText: '3.000.000',
               suffixText: 'VND',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -830,6 +878,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                   onTap: () {
                     setState(() {
                       _selectedPeriod = period;
+                      _useCustomDates = false;
                     });
                   },
                   child: Container(
@@ -861,6 +910,277 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
               );
             }).toList(),
           ),
+          const SizedBox(height: 12),
+
+          // Year Selection for Yearly Budget
+          if (_selectedPeriod == BudgetPeriod.yearly) ...[
+            Text(
+              'Chọn năm',
+              style: AppTypography.body.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () async {
+                final now = DateTime.now();
+                final year = await showDialog<int>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Chọn năm'),
+                    content: SizedBox(
+                      width: 200,
+                      height: 300,
+                      child: YearPicker(
+                        firstDate: DateTime(now.year - 5),
+                        lastDate: DateTime(now.year + 5),
+                        selectedDate: DateTime(_selectedYear),
+                        onChanged: (date) {
+                          Navigator.pop(context, date.year);
+                        },
+                      ),
+                    ),
+                  ),
+                );
+                if (year != null) {
+                  setState(() {
+                    _selectedYear = year;
+                  });
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundSecondary,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.dark300),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Năm $_selectedYear',
+                      style: AppTypography.body.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Custom Date Selection
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _useCustomDates = true;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: _useCustomDates
+                          ? AppColors.primary500
+                          : AppColors.backgroundSecondary,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _useCustomDates
+                            ? AppColors.primary500
+                            : AppColors.dark300,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          size: 16,
+                          color: _useCustomDates
+                              ? Colors.white
+                              : AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Tùy chỉnh',
+                          style: AppTypography.caption.copyWith(
+                            color: _useCustomDates
+                                ? Colors.white
+                                : AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Custom Date Pickers
+          if (_useCustomDates) ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Ngày bắt đầu',
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: _customStartDate ?? DateTime.now(),
+                            firstDate: DateTime.now().subtract(
+                              const Duration(days: 365),
+                            ),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365),
+                            ),
+                          );
+                          if (date != null) {
+                            setState(() {
+                              _customStartDate = date;
+                            });
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.backgroundSecondary,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.dark300),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                size: 16,
+                                color: AppColors.textSecondary,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _customStartDate != null
+                                      ? _formatDate(_customStartDate!)
+                                      : 'Chọn ngày bắt đầu',
+                                  style: AppTypography.body.copyWith(
+                                    color: _customStartDate != null
+                                        ? AppColors.textPrimary
+                                        : AppColors.textSecondary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Ngày kết thúc',
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate:
+                                _customEndDate ??
+                                (_customStartDate ?? DateTime.now()).add(
+                                  const Duration(days: 30),
+                                ),
+                            firstDate: _customStartDate ?? DateTime.now(),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365),
+                            ),
+                          );
+                          if (date != null) {
+                            setState(() {
+                              _customEndDate = date;
+                            });
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.backgroundSecondary,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.dark300),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                size: 16,
+                                color: AppColors.textSecondary,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _customEndDate != null
+                                      ? _formatDate(_customEndDate!)
+                                      : 'Chọn ngày kết thúc',
+                                  style: AppTypography.body.copyWith(
+                                    color: _customEndDate != null
+                                        ? AppColors.textPrimary
+                                        : AppColors.textSecondary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -1030,7 +1350,10 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                   .fold<double>(0, (sum, cat) => sum + cat.percentage);
               final isValid = totalPercentage <= 100;
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: isValid ? Colors.green.shade50 : Colors.red.shade50,
                   borderRadius: BorderRadius.circular(8),
@@ -1051,7 +1374,9 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                     Text(
                       'Tổng: ${totalPercentage.toStringAsFixed(0)}%',
                       style: AppTypography.caption.copyWith(
-                        color: isValid ? Colors.green.shade900 : Colors.red.shade900,
+                        color: isValid
+                            ? Colors.green.shade900
+                            : Colors.red.shade900,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -1077,7 +1402,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
               crossAxisCount: 2,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: 0.95,
+              childAspectRatio: 1.1,
             ),
             itemCount: _categories.length,
             itemBuilder: (context, index) {
@@ -1133,30 +1458,30 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                       ),
                       if (category.isSelected) ...[
                         const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                keyboardType: TextInputType.number,
-                                decoration: InputDecoration(
-                                  labelText: '%',
-                                  isDense: true,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                controller: category.percentageController,
-                                onChanged: (value) {
-                                  final newPercentage = double.tryParse(value) ?? 0;
-                                  setState(() {
-                                    category.percentage = newPercentage;
-                                    _updateCategoryAmounts();
-                                  });
-                                },
+                        SizedBox(
+                          height: 40,
+                          child: TextField(
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: '%',
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                          ],
+                            controller: category.percentageController,
+                            onChanged: (value) {
+                              final newPercentage = double.tryParse(value) ?? 0;
+                              setState(() {
+                                category.percentage = newPercentage;
+                                _updateCategoryAmounts();
+                              });
+                            },
+                          ),
                         ),
                         if (category.allocatedAmount > 0) ...[
                           const SizedBox(height: 4),
@@ -1316,5 +1641,9 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
               ),
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 }

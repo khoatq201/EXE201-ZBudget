@@ -6,6 +6,8 @@ import '../../constants/typography.dart';
 import '../../models/budget_models.dart';
 import '../../models/expense.dart';
 import '../../services/expense_service.dart';
+import '../../utils/currency_input_formatter.dart';
+import '../../utils/currency_formatter.dart';
 
 class AddExpenseFromBudgetScreen extends StatefulWidget {
   final String budgetId;
@@ -154,7 +156,7 @@ class _AddExpenseFromBudgetScreenState extends State<AddExpenseFromBudgetScreen>
     });
 
     try {
-      final amount = int.parse(_amountController.text.replaceAll(',', ''));
+      final amount = CurrencyFormatter.parse(_amountController.text).round();
       final expenseService = context.read<ExpenseService>();
 
       await expenseService.addExpense(
@@ -355,27 +357,7 @@ class _AddExpenseFromBudgetScreenState extends State<AddExpenseFromBudgetScreen>
         TextFormField(
           controller: _amountController,
           keyboardType: TextInputType.number,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            // Định dạng số với dấu phẩy
-            TextInputFormatter.withFunction((oldValue, newValue) {
-              final text = newValue.text.replaceAll(',', '');
-              if (text.isEmpty) return newValue;
-
-              final number = int.tryParse(text);
-              if (number == null) return oldValue;
-
-              final formatted = number.toString().replaceAllMapped(
-                RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                (Match m) => '${m[1]},',
-              );
-
-              return TextEditingValue(
-                text: formatted,
-                selection: TextSelection.collapsed(offset: formatted.length),
-              );
-            }),
-          ],
+          inputFormatters: [VNDInputFormatter()],
           decoration: InputDecoration(
             hintText: '0',
             suffixText: 'VND',

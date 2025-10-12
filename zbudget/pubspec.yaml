@@ -76,8 +76,9 @@ dependencies:
 
   # Camera/Scanner
   camera: ^0.11.0+2
-  google_mlkit_text_recognition: ^0.13.1
   logger: ^2.6.1
+
+  # AI OCR APIs (http already exists above)
 
   # Sharing & QR Code
   share_plus: ^10.0.2

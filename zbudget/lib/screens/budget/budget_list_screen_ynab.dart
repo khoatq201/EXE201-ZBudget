@@ -56,10 +56,18 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB>
             return CustomScrollView(
               slivers: [
                 _buildSliverAppBar(budgetService),
-                // Only show Ready to Assign card when there are no active budgets
-                if (budgetService.activeBudgets.isEmpty)
+                // Show Ready to Assign card when no budgets exist at all, otherwise show budget summary
+                // Hide Ready to Assign card completely in inactive tab
+                if (_selectedFilter == 'inactive')
+                  // Don't show any card in inactive tab
+                  const SliverToBoxAdapter(child: SizedBox.shrink())
+                else if (budgetService.budgets.isEmpty)
                   SliverToBoxAdapter(
                     child: _buildReadyToAssignCard(budgetService),
+                  )
+                else
+                  SliverToBoxAdapter(
+                    child: _buildBudgetSummaryCard(budgetService),
                   ),
                 SliverToBoxAdapter(child: _buildFilterTabs()),
                 _buildBudgetList(budgetService),
@@ -217,6 +225,189 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB>
     );
   }
 
+  Widget _buildBudgetSummaryCard(BudgetService budgetService) {
+    final activeBudgets = budgetService.activeBudgets;
+    final totalAmount = activeBudgets.fold(
+      0.0,
+      (sum, budget) => sum + budget.totalAmount,
+    );
+    final totalAllocated = activeBudgets.fold(
+      0.0,
+      (sum, budget) => sum + budget.totalAllocated,
+    );
+    final totalFunded = activeBudgets.fold(
+      0.0,
+      (sum, budget) => sum + budget.totalFunded,
+    );
+    final totalSpent = activeBudgets.fold(
+      0.0,
+      (sum, budget) => sum + budget.status.totalSpent,
+    );
+    final totalRemaining = totalAllocated - totalSpent;
+    final fundingPercentage = totalAllocated > 0
+        ? (totalFunded / totalAllocated) * 100
+        : 0;
+    final spendingPercentage = totalAllocated > 0
+        ? (totalSpent / totalAllocated) * 100
+        : 0;
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            context.colorScheme.primary,
+            context.colorScheme.primary.withValues(alpha: 0.8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: context.colorScheme.primary.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.pie_chart,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tổng quan ngân sách',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: Colors.white70,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${activeBudgets.length} ngân sách đang hoạt động',
+                      style: AppTypography.h3.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // Funding Status
+          _buildSummaryRow(
+            'Tổng phân bổ',
+            CurrencyFormatter.formatVND(totalAmount),
+            Icons.pie_chart_outline,
+          ),
+          const SizedBox(height: 12),
+          _buildSummaryRow(
+            'Đã fund',
+            CurrencyFormatter.formatVND(totalFunded),
+            Icons.account_balance_wallet,
+          ),
+          const SizedBox(height: 12),
+          _buildSummaryRow(
+            'Đã chi',
+            CurrencyFormatter.formatVND(totalSpent),
+            Icons.payments_outlined,
+          ),
+          const SizedBox(height: 12),
+          _buildSummaryRow(
+            'Còn lại',
+            CurrencyFormatter.formatVND(totalRemaining),
+            Icons.savings_outlined,
+          ),
+          const SizedBox(height: 16),
+          // Progress indicators
+          _buildProgressIndicator(
+            'Funding',
+            fundingPercentage.toDouble(),
+            Colors.green,
+          ),
+          const SizedBox(height: 8),
+          _buildProgressIndicator(
+            'Spending',
+            spendingPercentage.toDouble(),
+            spendingPercentage > 80 ? Colors.orange : Colors.blue,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryRow(String label, String value, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.white70),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: AppTypography.bodySmall.copyWith(color: Colors.white70),
+          ),
+        ),
+        Text(
+          value,
+          style: AppTypography.bodySmall.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProgressIndicator(String label, double percentage, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: AppTypography.caption.copyWith(color: Colors.white70),
+            ),
+            Text(
+              '${percentage.toStringAsFixed(1)}%',
+              style: AppTypography.caption.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        LinearProgressIndicator(
+          value: (percentage / 100).clamp(0.0, 1.0),
+          backgroundColor: Colors.white.withValues(alpha: 0.2),
+          color: color,
+          minHeight: 4,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ],
+    );
+  }
+
   Widget _buildFilterTabs() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -282,10 +473,10 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB>
                 color: Colors.grey.shade400,
               ),
               const SizedBox(height: 16),
-              Text('Chưa có ngân sách nào', style: AppTypography.h4),
+              Text(_getEmptyStateTitle(), style: AppTypography.h4),
               const SizedBox(height: 8),
               Text(
-                'Tạo ngân sách đầu tiên của bạn!',
+                _getEmptyStateMessage(),
                 style: AppTypography.bodySmall.copyWith(
                   color: Colors.grey.shade600,
                 ),
@@ -481,7 +672,10 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB>
 
   Widget _buildSpendingStatus(Budget budget) {
     final status = budget.status;
-    final percentage = status.spentPercentage;
+    // Calculate percentage based on totalAmount instead of totalAllocated
+    final percentage = budget.totalAmount > 0
+        ? (status.totalSpent / budget.totalAmount) * 100
+        : 0;
     final isOverBudget = status.isOverBudget;
 
     Color progressColor;
@@ -535,6 +729,30 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB>
         Text(value, style: AppTypography.bodySmall),
       ],
     );
+  }
+
+  String _getEmptyStateTitle() {
+    switch (_selectedFilter) {
+      case 'active':
+        return 'Chưa có ngân sách đang hoạt động';
+      case 'inactive':
+        return 'Chưa có ngân sách không hoạt động';
+      case 'all':
+      default:
+        return 'Chưa có ngân sách nào';
+    }
+  }
+
+  String _getEmptyStateMessage() {
+    switch (_selectedFilter) {
+      case 'active':
+        return 'Tạo ngân sách đầu tiên để bắt đầu quản lý chi tiêu!';
+      case 'inactive':
+        return 'Tất cả ngân sách của bạn đang hoạt động.';
+      case 'all':
+      default:
+        return 'Tạo ngân sách đầu tiên của bạn!';
+    }
   }
 
   Widget _buildErrorState(String error) {
