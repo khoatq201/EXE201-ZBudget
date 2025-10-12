@@ -208,10 +208,13 @@ class UserProfile {
   String get initials {
     final names = name.trim().split(' ');
     if (names.length == 1) {
-      return names[0].substring(0, 1).toUpperCase();
+      return names[0].isNotEmpty ? names[0].substring(0, 1).toUpperCase() : '';
     }
-    return '${names[0].substring(0, 1)}${names[names.length - 1].substring(0, 1)}'
-        .toUpperCase();
+    final firstInitial = names[0].isNotEmpty ? names[0].substring(0, 1) : '';
+    final lastInitial = names[names.length - 1].isNotEmpty
+        ? names[names.length - 1].substring(0, 1)
+        : '';
+    return '${firstInitial}${lastInitial}'.toUpperCase();
   }
 
   int get age {

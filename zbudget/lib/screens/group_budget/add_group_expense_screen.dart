@@ -5,14 +5,16 @@ import '../../services/group_budget_service.dart';
 import '../../constants/typography.dart';
 import '../../constants/spacing.dart';
 import '../../utils/theme_extensions.dart';
+import '../../utils/currency_input_formatter.dart';
+import '../../utils/currency_formatter.dart';
+import '../../widgets/receipt_scanner_widget.dart';
+import '../../widgets/ocr_result_preview.dart';
+import '../../services/receipt_parser_service.dart';
 
 class AddGroupExpenseScreen extends StatefulWidget {
   final String budgetId;
 
-  const AddGroupExpenseScreen({
-    super.key,
-    required this.budgetId,
-  });
+  const AddGroupExpenseScreen({super.key, required this.budgetId});
 
   @override
   State<AddGroupExpenseScreen> createState() => _AddGroupExpenseScreenState();
@@ -57,7 +59,7 @@ class _AddGroupExpenseScreenState extends State<AddGroupExpenseScreen> {
       final result = await service.addExpense(
         budgetId: widget.budgetId,
         description: _descriptionController.text.trim(),
-        amount: double.parse(_amountController.text.replaceAll(',', '')),
+        amount: CurrencyFormatter.parse(_amountController.text),
         category: _category,
         splitType: _splitType,
         notes: _notesController.text.trim().isEmpty
@@ -86,16 +88,66 @@ class _AddGroupExpenseScreenState extends State<AddGroupExpenseScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Lỗi: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  /// Handle OCR receipt scanning
+  void _scanReceipt() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ReceiptScannerWidget(
+          onReceiptScanned: _handleReceiptScanned,
+          onCancel: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
+  }
+
+  /// Handle OCR result
+  void _handleReceiptScanned(ReceiptData receiptData) {
+    Navigator.of(context).pop(); // Close scanner
+
+    // Show preview with ability to edit
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => OCRResultPreview(
+          receiptData: receiptData,
+          onConfirm: _handleOCRConfirmed,
+          onCancel: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
+  }
+
+  /// Handle confirmed OCR result
+  void _handleOCRConfirmed(ReceiptData receiptData) {
+    Navigator.of(context).pop(); // Close preview
+
+    // Auto-fill form with OCR data
+    setState(() {
+      _descriptionController.text = receiptData.description;
+      _amountController.text = CurrencyFormatter.format(receiptData.amount);
+      _category = receiptData.category;
+
+      if (receiptData.storeName.isNotEmpty) {
+        _notesController.text = 'Cửa hàng: ${receiptData.storeName}';
+      }
+    });
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Đã tự động điền thông tin từ hóa đơn'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -132,9 +184,33 @@ class _AddGroupExpenseScreenState extends State<AddGroupExpenseScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Thông tin chi tiêu',
-              style: AppTypography.h6.copyWith(fontWeight: FontWeight.w600),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Thông tin chi tiêu',
+                    style: AppTypography.h6.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _scanReceipt,
+                  icon: const Icon(Icons.camera_alt, size: 18),
+                  label: const Text('Quét hóa đơn'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: context.colorScheme.secondary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.lg),
             TextFormField(
@@ -156,17 +232,18 @@ class _AddGroupExpenseScreenState extends State<AddGroupExpenseScreen> {
               controller: _amountController,
               decoration: const InputDecoration(
                 labelText: 'Số tiền *',
-                hintText: '100,000',
+                hintText: '100.000',
                 prefixIcon: Icon(Icons.attach_money),
                 suffixText: 'VND',
               ),
               keyboardType: TextInputType.number,
+              inputFormatters: [VNDInputFormatter()],
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'Vui lòng nhập số tiền';
                 }
-                final amount = double.tryParse(value.replaceAll(',', ''));
-                if (amount == null || amount <= 0) {
+                final amount = CurrencyFormatter.parse(value);
+                if (amount <= 0) {
                   return 'Số tiền không hợp lệ';
                 }
                 return null;

@@ -144,7 +144,10 @@ class CurrencyFormatter {
   /// Uses thousand separators but no currency symbol
   ///
   /// Example: 1000000 → "1.000.000"
-  static String formatWithoutSymbol(double amount, [String currencyCode = 'VND']) {
+  static String formatWithoutSymbol(
+    double amount, [
+    String currencyCode = 'VND',
+  ]) {
     switch (currencyCode.toUpperCase()) {
       case 'USD':
       case 'EUR':
@@ -253,15 +256,15 @@ class CurrencyFormatter {
   /// Example:
   /// - formatWithSign(1000000) → {'text': '+1.000.000 ₫', 'isPositive': true}
   /// - formatWithSign(-500000) → {'text': '-500.000 ₫', 'isPositive': false}
-  static Map<String, dynamic> formatWithSign(double amount, [String currencyCode = 'VND']) {
+  static Map<String, dynamic> formatWithSign(
+    double amount, [
+    String currencyCode = 'VND',
+  ]) {
     final isPositive = amount >= 0;
     final sign = isPositive ? '+' : '';
     final formatted = formatWithCurrency(amount.abs(), currencyCode);
 
-    return {
-      'text': '$sign$formatted',
-      'isPositive': isPositive,
-    };
+    return {'text': '$sign$formatted', 'isPositive': isPositive};
   }
 
   /// Formats amount as income (positive, green)
@@ -296,7 +299,11 @@ class CurrencyFormatter {
   /// Formats a ratio between two amounts
   ///
   /// Example: formatRatio(500000, 1000000) → "500.000 / 1.000.000 ₫"
-  static String formatRatio(double amount1, double amount2, [String currencyCode = 'VND']) {
+  static String formatRatio(
+    double amount1,
+    double amount2, [
+    String currencyCode = 'VND',
+  ]) {
     final formatted1 = formatWithoutSymbol(amount1, currencyCode);
     final formatted2 = formatWithoutSymbol(amount2, currencyCode);
     final symbol = _getCurrencySymbol(currencyCode);
@@ -306,7 +313,11 @@ class CurrencyFormatter {
   /// Formats amount for budget display (spent / total)
   ///
   /// Example: formatBudget(750000, 1000000) → "750.000 / 1.000.000 ₫ (75%)"
-  static String formatBudget(double spent, double total, [String currencyCode = 'VND']) {
+  static String formatBudget(
+    double spent,
+    double total, [
+    String currencyCode = 'VND',
+  ]) {
     final ratio = formatRatio(spent, total, currencyCode);
     final percentage = formatPercentage(spent, total);
     return '$ratio ($percentage)';

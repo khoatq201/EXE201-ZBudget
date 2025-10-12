@@ -8,6 +8,7 @@ import '../constants/colors.dart';
 import '../constants/typography.dart';
 import '../constants/spacing.dart';
 import '../utils/theme_extensions.dart';
+import '../widgets/unified_header_widget.dart';
 import 'settings/profile/profile_screen.dart';
 import 'settings/security/security_screen_simple.dart';
 import 'settings/theme/theme_screen_simple.dart';
@@ -23,166 +24,155 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Không hardcode backgroundColor để theme tự động áp dụng
-      appBar: AppBar(
-        // Không hardcode backgroundColor để theme tự động áp dụng
-        title: const Text('Cài đặt'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.pagePadding),
+      body: Column(
         children: [
-          _buildSectionHeader('Tài khoản'),
-          _buildSettingItem(
-            context: context,
-            icon: Icons.person,
-            title: 'Thông tin cá nhân',
-            subtitle: 'Cập nhật thông tin cá nhân',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const ProfileScreen()),
-              );
-            },
-          ),
-          Consumer<NotificationService>(
-            builder: (context, notificationService, child) {
-              final isEnabled =
-                  notificationService.notificationSettings.isGlobalEnabled;
-              final enabledCount = notificationService
-                  .notificationSettings
-                  .enabledNotificationCount;
-              final totalCount = notificationService
-                  .notificationSettings
-                  .totalNotificationCount;
+          // Unified Header
+          HeaderConfigs.getHeader('settings'),
 
-              return _buildNotificationSettingItem(
-                context: context,
-                isEnabled: isEnabled,
-                enabledCount: enabledCount,
-                totalCount: totalCount,
-                onTap: () {
-                  context.push('/notifications-settings');
-                },
-              );
-            },
-          ),
-          _buildSettingItem(
-            context: context,
-            icon: Icons.security,
-            title: 'Bảo mật',
-            subtitle: 'Mật khẩu và xác thực',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SecurityScreenSimple(),
+          // Content
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(AppSpacing.pagePadding),
+              children: [
+                _buildSectionHeader('Tài khoản'),
+                _buildSettingItem(
+                  context: context,
+                  icon: Icons.person,
+                  title: 'Thông tin cá nhân',
+                  subtitle: 'Cập nhật thông tin cá nhân',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const ProfileScreen(),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
-
-          const SizedBox(height: AppSpacing.sectionSpacing),
-
-          _buildSectionHeader('Ứng dụng'),
-          _buildSettingItem(
-            context: context,
-            icon: Icons.palette,
-            title: 'Giao diện',
-            subtitle: 'Thay đổi theme và màu sắc',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ThemeScreen()),
-              );
-            },
-          ),
-          _buildSettingItem(
-            context: context,
-            icon: Icons.language,
-            title: 'Ngôn ngữ',
-            subtitle: 'Tiếng Việt',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const LanguageScreen()),
-              );
-            },
-          ),
-          _buildPremiumSettingItem(
-            context: context,
-            icon: Icons.star,
-            title: 'Premium',
-            subtitle: 'Nâng cấp lên Premium',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const PremiumScreen()),
-              );
-            },
-          ),
-
-          const SizedBox(height: AppSpacing.sectionSpacing),
-
-          _buildSectionHeader('Hỗ trợ'),
-          _buildSettingItem(
-            context: context,
-            icon: Icons.help,
-            title: 'Trợ giúp',
-            subtitle: 'Hướng dẫn sử dụng',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const HelpScreen()),
-              );
-            },
-          ),
-          _buildSettingItem(
-            context: context,
-            icon: Icons.feedback,
-            title: 'Gửi phản hồi',
-            subtitle: 'Đóng góp ý kiến',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const FeedbackScreen()),
-              );
-            },
-          ),
-          _buildSettingItem(
-            context: context,
-            icon: Icons.info,
-            title: 'Về ứng dụng',
-            subtitle: 'Phiên bản 1.0.0',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AboutScreen()),
-              );
-            },
-          ),
-
-          const SizedBox(height: AppSpacing.sectionSpacing),
-
-          // Logout Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _showLogoutDialog(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.error,
-                foregroundColor: AppColors.textInverse,
-                padding: const EdgeInsets.symmetric(
-                  vertical: AppSpacing.buttonPadding,
+                Consumer<NotificationService>(
+                  builder: (context, notificationService, child) {
+                    final isEnabled = notificationService
+                        .notificationSettings
+                        .isGlobalEnabled;
+                    final enabledCount = notificationService
+                        .notificationSettings
+                        .enabledTypes
+                        .length;
+                    return _buildSettingItem(
+                      context: context,
+                      icon: Icons.notifications,
+                      title: 'Thông báo',
+                      subtitle: isEnabled
+                          ? '$enabledCount loại thông báo đang bật'
+                          : 'Tất cả thông báo đã tắt',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const NotificationsScreen(),
+                          ),
+                        );
+                      },
+                    );
+                  },
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                _buildSectionHeader('Bảo mật'),
+                _buildSettingItem(
+                  context: context,
+                  icon: Icons.security,
+                  title: 'Bảo mật',
+                  subtitle: 'Cài đặt bảo mật và xác thực',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const SecurityScreenSimple(),
+                      ),
+                    );
+                  },
                 ),
-              ),
-              child: Text(
-                'Đăng xuất',
-                style: AppTypography.button.copyWith(
-                  color: AppColors.textInverse,
+                _buildSectionHeader('Giao diện'),
+                _buildSettingItem(
+                  context: context,
+                  icon: Icons.palette,
+                  title: 'Chủ đề',
+                  subtitle: 'Tùy chỉnh giao diện ứng dụng',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const ThemeScreenSimple(),
+                      ),
+                    );
+                  },
                 ),
-              ),
+                _buildSettingItem(
+                  context: context,
+                  icon: Icons.language,
+                  title: 'Ngôn ngữ',
+                  subtitle: 'Thay đổi ngôn ngữ ứng dụng',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const LanguageScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildSectionHeader('Hỗ trợ'),
+                _buildSettingItem(
+                  context: context,
+                  icon: Icons.help,
+                  title: 'Trợ giúp',
+                  subtitle: 'Câu hỏi thường gặp và hướng dẫn',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const HelpScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildSettingItem(
+                  context: context,
+                  icon: Icons.feedback,
+                  title: 'Phản hồi',
+                  subtitle: 'Gửi ý kiến và báo lỗi',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const FeedbackScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildSettingItem(
+                  context: context,
+                  icon: Icons.info,
+                  title: 'Giới thiệu',
+                  subtitle: 'Thông tin về ứng dụng',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const AboutScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildSectionHeader('Premium'),
+                _buildSettingItem(
+                  context: context,
+                  icon: Icons.star,
+                  title: 'Premium',
+                  subtitle: 'Nâng cấp lên phiên bản cao cấp',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const PremiumScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: AppSpacing.sectionSpacing),
+                _buildLogoutButton(context),
+                const SizedBox(height: AppSpacing.xl2),
+              ],
             ),
           ),
         ],
@@ -213,217 +203,33 @@ class SettingsScreen extends StatelessWidget {
     required String subtitle,
     required VoidCallback onTap,
   }) {
-    return ListTile(
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: context.settingsItemIconBackground,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Icon(icon, size: 20, color: context.settingsItemIconColor),
-      ),
-      title: Text(
-        title,
-        style: AppTypography.body.copyWith(
-          color: context.settingsItemTitleColor,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: AppTypography.caption.copyWith(
-          color: context.settingsItemSubtitleColor,
-        ),
-      ),
-      trailing: Icon(
-        Icons.chevron_right,
-        color: context.settingsItemTrailingColor,
-      ),
-      onTap: onTap,
-    );
-  }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            'Đăng xuất',
-            style: AppTypography.h5.copyWith(color: AppColors.textPrimary),
-          ),
-          content: Text(
-            'Bạn có chắc chắn muốn đăng xuất?',
-            style: AppTypography.body.copyWith(color: AppColors.textSecondary),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Hủy',
-                style: AppTypography.body.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _logout(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.error,
-                foregroundColor: AppColors.textInverse,
-              ),
-              child: Text(
-                'Đăng xuất',
-                style: AppTypography.button.copyWith(
-                  color: AppColors.textInverse,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _logout(BuildContext context) async {
-    debugPrint('🎯 Settings._logout() called');
-
-    try {
-      final appProvider = context.read<AppProvider>();
-      debugPrint('🔧 Calling AppProvider.logout()...');
-
-      await appProvider.logout(context);
-      debugPrint('🔧 AppProvider.logout() completed');
-
-      if (context.mounted) {
-        debugPrint('🏠 IMMEDIATE navigation to login...');
-
-        // Direct navigation to login - no delays, no root navigation
-        context.go('/login');
-        debugPrint('🏠 Navigation to login completed');
-
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Đăng xuất thành công!'),
-            backgroundColor: AppColors.success,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (error) {
-      debugPrint('❌ Logout error in Settings: $error');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Đăng xuất thất bại: $error'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
-  }
-
-  Widget _buildNotificationSettingItem({
-    required BuildContext context,
-    required bool isEnabled,
-    required int enabledCount,
-    required int totalCount,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: context.settingsItemIconBackground,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Icon(
-          Icons.notifications,
-          size: 20,
-          color: context.settingsItemIconColor,
-        ),
-      ),
-      title: Text(
-        'Thông báo',
-        style: AppTypography.body.copyWith(
-          color: context.settingsItemTitleColor,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      subtitle: Text(
-        isEnabled
-            ? '$enabledCount/$totalCount loại đang bật'
-            : 'Đã tắt thông báo',
-        style: AppTypography.caption.copyWith(
-          color: context.settingsItemSubtitleColor,
-        ),
-      ),
-      trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: isEnabled
-              ? Colors.green.withValues(alpha: 0.1)
-              : Colors.grey.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          isEnabled ? 'BẬT' : 'TẮT',
-          style: AppTypography.caption.copyWith(
-            color: isEnabled ? Colors.green : Colors.grey,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      onTap: onTap,
-    );
-  }
-
-  Widget _buildPremiumSettingItem({
-    required BuildContext context,
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
+      margin: const EdgeInsets.only(bottom: AppSpacing.itemSpacing),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.amber.withOpacity(0.1),
-            Colors.orange.withOpacity(0.1),
-          ],
-        ),
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: ListTile(
         leading: Container(
-          width: 40,
-          height: 40,
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Colors.amber, Colors.orange],
-            ),
-            borderRadius: BorderRadius.circular(20),
+            color: AppColors.primary500.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, size: 20, color: Colors.white),
+          child: Icon(icon, color: AppColors.primary500, size: 20),
         ),
         title: Text(
           title,
           style: AppTypography.body.copyWith(
-            color: context.settingsItemTitleColor,
             fontWeight: FontWeight.w600,
+            color: context.primaryTextColor,
           ),
         ),
         subtitle: Text(
@@ -432,21 +238,73 @@ class SettingsScreen extends StatelessWidget {
             color: context.settingsItemSubtitleColor,
           ),
         ),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [Colors.amber, Colors.orange]),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            'PREMIUM',
-            style: AppTypography.caption.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+        trailing: Icon(
+          Icons.arrow_forward_ios,
+          size: 16,
+          color: context.settingsItemSubtitleColor,
         ),
         onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(vertical: AppSpacing.itemSpacing),
+      child: ElevatedButton(
+        onPressed: () {
+          _showLogoutDialog(context);
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.error,
+          foregroundColor: AppColors.textInverse,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.error.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            'Đăng xuất',
+            style: AppTypography.button.copyWith(color: AppColors.textInverse),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Đăng xuất'),
+        content: const Text('Bạn có chắc chắn muốn đăng xuất không?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Thực hiện đăng xuất
+              final appProvider = Provider.of<AppProvider>(
+                context,
+                listen: false,
+              );
+              appProvider.logout();
+              context.go('/login');
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Đăng xuất'),
+          ),
+        ],
       ),
     );
   }

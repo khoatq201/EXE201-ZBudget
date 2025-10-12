@@ -52,14 +52,10 @@ class _SavingsListScreenState extends State<SavingsListScreen>
             _buildHeader(),
 
             // Stats Overview
-            SliverToBoxAdapter(
-              child: _buildStatsOverview(),
-            ),
+            SliverToBoxAdapter(child: _buildStatsOverview()),
 
             // Filter Tabs
-            SliverToBoxAdapter(
-              child: _buildFilterTabs(),
-            ),
+            SliverToBoxAdapter(child: _buildFilterTabs()),
 
             // Savings Goals List
             _buildSavingsGoalsList(),
@@ -88,10 +84,7 @@ class _SavingsListScreenState extends State<SavingsListScreen>
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                context.headerGradientStart,
-                context.headerGradientEnd,
-              ],
+              colors: [context.headerGradientStart, context.headerGradientEnd],
             ),
           ),
           child: Row(
@@ -317,9 +310,7 @@ class _SavingsListScreenState extends State<SavingsListScreen>
             label,
             textAlign: TextAlign.center,
             style: AppTypography.bodySmall.copyWith(
-              color: isSelected
-                  ? Colors.white
-                  : context.settingsItemTitleColor,
+              color: isSelected ? Colors.white : context.settingsItemTitleColor,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
@@ -427,13 +418,10 @@ class _SavingsListScreenState extends State<SavingsListScreen>
         return SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
           sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final goal = goals[index];
-                return _buildSavingsGoalCard(goal);
-              },
-              childCount: goals.length,
-            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final goal = goals[index];
+              return _buildSavingsGoalCard(goal);
+            }, childCount: goals.length),
           ),
         );
       },

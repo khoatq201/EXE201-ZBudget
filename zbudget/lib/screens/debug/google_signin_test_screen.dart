@@ -66,15 +66,21 @@ class _GoogleSignInTestScreenState extends State<GoogleSignInTestScreen> {
       _log('🔑 Getting authentication details...');
       final GoogleSignInAuthentication auth = await account.authentication;
 
-      _log('🎫 Access Token: ${auth.accessToken?.substring(0, 20)}...');
-      _log('🎫 ID Token: ${auth.idToken?.substring(0, 20)}...');
+      _log(
+        '🎫 Access Token: ${auth.accessToken != null && auth.accessToken!.length > 20 ? auth.accessToken!.substring(0, 20) : auth.accessToken}...',
+      );
+      _log(
+        '🎫 ID Token: ${auth.idToken != null && auth.idToken!.length > 20 ? auth.idToken!.substring(0, 20) : auth.idToken}...',
+      );
 
       // Test backend API call
       _log('🌐 Testing backend API call...');
       await _testBackendCall(account, auth);
     } catch (e, stackTrace) {
       _log('❌ Error during Google Sign-In: $e');
-      _log('📋 Stack trace: ${stackTrace.toString().substring(0, 200)}...');
+      _log(
+        '📋 Stack trace: ${stackTrace.toString().length > 200 ? stackTrace.toString().substring(0, 200) : stackTrace.toString()}...',
+      );
     } finally {
       setState(() {
         _isLoading = false;
@@ -98,7 +104,10 @@ class _GoogleSignInTestScreenState extends State<GoogleSignInTestScreen> {
       };
 
       _log('📤 Sending request to backend...');
-      _log('📋 Request body: ${jsonEncode(requestBody).substring(0, 100)}...');
+      final requestBodyStr = jsonEncode(requestBody);
+      _log(
+        '📋 Request body: ${requestBodyStr.length > 100 ? requestBodyStr.substring(0, 100) : requestBodyStr}...',
+      );
 
       final response = await http
           .post(

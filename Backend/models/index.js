@@ -11,6 +11,7 @@ import GroupBudget from "./GroupBudget.js";
 import Notification from "./Notification.js";
 import Session from "./Session.js";
 import SavingsGoal from "./SavingsGoal.js";
+import env from "../config/env.js";
 // Database connection configuration
 const connectDB = async () => {
   try {
