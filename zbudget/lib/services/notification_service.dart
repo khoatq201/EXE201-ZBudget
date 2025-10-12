@@ -209,10 +209,35 @@ class NotificationService extends ChangeNotifier {
 
   // Global notification toggle
   Future<void> toggleGlobalNotifications(bool enabled) async {
-    final updatedSettings = _notificationSettings.copyWith(
-      isGlobalEnabled: enabled,
-    );
-    await updateNotificationSettings(updatedSettings);
+    if (enabled) {
+      // When enabling global notifications, enable all individual notifications
+      final updatedNotificationSettings = _notificationSettings
+          .notificationSettings
+          .map((setting) {
+            return setting.copyWith(isEnabled: true);
+          })
+          .toList();
+
+      final updatedSettings = _notificationSettings.copyWith(
+        isGlobalEnabled: enabled,
+        notificationSettings: updatedNotificationSettings,
+      );
+      await updateNotificationSettings(updatedSettings);
+    } else {
+      // When disabling global notifications, disable all individual notifications
+      final updatedNotificationSettings = _notificationSettings
+          .notificationSettings
+          .map((setting) {
+            return setting.copyWith(isEnabled: false);
+          })
+          .toList();
+
+      final updatedSettings = _notificationSettings.copyWith(
+        isGlobalEnabled: enabled,
+        notificationSettings: updatedNotificationSettings,
+      );
+      await updateNotificationSettings(updatedSettings);
+    }
   }
 
   // Update individual notification setting
@@ -236,6 +261,14 @@ class NotificationService extends ChangeNotifier {
     if (currentSetting != null) {
       final updatedSetting = currentSetting.copyWith(isEnabled: enabled);
       await updateNotificationSetting(type, updatedSetting);
+
+      // If enabling an individual notification and global is disabled, enable global
+      if (enabled && !_notificationSettings.isGlobalEnabled) {
+        final updatedSettings = _notificationSettings.copyWith(
+          isGlobalEnabled: true,
+        );
+        await updateNotificationSettings(updatedSettings);
+      }
     }
   }
 
