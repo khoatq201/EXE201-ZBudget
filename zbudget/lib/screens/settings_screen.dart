@@ -12,11 +12,10 @@ import 'settings/profile/profile_screen.dart';
 import 'settings/security/security_screen_simple.dart';
 import 'settings/theme/theme_screen_simple.dart';
 import 'settings/language/language_screen.dart';
-import 'settings/currency/currency_screen.dart';
 import 'settings/help/help_screen.dart';
 import 'settings/feedback/feedback_screen.dart';
 import 'settings/about/about_screen.dart';
-import 'debug/device_info_test_screen.dart';
+import 'settings/premium/premium_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -108,15 +107,15 @@ class SettingsScreen extends StatelessWidget {
               );
             },
           ),
-          _buildSettingItem(
+          _buildPremiumSettingItem(
             context: context,
-            icon: Icons.currency_exchange,
-            title: 'Tiền tệ',
-            subtitle: 'VND',
+            icon: Icons.star,
+            title: 'Premium',
+            subtitle: 'Nâng cấp lên Premium',
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const CurrencyScreen()),
+                MaterialPageRoute(builder: (context) => const PremiumScreen()),
               );
             },
           ),
@@ -157,25 +156,6 @@ class SettingsScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const AboutScreen()),
-              );
-            },
-          ),
-
-          const SizedBox(height: AppSpacing.sectionSpacing),
-
-          // Debug Section (Development only)
-          _buildSectionHeader('Debug & Testing'),
-          _buildSettingItem(
-            context: context,
-            icon: Icons.bug_report,
-            title: 'Device Info Test',
-            subtitle: 'Test device tracking functionality',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const DeviceInfoTestScreen(),
-                ),
               );
             },
           ),
@@ -401,6 +381,73 @@ class SettingsScreen extends StatelessWidget {
         ),
       ),
       onTap: onTap,
+    );
+  }
+
+  Widget _buildPremiumSettingItem({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.amber.withOpacity(0.1),
+            Colors.orange.withOpacity(0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+      ),
+      child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Colors.amber, Colors.orange],
+            ),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Icon(icon, size: 20, color: Colors.white),
+        ),
+        title: Text(
+          title,
+          style: AppTypography.body.copyWith(
+            color: context.settingsItemTitleColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: AppTypography.caption.copyWith(
+            color: context.settingsItemSubtitleColor,
+          ),
+        ),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [Colors.amber, Colors.orange]),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            'PREMIUM',
+            style: AppTypography.caption.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        onTap: onTap,
+      ),
     );
   }
 }

@@ -15,6 +15,7 @@ import '../../../constants/spacing.dart';
 import '../../../utils/auth_utils.dart';
 import '../../../utils/theme_extensions.dart';
 import 'edit_profile_screen.dart';
+import '../security/security_screen_simple.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -98,10 +99,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                   child: Column(
                     children: [
                       const SizedBox(height: AppSpacing.lg),
-                      _buildStatsSection(context, profile),
-                      const SizedBox(height: AppSpacing.xl),
-                      _buildAchievementsSection(context, profile),
-                      const SizedBox(height: AppSpacing.xl),
+                      // _buildStatsSection(context, profile),
+                      // const SizedBox(height: AppSpacing.xl),
+                      // _buildAchievementsSection(context, profile),
+                      // const SizedBox(height: AppSpacing.xl),
                       _buildPersonalInfoSection(context, profile),
                       const SizedBox(height: AppSpacing.xl),
                       _buildActionButtons(context),
@@ -1206,7 +1207,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               subtitle: const Text('Quản lý mật khẩu và bảo mật'),
               onTap: () {
                 Navigator.pop(context);
-                // Navigate to security settings
+                _navigateToSecuritySettings(context);
               },
             ),
             const SizedBox(height: AppSpacing.md),
@@ -1270,6 +1271,13 @@ class _ProfileScreenState extends State<ProfileScreen>
       const SnackBar(
         content: Text('Tính năng sao lưu dữ liệu đang được phát triển'),
       ),
+    );
+  }
+
+  void _navigateToSecuritySettings(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SecurityScreenSimple()),
     );
   }
 }
