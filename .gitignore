@@ -235,3 +235,10 @@ cache/
 # Any custom scripts or tools output
 scripts/output/
 tools/output/
+
+# ===============================
+# Documentation files
+# ===============================
+
+# Markdown documentation files
+*.md
