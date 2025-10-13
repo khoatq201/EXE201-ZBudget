@@ -8,7 +8,9 @@ import '../../models/expense.dart';
 import '../../models/budget.dart';
 import '../../services/expense_service.dart';
 import '../../services/budget_service.dart';
+import '../../services/dashboard_service.dart';
 import '../../utils/formatters.dart';
+import '../../utils/currency_formatter.dart';
 
 class CategoryOption {
   final String id;
@@ -780,62 +782,76 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                   ),
                 )
               : _activeBudgets.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Icon(Icons.info_outline, color: AppColors.textTertiary, size: 20),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Chưa có ngân sách nào. Chi tiêu sẽ không được link với ngân sách.',
-                              style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
-                            ),
-                          ),
-                        ],
+              ? Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: AppColors.textTertiary,
+                        size: 20,
                       ),
-                    )
-                  : DropdownButton<Budget>(
-                      value: _selectedBudget,
-                      isExpanded: true,
-                      hint: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      const SizedBox(width: 12),
+                      Expanded(
                         child: Text(
-                          'Chọn ngân sách (không bắt buộc)',
-                          style: AppTypography.body.copyWith(color: AppColors.textTertiary),
+                          'Chưa có ngân sách nào. Chi tiêu sẽ không được link với ngân sách.',
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
-                      underline: const SizedBox(),
-                      items: _activeBudgets.map((budget) {
-                        return DropdownMenuItem<Budget>(
-                          value: budget,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  budget.name,
-                                  style: AppTypography.body.copyWith(
-                                    color: AppColors.textPrimary,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                if (_selectedCategory != null) ...[
-                                  const SizedBox(height: 4),
-                                  _buildCategoryAvailableInfo(budget),
-                                ],
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (Budget? budget) {
-                        setState(() {
-                          _selectedBudget = budget;
-                        });
-                      },
+                    ],
+                  ),
+                )
+              : DropdownButton<Budget>(
+                  value: _selectedBudget,
+                  isExpanded: true,
+                  hint: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
                     ),
+                    child: Text(
+                      'Chọn ngân sách (không bắt buộc)',
+                      style: AppTypography.body.copyWith(
+                        color: AppColors.textTertiary,
+                      ),
+                    ),
+                  ),
+                  underline: const SizedBox(),
+                  items: _activeBudgets.map((budget) {
+                    return DropdownMenuItem<Budget>(
+                      value: budget,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              budget.name,
+                              style: AppTypography.body.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            if (_selectedCategory != null) ...[
+                              const SizedBox(height: 4),
+                              _buildCategoryAvailableInfo(budget),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (Budget? budget) {
+                    setState(() {
+                      _selectedBudget = budget;
+                    });
+                  },
+                ),
         ),
         if (_selectedBudget != null && _selectedCategory != null) ...[
           const SizedBox(height: 12),
@@ -882,7 +898,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
           Expanded(
             child: Text(
               'Chi tiêu sẽ trừ từ "${_selectedBudget!.name}". Có sẵn: ${CurrencyFormatter.formatVND(allocation.available)}',
-              style: AppTypography.caption.copyWith(color: AppColors.primary700),
+              style: AppTypography.caption.copyWith(
+                color: AppColors.primary700,
+              ),
             ),
           ),
         ],
@@ -1002,7 +1020,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
   void _handleReceiptScanned(Map<String, dynamic> receiptData) {
     // Auto-fill form with scanned data
     setState(() {
-      _amountController.text = receiptData['amount'].toString();
+      // Format amount with currency formatter
+      _amountController.text = CurrencyFormatter.formatVND(
+        receiptData['amount'],
+      );
 
       // Map category from receipt to our enum
       switch (receiptData['category']) {
@@ -1018,13 +1039,36 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
         case 'shopping':
           _selectedCategory = ExpenseCategory.shopping;
           break;
+        case 'entertainment':
+          _selectedCategory = ExpenseCategory.entertainment;
+          break;
+        case 'utilities':
+          _selectedCategory = ExpenseCategory.utilities;
+          break;
+        case 'education':
+          _selectedCategory = ExpenseCategory.education;
+          break;
         default:
           _selectedCategory = ExpenseCategory.other;
       }
 
-      // Auto-fill note with merchant and items
-      final items = (receiptData['items'] as List).join(', ');
-      _noteController.text = '${receiptData['merchant']} - $items';
+      // Auto-fill note with merchant and description (clean Vietnamese characters)
+      String noteText = '';
+      if (receiptData['merchant'] != null &&
+          receiptData['merchant'].toString().isNotEmpty) {
+        noteText += 'Store: ${receiptData['merchant']}';
+      }
+      if (receiptData['description'] != null &&
+          receiptData['description'].toString().isNotEmpty) {
+        if (noteText.isNotEmpty) noteText += '\n';
+        noteText += 'Description: ${receiptData['description']}';
+      }
+      if (receiptData['items'] != null &&
+          (receiptData['items'] as List).isNotEmpty) {
+        if (noteText.isNotEmpty) noteText += '\n';
+        noteText += 'Items: ${(receiptData['items'] as List).join(', ')}';
+      }
+      _noteController.text = noteText;
 
       // Set default payment method to cash for scanned receipts
       _selectedPaymentMethod = paymentMethods.firstWhere(
@@ -1036,15 +1080,149 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
     // Close the dialog after data is processed
     Navigator.of(context).pop();
 
-    // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('✅ Đã điền thông tin từ hóa đơn!'),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    // AUTO-SUBMIT the expense after OCR (with delay to avoid navigation conflicts)
+    Future.delayed(const Duration(milliseconds: 100), () {
+      _submitExpenseFromOCR(receiptData);
+    });
+  }
+
+  String _getCategoryName(ExpenseCategory category) {
+    switch (category) {
+      case ExpenseCategory.food:
+        return 'Food & Dining';
+      case ExpenseCategory.transport:
+        return 'Transportation';
+      case ExpenseCategory.shopping:
+        return 'Shopping';
+      case ExpenseCategory.entertainment:
+        return 'Entertainment';
+      case ExpenseCategory.healthcare:
+        return 'Healthcare';
+      case ExpenseCategory.education:
+        return 'Education';
+      case ExpenseCategory.utilities:
+        return 'Utilities';
+      case ExpenseCategory.other:
+        return 'Other';
+    }
+  }
+
+  String _getCategoryString(ExpenseCategory category) {
+    switch (category) {
+      case ExpenseCategory.food:
+        return 'food';
+      case ExpenseCategory.transport:
+        return 'transport';
+      case ExpenseCategory.shopping:
+        return 'shopping';
+      case ExpenseCategory.entertainment:
+        return 'entertainment';
+      case ExpenseCategory.healthcare:
+        return 'healthcare';
+      case ExpenseCategory.education:
+        return 'education';
+      case ExpenseCategory.utilities:
+        return 'utilities';
+      case ExpenseCategory.other:
+        return 'other';
+    }
+  }
+
+  String _cleanTextForBackend(String text) {
+    // Remove Vietnamese characters and special characters
+    return text
+        .replaceAll(RegExp(r'[àáạảãâầấậẩẫăằắặẳẵ]'), 'a')
+        .replaceAll(RegExp(r'[èéẹẻẽêềếệểễ]'), 'e')
+        .replaceAll(RegExp(r'[ìíịỉĩ]'), 'i')
+        .replaceAll(RegExp(r'[òóọỏõôồốộổỗơờớợởỡ]'), 'o')
+        .replaceAll(RegExp(r'[ùúụủũưừứựửữ]'), 'u')
+        .replaceAll(RegExp(r'[ỳýỵỷỹ]'), 'y')
+        .replaceAll(RegExp(r'[đ]'), 'd')
+        .replaceAll(RegExp(r'[ÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴ]'), 'A')
+        .replaceAll(RegExp(r'[ÈÉẸẺẼÊỀẾỆỂỄ]'), 'E')
+        .replaceAll(RegExp(r'[ÌÍỊỈĨ]'), 'I')
+        .replaceAll(RegExp(r'[ÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠ]'), 'O')
+        .replaceAll(RegExp(r'[ÙÚỤỦŨƯỪỨỰỬỮ]'), 'U')
+        .replaceAll(RegExp(r'[ỲÝỴỶỸ]'), 'Y')
+        .replaceAll(RegExp(r'[Đ]'), 'D')
+        .replaceAll(
+          RegExp(r'[^\w\s.,!?-]'),
+          '',
+        ) // Remove special characters except basic punctuation
+        .trim();
+  }
+
+  Future<void> _submitExpenseFromOCR(Map<String, dynamic> receiptData) async {
+    try {
+      final expenseService = Provider.of<ExpenseService>(
+        context,
+        listen: false,
+      );
+
+      // Get category name for title
+      final categoryName = _getCategoryName(_selectedCategory!);
+      final categoryStr = _getCategoryString(_selectedCategory!);
+      final amount = CurrencyFormatter.parse(_amountController.text).toDouble();
+
+      // Clean description for backend
+      final cleanDescription = _noteController.text.isNotEmpty
+          ? _cleanTextForBackend(_noteController.text)
+          : null;
+
+      // Create expense automatically
+      await expenseService.createExpense(
+        title: categoryName,
+        description: cleanDescription,
+        amount: amount,
+        category: categoryStr,
+        paymentMethod: _selectedPaymentMethod?.id ?? 'cash',
+        date: DateTime.now(),
+      );
+
+      // Show success message and navigate back
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '✅ Đã thêm chi tiêu từ hóa đơn! (${receiptData['confidence']}% chính xác)',
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+
+        // Refresh dashboard data after successful expense creation
+        try {
+          final dashboardService = Provider.of<DashboardService>(
+            context,
+            listen: false,
+          );
+          await dashboardService.refresh();
+        } catch (e) {
+          // Silent refresh - don't show error to user
+        }
+
+        // Navigate back to dashboard after a short delay
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            Navigator.of(context).pop(true); // Return true to indicate success
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Lỗi thêm chi tiêu: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _handleSaveExpense() async {
@@ -1057,7 +1235,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
     });
 
     try {
-      final expenseService = Provider.of<ExpenseService>(context, listen: false);
+      final expenseService = Provider.of<ExpenseService>(
+        context,
+        listen: false,
+      );
 
       // Get category name for title
       final categoryName = categoryOptions
@@ -1085,7 +1266,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
       debugPrint('🌐 [ADD_EXPENSE] Calling API...');
       await expenseService.createExpense(
         title: categoryName,
-        description: _noteController.text.isNotEmpty ? _noteController.text : null,
+        description: _noteController.text.isNotEmpty
+            ? _noteController.text
+            : null,
         amount: amount,
         category: categoryStr,
         paymentMethod: paymentMethodStr,

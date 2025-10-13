@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../services/receipt_parser_service.dart';
+import '../services/backend_ocr_service.dart';
 import '../constants/typography.dart';
 import '../constants/spacing.dart';
 import '../constants/colors.dart';
@@ -396,6 +396,8 @@ class _OCRResultPreviewState extends State<OCRResultPreview> {
       date: widget.receiptData.date,
       storeName: widget.receiptData.storeName,
       items: widget.receiptData.items,
+      rawText: widget.receiptData.rawText,
+      confidence: widget.receiptData.confidence,
     );
 
     widget.onConfirm(updatedReceiptData);

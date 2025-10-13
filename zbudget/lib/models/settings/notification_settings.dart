@@ -218,6 +218,13 @@ class NotificationSettings {
     this.enableSmartNotifications = true,
   });
 
+  List<NotificationType> get enabledTypes {
+    return notificationSettings
+        .where((setting) => setting.isEnabled)
+        .map((setting) => setting.type)
+        .toList();
+  }
+
   NotificationSettings copyWith({
     bool? isGlobalEnabled,
     List<NotificationSetting>? notificationSettings,

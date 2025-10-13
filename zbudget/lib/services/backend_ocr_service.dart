@@ -1,0 +1,207 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+class BackendOCRService {
+  static const String _baseUrl = 'http://10.0.2.2:3000/api'; // Android emulator
+
+  static Future<String?> _getAuthToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('access_token');
+  }
+
+  static Future<BackendOCRResult> processReceipt(String imagePath) async {
+    try {
+      final token = await _getAuthToken();
+
+      if (token == null) {
+        return BackendOCRResult(
+          success: false,
+          error: 'Không tìm thấy token xác thực',
+        );
+      }
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_baseUrl/ocr/process-receipt'),
+      );
+
+      // Add headers
+      request.headers['Authorization'] = 'Bearer $token';
+      request.headers['Content-Type'] = 'multipart/form-data';
+
+      // Add image file
+      final imageFile = File(imagePath);
+      if (!await imageFile.exists()) {
+        return BackendOCRResult(
+          success: false,
+          error: 'File ảnh không tồn tại',
+        );
+      }
+
+      request.files.add(await http.MultipartFile.fromPath('image', imagePath));
+
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(responseBody);
+        if (responseData['success'] == true) {
+          final data = responseData['data'];
+          return BackendOCRResult(
+            success: true,
+            data: ReceiptData(
+              amount: data['amount']?.toDouble() ?? 0.0,
+              description: data['description'] ?? '',
+              storeName: data['storeName'] ?? '',
+              category: data['category'] ?? 'other',
+              date:
+                  DateTime.tryParse(data['date']?.toString() ?? '') ??
+                  DateTime.now(),
+              rawText: data['rawText'] ?? '',
+              confidence: responseData['confidence']?.toDouble() ?? 0.0,
+              items: List<String>.from(data['items'] ?? []),
+            ),
+            confidence: responseData['confidence']?.toDouble() ?? 0.0,
+            provider: responseData['provider'] ?? 'Backend OCR',
+          );
+        } else {
+          return BackendOCRResult(
+            success: false,
+            error: responseData['message'] ?? 'Lỗi không xác định từ backend',
+          );
+        }
+      } else {
+        return BackendOCRResult(
+          success: false,
+          error: 'Lỗi server: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      return BackendOCRResult(
+        success: false,
+        error: 'Lỗi kết nối: ${e.toString()}',
+      );
+    }
+  }
+
+  static Future<BackendOCRResult> processReceiptFromUrl(String imageUrl) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        return BackendOCRResult(
+          success: false,
+          error: 'Không tìm thấy token xác thực',
+        );
+      }
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/ocr/process-receipt-url'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({'imageUrl': imageUrl}),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          final data = responseData['data'];
+          return BackendOCRResult(
+            success: true,
+            data: ReceiptData(
+              amount: data['amount']?.toDouble() ?? 0.0,
+              description: data['description'] ?? '',
+              storeName: data['storeName'] ?? '',
+              category: data['category'] ?? 'other',
+              date:
+                  DateTime.tryParse(data['date']?.toString() ?? '') ??
+                  DateTime.now(),
+              rawText: data['rawText'] ?? '',
+              confidence: responseData['confidence']?.toDouble() ?? 0.0,
+              items: List<String>.from(data['items'] ?? []),
+            ),
+            confidence: responseData['confidence']?.toDouble() ?? 0.0,
+            provider: responseData['provider'] ?? 'Backend OCR',
+          );
+        } else {
+          return BackendOCRResult(
+            success: false,
+            error: responseData['message'] ?? 'Lỗi không xác định từ backend',
+          );
+        }
+      } else {
+        return BackendOCRResult(
+          success: false,
+          error: 'Lỗi server: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      return BackendOCRResult(
+        success: false,
+        error: 'Lỗi kết nối: ${e.toString()}',
+      );
+    }
+  }
+
+  static Future<bool> checkServiceStatus() async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) return false;
+
+      final response = await http.get(
+        Uri.parse('$_baseUrl/ocr/status'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+}
+
+class BackendOCRResult {
+  final bool success;
+  final String? error;
+  final ReceiptData? data;
+  final double confidence;
+  final String provider;
+
+  BackendOCRResult({
+    required this.success,
+    this.error,
+    this.data,
+    this.confidence = 0.0,
+    this.provider = 'Backend OCR',
+  });
+}
+
+/// Receipt data structure
+class ReceiptData {
+  final double amount;
+  final String description;
+  final String storeName;
+  final String category;
+  final DateTime date;
+  final String rawText;
+  final double confidence;
+  final List<String> items;
+
+  ReceiptData({
+    required this.amount,
+    required this.description,
+    required this.storeName,
+    required this.category,
+    required this.date,
+    required this.rawText,
+    this.confidence = 0.0,
+    this.items = const [],
+  });
+
+  bool get hasValidAmount => amount > 0;
+  bool get hasStoreName => storeName.isNotEmpty;
+  bool get hasItems => items.isNotEmpty;
+}

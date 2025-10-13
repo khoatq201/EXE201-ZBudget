@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../constants/colors.dart';
 import '../../constants/typography.dart';
+import '../services/backend_ocr_service.dart';
+import 'receipt_scanner_widget.dart';
 
 class ScanReceiptModal extends StatefulWidget {
   final Function(Map<String, dynamic>) onReceiptScanned;
@@ -117,188 +120,125 @@ class _ScanReceiptModalState extends State<ScanReceiptModal>
     }
   }
 
-  Future<void> _simulateAdvancedScan() async {
-    setState(() {
-      _isProcessing = true;
-      _scanProgress = 0.0;
-      _currentStep = 'Đang chụp ảnh...';
-    });
+  Future<void> _startRealOCR() async {
+    // Navigate to real OCR scanner
+    Navigator.of(context).pop(); // Close modal first
 
-    final steps = [
-      {'progress': 0.2, 'step': 'Đang phân tích ảnh...'},
-      {'progress': 0.4, 'step': 'Nhận diện văn bản Tiếng Việt...'},
-      {'progress': 0.6, 'step': 'Trích xuất thông tin hóa đơn...'},
-      {'progress': 0.8, 'step': 'Phân loại chi tiêu tự động...'},
-      {'progress': 1.0, 'step': 'Hoàn thành!'},
-    ];
+    final result = await Navigator.of(context).push<ReceiptData>(
+      MaterialPageRoute(
+        builder: (context) => ReceiptScannerWidget(
+          onReceiptScanned: (receiptData) {
+            Navigator.of(context).pop(receiptData);
+          },
+          onCancel: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
 
-    for (final step in steps) {
-      await Future.delayed(const Duration(milliseconds: 800));
-      if (!mounted) return;
+    if (result != null) {
+      // Convert ReceiptData to Map format expected by onReceiptScanned
+      final receiptMap = {
+        'merchant': result.storeName,
+        'amount': result.amount,
+        'items': result.items,
+        'category': result.category,
+        'confidence': (result.confidence * 100).round(),
+        'description': result.description,
+      };
 
+      // Auto-fill form and close modal
+      widget.onReceiptScanned(receiptMap);
+      widget.onClose();
+    }
+  }
+
+  Future<void> _pickImageFromGallery() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1920,
+        maxHeight: 1080,
+      );
+
+      if (image != null) {
+        // Process image with OCR FIRST, then close modal
+        await _processImageFromFile(File(image.path));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Lỗi chọn ảnh: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _processImageFromFile(File imageFile) async {
+    try {
+      // Show loading state
       setState(() {
-        _scanProgress = step['progress'] as double;
-        _currentStep = step['step'] as String;
+        _isProcessing = true;
+        _currentStep = 'Đang xử lý ảnh...';
       });
 
-      _progressController.animateTo(_scanProgress);
+      // Process with backend OCR
+      final result = await BackendOCRService.processReceipt(imageFile.path);
+
+      if (result.success && result.data != null) {
+        // Convert ReceiptData to Map format
+        final receiptMap = {
+          'merchant': result.data!.storeName,
+          'amount': result.data!.amount,
+          'items': result.data!.items,
+          'category': result.data!.category,
+          'confidence': (result.confidence * 100).round(),
+          'description': result.data!.description,
+        };
+
+        // Auto-fill form and close modal
+        widget.onReceiptScanned(receiptMap);
+        // Close modal after a short delay to avoid navigation conflicts
+        Future.delayed(const Duration(milliseconds: 50), () {
+          if (mounted) {
+            widget.onClose();
+          }
+        });
+      } else {
+        setState(() {
+          _isProcessing = false;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ ${result.error ?? 'Không thể nhận diện ảnh'}'),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isProcessing = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Lỗi xử lý ảnh: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
-
-    // Show results
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
-
-    final randomReceipt =
-        vietnameseReceiptData[Random().nextInt(vietnameseReceiptData.length)];
-
-    setState(() {
-      _isProcessing = false;
-    });
-
-    _showScanResult(randomReceipt);
-  }
-
-  void _showScanResult(Map<String, dynamic> receipt) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Text('🎉'),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Quét thành công (${receipt['confidence']}% chính xác)',
-                style: AppTypography.h4.copyWith(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildResultRow('📍 Cửa hàng:', receipt['merchant']),
-            _buildResultRow(
-              '💰 Số tiền:',
-              '${(receipt['amount'] as int).toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}đ',
-            ),
-            _buildResultRow('📦 Món:', (receipt['items'] as List).join(', ')),
-            _buildResultRow(
-              '📊 Danh mục:',
-              getCategoryName(receipt['category']),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.backgroundTertiary,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Text('🤖'),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'AI đã tự động phân loại chi tiêu của bạn!',
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              widget.onReceiptScanned(receipt);
-            },
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.edit, size: 16),
-                const SizedBox(width: 4),
-                Text(
-                  'Chỉnh sửa',
-                  style: AppTypography.body.copyWith(
-                    color: AppColors.primary500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              widget.onReceiptScanned(receipt);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('✅ Đã lưu chi tiêu từ hóa đơn!'),
-                  backgroundColor: AppColors.success,
-                ),
-              );
-              widget.onClose();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.success,
-              foregroundColor: Colors.white,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.save, size: 16),
-                const SizedBox(width: 4),
-                Text(
-                  'Lưu ngay',
-                  style: AppTypography.body.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResultRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              label,
-              style: AppTypography.body.copyWith(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: AppTypography.body.copyWith(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -547,44 +487,77 @@ class _ScanReceiptModalState extends State<ScanReceiptModal>
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    'Đặt hóa đơn vào khung hình và nhấn nút chụp',
+                    'Chọn ảnh từ thư viện hoặc chụp ảnh mới',
                     style: AppTypography.body.copyWith(color: Colors.white),
                     textAlign: TextAlign.center,
                   ),
                 ),
               ),
 
-            // Capture button
+            // Action buttons
             if (!_isProcessing)
               Positioned(
                 bottom: 30,
                 left: 0,
                 right: 0,
-                child: Center(
-                  child: GestureDetector(
-                    onTap: _simulateAdvancedScan,
-                    child: Container(
-                      width: 70,
-                      height: 70,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary500,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary500.withValues(alpha: 0.3),
-                            blurRadius: 12,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.camera_alt,
-                        color: Colors.white,
-                        size: 30,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Gallery button
+                    GestureDetector(
+                      onTap: _pickImageFromGallery,
+                      child: Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: AppColors.accent500,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.accent500.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.photo_library,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                       ),
                     ),
-                  ),
+                    // Camera button
+                    GestureDetector(
+                      onTap: _startRealOCR,
+                      child: Container(
+                        width: 70,
+                        height: 70,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary500,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary500.withValues(
+                                alpha: 0.3,
+                              ),
+                              blurRadius: 12,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          color: Colors.white,
+                          size: 30,
+                        ),
+                      ),
+                    ),
+                    // Placeholder for symmetry
+                    const SizedBox(width: 60),
+                  ],
                 ),
               ),
           ],

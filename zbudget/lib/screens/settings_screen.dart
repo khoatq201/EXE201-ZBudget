@@ -17,6 +17,7 @@ import 'settings/help/help_screen.dart';
 import 'settings/feedback/feedback_screen.dart';
 import 'settings/about/about_screen.dart';
 import 'settings/premium/premium_screen.dart';
+import 'settings/notifications/notifications_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -97,7 +98,7 @@ class SettingsScreen extends StatelessWidget {
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context) => const ThemeScreenSimple(),
+                        builder: (context) => const ThemeScreen(),
                       ),
                     );
                   },
@@ -298,7 +299,7 @@ class SettingsScreen extends StatelessWidget {
                 context,
                 listen: false,
               );
-              appProvider.logout();
+              appProvider.logout(context);
               context.go('/login');
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),

@@ -20,6 +20,7 @@ import reportRoutes from "./routes/reportRoutes.js";
 import savingsRoutes from "./routes/savingsRoutes.js";
 import budgetRoutes from "./routes/budgetRoutes.js";
 import groupBudgetRoutes from "./routes/groupBudgetRoutes.js";
+import ocrRoutes from "./routes/ocrRoutes.js";
 // import userRoutes from './routes/users.js';
 // import challengeRoutes from './routes/challenges.js';
 // import groupRoutes from './routes/groups.js';
@@ -146,6 +147,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/savings", savingsRoutes);
 app.use("/api/budgets", budgetRoutes);
 app.use("/api/group-budgets", groupBudgetRoutes);
+app.use("/api/ocr", ocrRoutes);
 // Protected routes (will be added later)
 // app.use('/api/users', authenticate, userRoutes);
 // app.use('/api/challenges', authenticate, challengeRoutes);
