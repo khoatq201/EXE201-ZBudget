@@ -25,6 +25,8 @@ export const config = {
   CORS_ORIGINS: process.env.CORS_ORIGINS,
   EMAIL_USER: process.env.EMAIL_USER,
   EMAIL_PASS: process.env.EMAIL_PASS,
+  // Gemini AI OCR
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
 };
 // Debug Cloudinary config
 export default config;

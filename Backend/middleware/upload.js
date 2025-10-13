@@ -75,7 +75,9 @@ const getCloudinaryStorage = () => {
       return {
         folder: folder,
         allowed_formats: allowedFormats,
-        public_id: `${file.fieldname}-${Date.now()}-${Math.round(Math.random() * 1e9)}`,
+        public_id: `${file.fieldname}-${Date.now()}-${Math.round(
+          Math.random() * 1e9
+        )}`,
         resource_type: "auto", // Automatically detect file type
         transformation: [
           {
@@ -93,6 +95,14 @@ const getCloudinaryStorage = () => {
 // File filter function
 const fileFilter = (req, file, cb) => {
   // Debug: Log the actual MIME type received
+  console.log("🔍 File upload debug:", {
+    fieldname: file.fieldname,
+    originalname: file.originalname,
+    mimetype: file.mimetype,
+    encoding: file.encoding,
+    size: file.size,
+  });
+
   // Allowed mime types
   const allowedMimes = {
     "image/jpeg": true,
@@ -101,6 +111,8 @@ const fileFilter = (req, file, cb) => {
     "image/webp": true,
     "image/gif": true, // Add GIF support
     "image/bmp": true, // Add BMP support
+    "image/heic": true, // Add HEIC support
+    "image/heif": true, // Add HEIF support
     "application/pdf": true,
   };
   // Check if file type is allowed
@@ -109,7 +121,9 @@ const fileFilter = (req, file, cb) => {
   } else {
     cb(
       new ValidationError(
-        `Loại file không được hỗ trợ. Chỉ chấp nhận: ${Object.keys(allowedMimes).join(", ")}`
+        `Loại file không được hỗ trợ. Chỉ chấp nhận: ${Object.keys(
+          allowedMimes
+        ).join(", ")}`
       ),
       false
     );
@@ -154,6 +168,26 @@ export const uploadMiddleware = {
   ]),
   // Any single file
   any: upload.any(),
+  // OCR specific - allow all image types
+  ocr: multer({
+    storage: getStorage(),
+    fileFilter: (req, file, cb) => {
+      console.log("🔍 OCR File upload debug:", {
+        fieldname: file.fieldname,
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        encoding: file.encoding,
+        size: file.size,
+      });
+      // Allow all image types for OCR
+      cb(null, true);
+    },
+    limits: limits,
+    onError: function (err, next) {
+      console.error("OCR Multer error:", err);
+      next(new ValidationError("Lỗi tải file OCR: " + err.message));
+    },
+  }).any(),
   // No file upload (just form data)
   none: upload.none(),
 };

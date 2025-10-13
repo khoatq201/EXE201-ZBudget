@@ -17,6 +17,7 @@
     "docs": "jsdoc . -d docs/"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",

@@ -1,9 +1,13 @@
+import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import '../services/ai_ocr_service.dart';
-import '../services/receipt_parser_service.dart';
+import 'package:path_provider/path_provider.dart';
+import '../services/backend_ocr_service.dart';
 import '../utils/theme_extensions.dart';
 
 /// Widget for scanning receipts with camera or gallery
@@ -446,37 +450,75 @@ class _ReceiptScannerWidgetState extends State<ReceiptScannerWidget> {
     );
   }
 
+  /// Convert HEIC/HEIF to JPEG if needed
+  Future<String> _convertToJpegIfNeeded(String imagePath) async {
+    final file = File(imagePath);
+    final extension = file.path.toLowerCase().split('.').last;
+
+    // If already JPEG, return as is
+    if (extension == 'jpg' || extension == 'jpeg') {
+      return imagePath;
+    }
+
+    // For HEIC/HEIF files, we need to convert to JPEG
+    if (extension == 'heic' || extension == 'heif') {
+      try {
+        // Create a new JPEG file path
+        final directory = await getTemporaryDirectory();
+        final jpegPath =
+            '${directory.path}/receipt_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+        // Read the image and convert to JPEG
+        final imageBytes = await file.readAsBytes();
+        final image = await decodeImageFromList(imageBytes);
+
+        // Convert to JPEG
+        final jpegFile = File(jpegPath);
+        final jpegBytes = await _encodeImageToJpeg(image);
+        await jpegFile.writeAsBytes(jpegBytes);
+
+        return jpegPath;
+      } catch (e) {
+        // Return original path if conversion fails
+        return imagePath;
+      }
+    }
+
+    // For other formats, return as is
+    return imagePath;
+  }
+
+  /// Encode image to PNG bytes (simpler than JPEG)
+  Future<Uint8List> _encodeImageToJpeg(ui.Image image) async {
+    // Use PNG format which is simpler and widely supported
+    final pngBytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    return pngBytes!.buffer.asUint8List();
+  }
+
   Future<void> _processImage(String imagePath) async {
     try {
-      // Use AI OCR only (no local OCR fallback)
-      final aiResult = await AIOCRService.smartExtract(imagePath);
-      print(
-        '🤖 AI OCR Result: ${aiResult.provider} - Confidence: ${(aiResult.confidence * 100).toStringAsFixed(1)}%',
+      // Convert HEIC to JPEG if needed
+      final processedImagePath = await _convertToJpegIfNeeded(imagePath);
+
+      // Use backend OCR service
+      final backendResult = await BackendOCRService.processReceipt(
+        processedImagePath,
       );
 
-      if (aiResult.text.isEmpty) {
+      if (!backendResult.success) {
         throw Exception(
-          'Không thể nhận diện text từ ảnh. Hãy thử chụp lại với góc tốt hơn.',
+          backendResult.error ??
+              'Không thể nhận diện text từ ảnh. Hãy thử chụp lại với góc tốt hơn.',
         );
       }
 
-      print('📝 OCR Text: ${aiResult.text.substring(0, 100)}...');
-      print(
-        '🎯 Confidence: ${(aiResult.confidence * 100).toStringAsFixed(1)}%',
-      );
+      final receiptData = backendResult.data!;
 
-      // Parse receipt data
-      final receiptData = ReceiptParserService.parseReceipt(aiResult.text);
-
-      if (!receiptData.hasValidAmount) {
+      if (receiptData.amount <= 0) {
         throw Exception(
           'Không thể nhận diện số tiền từ hóa đơn. Hãy đảm bảo hóa đơn rõ ràng và không bị che khuất.',
         );
       }
-
-      print('💰 Parsed Amount: ${receiptData.amount}');
-      print('🏪 Store: ${receiptData.storeName}');
-      print('📝 Description: ${receiptData.description}');
 
       // Return result
       if (mounted) {

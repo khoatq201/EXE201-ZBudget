@@ -9,7 +9,7 @@ import '../../utils/currency_input_formatter.dart';
 import '../../utils/currency_formatter.dart';
 import '../../widgets/receipt_scanner_widget.dart';
 import '../../widgets/ocr_result_preview.dart';
-import '../../services/receipt_parser_service.dart';
+import '../../services/backend_ocr_service.dart';
 
 class AddGroupExpenseScreen extends StatefulWidget {
   final String budgetId;
