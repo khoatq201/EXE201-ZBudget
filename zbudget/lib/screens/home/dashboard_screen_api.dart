@@ -11,6 +11,7 @@ import '../../models/budget.dart';
 import '../../constants/typography.dart';
 import '../../utils/formatters.dart';
 import '../../utils/theme_extensions.dart';
+import '../../widgets/common_header.dart';
 
 class DashboardScreenApi extends StatefulWidget {
   const DashboardScreenApi({super.key});
@@ -181,49 +182,31 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
   }
 
   Widget _buildHeader(AuthService authService) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [context.headerGradientStart, context.headerGradientEnd],
+    final email = authService.currentUser?.email ?? '';
+    final userName = email.isNotEmpty ? email.split('@').first : 'Bạn';
+
+    return CommonHeaderPresets.dashboard(
+      userName: userName,
+      subtitle: _getGreeting(),
+      trailing: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.24),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(
+          Icons.notifications_outlined,
+          color: Colors.white,
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Xin chào! 👋',
-                style: AppTypography.h3.copyWith(
-                  color: context.headerTextColor,
-                ),
-              ),
-              Text(
-                authService.currentUser?.email ?? '',
-                style: AppTypography.bodySmall.copyWith(
-                  color: context.headerSubtitleColor,
-                ),
-              ),
-            ],
-          ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: context.colorScheme.onPrimary.withOpacity(0.24),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              Icons.notifications_outlined,
-              color: context.colorScheme.onPrimary,
-            ),
-          ),
-        ],
-      ),
     );
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Chào buổi sáng!';
+    if (hour < 18) return 'Chào buổi chiều!';
+    return 'Chào buổi tối!';
   }
 
   Widget _buildBalanceCard(DashboardData data) {
@@ -360,6 +343,9 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
           ),
 
           const SizedBox(height: 16),
+          // ✅ NEW: Ready to Assign section
+          _buildReadyToAssignSection(data),
+          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -392,6 +378,128 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
       default:
         return 'tháng này';
     }
+  }
+
+  // ✅ NEW: Ready to Assign section with YNAB-style breakdown
+  Widget _buildReadyToAssignSection(DashboardData data) {
+    final hasUnassignedMoney = data.readyToAssign > 0;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: hasUnassignedMoney
+          ? context.incomeColor.withValues(alpha: 0.15)
+          : context.colorScheme.onPrimary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: hasUnassignedMoney
+            ? context.incomeColor.withValues(alpha: 0.3)
+            : context.colorScheme.onPrimary.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.account_balance_wallet_rounded,
+                size: 20,
+                color: hasUnassignedMoney ? context.incomeColor : context.headerSubtitleColor,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Ready to Assign',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: context.headerTextColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              if (hasUnassignedMoney)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: context.incomeColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Chưa phân bổ',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            data.readyToAssign.toVND(),
+            style: AppTypography.h2.copyWith(
+              color: context.headerTextColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 24,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Breakdown
+          Row(
+            children: [
+              Expanded(
+                child: _buildMoneyFlowItem(
+                  'Đã phân bổ',
+                  data.totalAssigned,
+                  Icons.assignment_turned_in_outlined,
+                  context.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildMoneyFlowItem(
+                  'Đã tiết kiệm',
+                  data.totalSaved,
+                  Icons.savings_outlined,
+                  context.colorScheme.tertiary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMoneyFlowItem(String label, double amount, IconData icon, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 14, color: context.headerSubtitleColor),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: AppTypography.bodySmall.copyWith(
+                color: context.headerSubtitleColor,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          amount.toVND(),
+          style: AppTypography.bodyMedium.copyWith(
+            color: context.headerTextColor,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildBalanceItem(

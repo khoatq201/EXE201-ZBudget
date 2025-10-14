@@ -96,6 +96,16 @@ export const getDashboardSummary = async (req, res) => {
     const totalSavings = parseFloat(
       financialSummary.totalSavings?.toString() || "0"
     );
+    // ✅ NEW: YNAB-style fields
+    const readyToAssign = parseFloat(
+      financialSummary.readyToAssign?.toString() || "0"
+    );
+    const totalAssigned = parseFloat(
+      financialSummary.totalAssigned?.toString() || "0"
+    );
+    const totalSaved = parseFloat(
+      financialSummary.totalSaved?.toString() || "0"
+    );
     // Budget info
     let budgetInfo = null;
     if (activeBudget) {
@@ -161,6 +171,10 @@ export const getDashboardSummary = async (req, res) => {
       totalExpenses,
       totalSavings,
       monthlyAllowance,
+      // ✅ NEW: YNAB-style fields
+      readyToAssign,
+      totalAssigned,
+      totalSaved,
       // Period statistics
       period: {
         type: period,

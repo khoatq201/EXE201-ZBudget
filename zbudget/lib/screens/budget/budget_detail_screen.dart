@@ -6,7 +6,9 @@ import '../../services/budget_service.dart';
 import '../../constants/typography.dart';
 import '../../utils/theme_extensions.dart';
 import '../../utils/currency_formatter.dart';
+import '../../utils/currency_input_formatter.dart';
 import '../../utils/date_formatter.dart';
+import '../../widgets/common_header.dart';
 
 class BudgetDetailScreen extends StatefulWidget {
   final String budgetId;
@@ -40,23 +42,19 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_budget?.name ?? 'Chi tiết ngân sách'),
-        actions: [
-          if (_budget != null)
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () {
-                // Navigate to edit screen
-                context.push('/budget/edit/${widget.budgetId}');
-              },
-            ),
-        ],
-      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _budget == null
-              ? _buildErrorState()
+              ? Column(
+                  children: [
+                    CommonHeaderPresets.detail(
+                      context: context,
+                      title: 'Chi tiết ngân sách',
+                      subtitle: 'Không tìm thấy',
+                    ),
+                    Expanded(child: _buildErrorState()),
+                  ],
+                )
               : RefreshIndicator(
                   onRefresh: _loadBudget,
                   child: SingleChildScrollView(
@@ -403,6 +401,7 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
             TextField(
               controller: amountController,
               keyboardType: TextInputType.number,
+              inputFormatters: [CurrencyInputFormatter()],
               decoration: const InputDecoration(
                 labelText: 'Số tiền',
                 border: OutlineInputBorder(),

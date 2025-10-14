@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/dashboard.dart';
+import '../utils/secure_storage_manager.dart';
 
 class DashboardService extends ChangeNotifier {
   // Base URL - different for web and mobile
@@ -36,8 +36,7 @@ class DashboardService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('access_token');
+      final token = await SecureStorageManager.getToken();
 
       if (token == null) {
         throw Exception('No access token found. Please login again.');
@@ -93,8 +92,7 @@ class DashboardService extends ChangeNotifier {
   /// Get quick stats (lightweight version)
   Future<Map<String, double>> getQuickStats() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('access_token');
+      final token = await SecureStorageManager.getToken();
 
       if (token == null) {
         throw Exception('No access token found');
@@ -112,13 +110,33 @@ class DashboardService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
-        final data = jsonResponse['data'] as Map<String, dynamic>;
+        debugPrint('✅ Quick stats response: ${response.body}');
+
+        // Safe handling of data
+        final data = jsonResponse['data'];
+        if (data is! Map<String, dynamic>) {
+          throw Exception('Invalid data format from server');
+        }
+
+        // Safe number parsing with fallbacks
+        double parseNum(dynamic value) {
+          if (value == null) return 0.0;
+          if (value is num) return value.toDouble();
+          if (value is String) return double.tryParse(value) ?? 0.0;
+          if (value is Map) {
+            // Handle Decimal128 from MongoDB
+            final val = value.values.isNotEmpty ? value.values.first : 0;
+            if (val is num) return val.toDouble();
+            if (val is String) return double.tryParse(val) ?? 0.0;
+          }
+          return 0.0;
+        }
 
         return {
-          'currentBalance': (data['currentBalance'] as num).toDouble(),
-          'totalIncome': (data['totalIncome'] as num).toDouble(),
-          'totalExpenses': (data['totalExpenses'] as num).toDouble(),
-          'totalSavings': (data['totalSavings'] as num).toDouble(),
+          'currentBalance': parseNum(data['currentBalance']),
+          'totalIncome': parseNum(data['totalIncome']),
+          'totalExpenses': parseNum(data['totalExpenses']),
+          'totalSavings': parseNum(data['totalSavings']),
         };
       } else {
         throw Exception('Failed to load quick stats');
@@ -141,8 +159,7 @@ class DashboardService extends ChangeNotifier {
     int? skip,
   }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('access_token');
+      final token = await SecureStorageManager.getToken();
 
       if (token == null) {
         throw Exception('No access token found. Please login again.');
@@ -182,12 +199,33 @@ class DashboardService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
+        debugPrint('✅ Transactions response: ${response.body.length > 500 ? response.body.substring(0, 500) : response.body}');
 
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
           final data = jsonResponse['data'];
-          final transactionsList = (data['transactions'] as List)
-              .map((txn) => Transaction.fromJson(txn))
-              .toList();
+
+          // Safe handling of transactions array
+          List<Transaction> transactionsList = [];
+          try {
+            final txnData = data['transactions'];
+            if (txnData is List) {
+              transactionsList = txnData
+                  .map((txn) {
+                    try {
+                      return Transaction.fromJson(txn);
+                    } catch (e) {
+                      debugPrint('❌ Error parsing transaction: $e');
+                      return null;
+                    }
+                  })
+                  .whereType<Transaction>()
+                  .toList();
+            } else {
+              debugPrint('⚠️ transactions is not a List: ${txnData.runtimeType}');
+            }
+          } catch (e) {
+            debugPrint('❌ Error parsing transactions list: $e');
+          }
 
           debugPrint('✅ Loaded ${transactionsList.length} transactions');
 

@@ -11,6 +11,55 @@ String parseIdField(dynamic value) {
   return value.toString();
 }
 
+/// Helper function to parse decimal/double values
+double parseDecimal(dynamic value) {
+  if (value == null) return 0.0;
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+  if (value is String) return double.tryParse(value) ?? 0.0;
+  return 0.0;
+}
+
+/// Helper function to safely parse list of members
+List<GroupBudgetMember> _parseMembers(dynamic value) {
+  if (value == null) return [];
+  if (value is! List) return []; // Not a list, return empty
+
+  try {
+    return value
+        .map((m) {
+          if (m is Map<String, dynamic>) {
+            return GroupBudgetMember.fromJson(m);
+          }
+          return null;
+        })
+        .whereType<GroupBudgetMember>()
+        .toList();
+  } catch (e) {
+    return [];
+  }
+}
+
+/// Helper function to safely parse list of expenses
+List<GroupBudgetExpense> _parseExpenses(dynamic value) {
+  if (value == null) return [];
+  if (value is! List) return []; // Not a list, return empty
+
+  try {
+    return value
+        .map((e) {
+          if (e is Map<String, dynamic>) {
+            return GroupBudgetExpense.fromJson(e);
+          }
+          return null;
+        })
+        .whereType<GroupBudgetExpense>()
+        .toList();
+  } catch (e) {
+    return [];
+  }
+}
+
 /// Represents a shared budget among multiple members
 class GroupBudget {
   final String id;
@@ -76,14 +125,8 @@ class GroupBudget {
           : DateTime.now(),
       endDate:
           json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
-      members: (json['members'] as List?)
-              ?.map((m) => GroupBudgetMember.fromJson(m as Map<String, dynamic>))
-              .toList() ??
-          [],
-      expenses: (json['expenses'] as List?)
-              ?.map((e) => GroupBudgetExpense.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
+      members: _parseMembers(json['members']),
+      expenses: _parseExpenses(json['expenses']),
       isActive: json['isActive'] ?? true,
       isSettled: json['isSettled'] ?? false,
       autoSplitByContribution: json['autoSplitByContribution'] ?? true,

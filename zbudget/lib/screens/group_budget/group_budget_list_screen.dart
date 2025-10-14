@@ -8,6 +8,8 @@ import '../../constants/typography.dart';
 import '../../constants/spacing.dart';
 import '../../utils/theme_extensions.dart';
 import '../../utils/currency_formatter.dart';
+import '../../utils/snackbar_utils.dart';
+import '../../widgets/common_header.dart';
 
 class GroupBudgetListScreen extends StatefulWidget {
   const GroupBudgetListScreen({super.key});
@@ -17,17 +19,17 @@ class GroupBudgetListScreen extends StatefulWidget {
 }
 
 class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
-    with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   String selectedFilter = 'all';
   late AnimationController _fabController;
   late Animation<double> _fabAnimation;
-
-  @override
-  bool get wantKeepAlive => true;
+  bool _needsRefresh = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
     _fabController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -38,13 +40,37 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
     );
     _fabController.forward();
 
+    // Load data lần đầu
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadGroupBudgets();
     });
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload data if marked as needing refresh
+    if (_needsRefresh) {
+      _needsRefresh = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _loadGroupBudgets();
+        }
+      });
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Reload when app comes to foreground
+    if (state == AppLifecycleState.resumed) {
+      _loadGroupBudgets();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _fabController.dispose();
     super.dispose();
   }
@@ -60,20 +86,36 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
-
     return Scaffold(
       backgroundColor: context.colorScheme.surface,
       body: RefreshIndicator(
         onRefresh: _refreshBudgets,
         color: context.colorScheme.primary,
-        child: CustomScrollView(
-          slivers: [
-            _buildModernAppBar(),
-            SliverToBoxAdapter(child: const SizedBox(height: 8)),
-            SliverToBoxAdapter(child: _buildFilterChips()),
-            SliverToBoxAdapter(child: const SizedBox(height: 8)),
-            _buildBudgetList(),
+        child: Column(
+          children: [
+            CommonHeader(
+              title: 'Ngân sách nhóm',
+              subtitle: 'Quản lý chi tiêu chung',
+              variant: HeaderVariant.gradient,
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.groups_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildFilterChips(),
+            const SizedBox(height: 8),
+            Expanded(
+              child: _buildBudgetListView(),
+            ),
           ],
         ),
       ),
@@ -88,104 +130,6 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
           ),
           backgroundColor: context.colorScheme.primary,
           elevation: 4,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildModernAppBar() {
-    return SliverAppBar(
-      expandedHeight: 160,
-      floating: false,
-      pinned: true,
-      elevation: 0,
-      flexibleSpace: FlexibleSpaceBar(
-        titlePadding: EdgeInsets.zero,
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                context.colorScheme.primary,
-                context.colorScheme.primary.withValues(alpha: 0.8),
-              ],
-            ),
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                right: -30,
-                top: -30,
-                child: Container(
-                  width: 150,
-                  height: 150,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-              Positioned(
-                left: -50,
-                bottom: -50,
-                child: Container(
-                  width: 200,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 60, 24, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.groups_rounded,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Ngân sách nhóm',
-                              style: AppTypography.h3.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Quản lý chi tiêu chung',
-                              style: AppTypography.bodySmall.copyWith(
-                                color: Colors.white.withValues(alpha: 0.9),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -248,17 +192,15 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
     );
   }
 
-  Widget _buildBudgetList() {
+  Widget _buildBudgetListView() {
     return Consumer<GroupBudgetService>(
       builder: (context, service, child) {
         if (service.isLoading && service.budgets.isEmpty) {
-          return const SliverFillRemaining(
-            child: Center(child: CircularProgressIndicator()),
-          );
+          return const Center(child: CircularProgressIndicator());
         }
 
         if (service.error != null) {
-          return SliverFillRemaining(child: _buildErrorState(service.error!));
+          return _buildErrorState(service.error!);
         }
 
         List<GroupBudget> filteredBudgets;
@@ -276,23 +218,22 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
         if (filteredBudgets.isEmpty) {
           // For settled tab, show different empty state
           if (selectedFilter == 'settled') {
-            return SliverFillRemaining(child: _buildSettledEmptyState());
+            return _buildSettledEmptyState();
           }
-          return SliverFillRemaining(child: _buildEmptyState());
+          return _buildEmptyState();
         }
 
-        return SliverPadding(
+        return ListView.builder(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.lg,
             8,
             AppSpacing.lg,
             100,
           ),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate((context, index) {
-              return _buildModernBudgetCard(filteredBudgets[index], index);
-            }, childCount: filteredBudgets.length),
-          ),
+          itemCount: filteredBudgets.length,
+          itemBuilder: (context, index) {
+            return _buildModernBudgetCard(filteredBudgets[index], index);
+          },
         );
       },
     );
@@ -333,7 +274,13 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => context.push('/group-budgets/${budget.id}'),
+            onTap: () async {
+              await context.push('/group-budgets/${budget.id}');
+              // Reload data when returning from detail screen
+              if (mounted) {
+                _loadGroupBudgets();
+              }
+            },
             borderRadius: BorderRadius.circular(20),
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -531,23 +478,7 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
     return GestureDetector(
       onTap: () {
         Clipboard.setData(ClipboardData(text: code));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                const SizedBox(width: 8),
-                Text('Đã sao chép mã: $code'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        SnackBarUtils.showSuccess(context, 'Đã sao chép mã: $code');
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

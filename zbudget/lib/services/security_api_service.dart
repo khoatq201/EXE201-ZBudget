@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/device_info_helper.dart';
+import '../utils/secure_storage_manager.dart';
 
 /// API service for security-related operations
 class SecurityApiService {
@@ -17,8 +17,7 @@ class SecurityApiService {
 
   /// Get authorization headers
   static Future<Map<String, String>> _getHeaders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('access_token');
+    final token = await SecureStorageManager.getToken();
 
     if (token == null) {
       throw Exception('No access token found. Please login again.');

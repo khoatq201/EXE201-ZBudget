@@ -311,20 +311,37 @@ export const addContribution = async (req, res) => {
           "Cannot contribute to inactive savings goal"
         );
       }
+
+      // Check if user has enough readyToAssign (unless from income_allocation)
+      if (source !== 'income_allocation') {
+        const user = await User.findById(userId).select('financialSummary');
+        const readyToAssign = parseFloat(user.financialSummary?.readyToAssign?.toString() || '0');
+
+        if (readyToAssign < parseFloat(amount)) {
+          throw new BadRequestError(
+            `Không đủ tiền Ready to Assign. Có sẵn: ${readyToAssign.toLocaleString('vi-VN')} đ, cần: ${parseFloat(amount).toLocaleString('vi-VN')} đ. Vui lòng thêm thu nhập hoặc phân bổ từ thu nhập.`
+          );
+        }
+      }
+
       // Add contribution
       goal.addContribution(parseFloat(amount), source, incomeId, note);
       await goal.save({ session });
-      // Update user's totalSaved
-      await User.findByIdAndUpdate(
-        userId,
-        {
-          $inc: {
-            "financialSummary.totalSaved": parseFloat(amount),
-          },
-          "financialSummary.lastUpdated": new Date(),
+
+      // Update user's financial summary
+      const updateFields = {
+        $inc: {
+          "financialSummary.totalSaved": parseFloat(amount),
         },
-        { session }
-      );
+        "financialSummary.lastUpdated": new Date(),
+      };
+
+      // If not from income_allocation, subtract from readyToAssign
+      if (source !== 'income_allocation') {
+        updateFields.$inc["financialSummary.readyToAssign"] = -parseFloat(amount);
+      }
+
+      await User.findByIdAndUpdate(userId, updateFields, { session });
       const formattedGoal = {
         ...goal.toObject({ virtuals: true }),
         targetAmount: parseFloat(goal.targetAmount.toString()),
@@ -373,12 +390,13 @@ export const withdrawFromSavings = async (req, res) => {
       // Withdraw
       goal.withdraw(parseFloat(amount), reason);
       await goal.save({ session });
-      // Update user's totalSaved
+      // Update user's totalSaved and return to readyToAssign
       await User.findByIdAndUpdate(
         userId,
         {
           $inc: {
             "financialSummary.totalSaved": -parseFloat(amount),
+            "financialSummary.readyToAssign": parseFloat(amount), // Return to readyToAssign
           },
           "financialSummary.lastUpdated": new Date(),
         },

@@ -7,6 +7,7 @@ import '../../constants/spacing.dart';
 import '../../utils/theme_extensions.dart';
 import '../../utils/currency_input_formatter.dart';
 import '../../utils/currency_formatter.dart';
+import '../../utils/snackbar_utils.dart';
 import '../../widgets/receipt_scanner_widget.dart';
 import '../../widgets/ocr_result_preview.dart';
 import '../../services/backend_ocr_service.dart';
@@ -70,26 +71,17 @@ class _AddGroupExpenseScreenState extends State<AddGroupExpenseScreen> {
       if (!mounted) return;
 
       if (result['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Thêm chi tiêu thành công!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        SnackBarUtils.showSuccess(context, 'Thêm chi tiêu thành công!');
         context.pop();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Có lỗi xảy ra'),
-            backgroundColor: Colors.red,
-          ),
+        SnackBarUtils.showError(
+          context,
+          result['message'] ?? 'Có lỗi xảy ra',
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
-      );
+      SnackBarUtils.showError(context, 'Lỗi: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -141,13 +133,7 @@ class _AddGroupExpenseScreenState extends State<AddGroupExpenseScreen> {
     });
 
     // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Đã tự động điền thông tin từ hóa đơn'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 2),
-      ),
-    );
+    SnackBarUtils.showSuccess(context, 'Đã tự động điền thông tin từ hóa đơn');
   }
 
   @override

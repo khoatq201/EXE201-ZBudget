@@ -11,6 +11,7 @@ import '../../services/budget_service.dart';
 import '../../services/dashboard_service.dart';
 import '../../utils/formatters.dart';
 import '../../utils/currency_formatter.dart';
+import '../../utils/ready_to_assign_dialog.dart';
 
 class CategoryOption {
   final String id;
@@ -1312,17 +1313,27 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
 
       debugPrint('💬 [ADD_EXPENSE] Showing error to user: $errorMessage');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ $errorMessage'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+      // ✅ NEW: Check if error is about insufficient Ready to Assign
+      if (errorMessage.contains('Ready to Assign')) {
+        ReadyToAssignDialog.showErrorIfInsufficientFunds(
+          context,
+          errorMessage,
+          'chi tiêu',
+        );
+      } else {
+        // Show generic error as SnackBar
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ $errorMessage'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 4),
           ),
-          duration: const Duration(seconds: 4),
-        ),
-      );
+        );
+      }
     } finally {
       debugPrint('🏁 [ADD_EXPENSE] Finished (loading = false)');
       if (mounted) {

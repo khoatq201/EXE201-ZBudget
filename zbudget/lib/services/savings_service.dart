@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/savings_models.dart';
+import '../utils/secure_storage_manager.dart';
 
 class SavingsService extends ChangeNotifier {
   // Base URL - different for web and mobile
@@ -36,8 +36,7 @@ class SavingsService extends ChangeNotifier {
 
   /// Get authorization header
   Future<Map<String, String>> _getHeaders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('access_token');
+    final token = await SecureStorageManager.getToken();
 
     if (token == null) {
       throw Exception('No access token found. Please login again.');
@@ -304,7 +303,12 @@ class SavingsService extends ChangeNotifier {
         }
         return {'success': true, 'message': 'Contribution added successfully'};
       } else {
-        return {'success': false, 'message': data['message'] ?? 'Failed to add contribution'};
+        // Parse error - could be 'message' or 'error' field
+        final errorMsg = data['message'] ?? data['error'] ?? 'Failed to add contribution';
+        if (kDebugMode) {
+          print('❌ Add contribution failed: $errorMsg');
+        }
+        return {'success': false, 'message': errorMsg};
       }
     } catch (e) {
       if (kDebugMode) {
@@ -346,7 +350,12 @@ class SavingsService extends ChangeNotifier {
         }
         return {'success': true, 'message': 'Withdrawal successful'};
       } else {
-        return {'success': false, 'message': data['message'] ?? 'Failed to withdraw'};
+        // Parse error - could be 'message' or 'error' field
+        final errorMsg = data['message'] ?? data['error'] ?? 'Failed to withdraw';
+        if (kDebugMode) {
+          print('❌ Withdraw failed: $errorMsg');
+        }
+        return {'success': false, 'message': errorMsg};
       }
     } catch (e) {
       if (kDebugMode) {

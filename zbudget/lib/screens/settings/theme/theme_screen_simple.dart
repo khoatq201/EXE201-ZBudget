@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../services/theme_manager.dart';
+import '../../../utils/snackbar_utils.dart';
 
 class ThemeScreen extends StatelessWidget {
   const ThemeScreen({super.key});
@@ -31,10 +32,9 @@ class ThemeScreen extends StatelessWidget {
                       : null,
                   onTap: () {
                     themeManager.setTheme(AppTheme.light);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Đã chuyển sang giao diện sáng'),
-                      ),
+                    SnackBarUtils.showInfo(
+                      context,
+                      'Đã chuyển sang giao diện sáng',
                     );
                   },
                 ),
@@ -51,10 +51,9 @@ class ThemeScreen extends StatelessWidget {
                       : null,
                   onTap: () {
                     themeManager.setTheme(AppTheme.dark);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Đã chuyển sang giao diện tối'),
-                      ),
+                    SnackBarUtils.showInfo(
+                      context,
+                      'Đã chuyển sang giao diện tối',
                     );
                   },
                 ),
@@ -71,10 +70,9 @@ class ThemeScreen extends StatelessWidget {
                       : null,
                   onTap: () {
                     themeManager.setTheme(AppTheme.system);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Đã chuyển sang theo hệ thống'),
-                      ),
+                    SnackBarUtils.showInfo(
+                      context,
+                      'Đã chuyển sang theo hệ thống',
                     );
                   },
                 ),

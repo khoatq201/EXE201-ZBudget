@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/expense.dart';
 import '../models/budget_models.dart';
 import '../utils/date_formatter.dart';
+import '../utils/secure_storage_manager.dart';
 
 class ExpenseService extends ChangeNotifier {
   // Base URL - different for web and mobile
@@ -34,8 +34,7 @@ class ExpenseService extends ChangeNotifier {
 
   /// Get authorization header
   Future<Map<String, String>> _getHeaders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('access_token');
+    final token = await SecureStorageManager.getToken();
 
     if (token == null) {
       throw Exception('No access token found. Please login again.');
@@ -215,7 +214,10 @@ class ExpenseService extends ChangeNotifier {
         }
       } else {
         final errorBody = jsonDecode(response.body);
-        throw Exception(errorBody['error'] ?? 'Failed to create expense');
+        // Parse error message - could be 'error' or 'message' field
+        final errorMessage = errorBody['error'] ?? errorBody['message'] ?? 'Failed to create expense';
+        debugPrint('❌ Create expense failed: $errorMessage');
+        throw Exception(errorMessage);
       }
     } catch (e) {
       _error = e.toString();

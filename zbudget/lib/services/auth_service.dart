@@ -2,11 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user.dart';
 import '../services/session_manager.dart';
 import '../utils/device_info_helper.dart';
+import '../utils/secure_storage_manager.dart';
 
 /// Service để xử lý authentication với backend API
 class AuthService extends ChangeNotifier {
@@ -21,10 +21,6 @@ class AuthService extends ChangeNotifier {
       return 'http://10.0.2.2:3000/api/auth';
     }
   }
-
-  static const String _tokenKey = 'access_token';
-  static const String _refreshTokenKey = 'refresh_token';
-  static const String _userKey = 'user_data';
 
   String? _accessToken;
   String? _refreshToken;
@@ -49,12 +45,11 @@ class AuthService extends ChangeNotifier {
   /// Initialize auth service và check existing token
   Future<void> initialize() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      _accessToken = prefs.getString(_tokenKey);
-      _refreshToken = prefs.getString(_refreshTokenKey);
+      _accessToken = await SecureStorageManager.getToken();
+      _refreshToken = await SecureStorageManager.getRefreshToken();
 
       if (_accessToken != null) {
-        final userData = prefs.getString(_userKey);
+        final userData = await SecureStorageManager.getUserData();
         if (userData != null) {
           _currentUser = User.fromJson(jsonDecode(userData));
           _isAuthenticated = true;
@@ -128,11 +123,10 @@ class AuthService extends ChangeNotifier {
           _currentUser = User.fromJson(userData);
           _isAuthenticated = true;
 
-          // Lưu vào SharedPreferences
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(_tokenKey, _accessToken!);
-          await prefs.setString(_refreshTokenKey, _refreshToken!);
-          await prefs.setString(_userKey, jsonEncode(userData));
+          // Lưu vào SecureStorage
+          await SecureStorageManager.setToken(_accessToken!);
+          await SecureStorageManager.setRefreshToken(_refreshToken!);
+          await SecureStorageManager.setUserData(jsonEncode(userData));
 
           notifyListeners();
           return {
@@ -195,13 +189,12 @@ class AuthService extends ChangeNotifier {
           _currentUser = User.fromJson(userData);
           _isAuthenticated = true;
 
-          // Lưu vào SharedPreferences
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(_tokenKey, _accessToken!);
+          // Lưu vào SecureStorage
+          await SecureStorageManager.setToken(_accessToken!);
           if (_refreshToken != null) {
-            await prefs.setString(_refreshTokenKey, _refreshToken!);
+            await SecureStorageManager.setRefreshToken(_refreshToken!);
           }
-          await prefs.setString(_userKey, jsonEncode(userData));
+          await SecureStorageManager.setUserData(jsonEncode(userData));
 
           notifyListeners();
           debugPrint('✅ Login successful with device tracking, tokens saved');
@@ -270,11 +263,10 @@ class AuthService extends ChangeNotifier {
         _currentUser = User.fromJson(userData);
         _isAuthenticated = true;
 
-        // Lưu vào SharedPreferences
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_tokenKey, _accessToken!);
-        await prefs.setString(_refreshTokenKey, _refreshToken!);
-        await prefs.setString(_userKey, jsonEncode(userData));
+        // Lưu vào SecureStorage
+        await SecureStorageManager.setToken(_accessToken!);
+        await SecureStorageManager.setRefreshToken(_refreshToken!);
+        await SecureStorageManager.setUserData(jsonEncode(userData));
 
         notifyListeners();
         return {
@@ -349,11 +341,8 @@ class AuthService extends ChangeNotifier {
       _currentUser = null;
       _isAuthenticated = false;
 
-      // Xóa khỏi SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_tokenKey);
-      await prefs.remove(_refreshTokenKey);
-      await prefs.remove(_userKey);
+      // Xóa khỏi SecureStorage
+      await SecureStorageManager.clearAll();
 
       debugPrint('✅ Local logout cleanup completed');
       notifyListeners();
@@ -396,9 +385,8 @@ class AuthService extends ChangeNotifier {
         _refreshToken = responseData['refreshToken'];
 
         // Lưu token mới
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_tokenKey, _accessToken!);
-        await prefs.setString(_refreshTokenKey, _refreshToken!);
+        await SecureStorageManager.setToken(_accessToken!);
+        await SecureStorageManager.setRefreshToken(_refreshToken!);
 
         return true;
       } else {
@@ -579,13 +567,13 @@ class AuthService extends ChangeNotifier {
 
           if (responseData['success'] == true) {
             // Save tokens and user info
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setString(_tokenKey, responseData['accessToken']);
-            await prefs.setString(
-              _refreshTokenKey,
+            await SecureStorageManager.setToken(responseData['accessToken']);
+            await SecureStorageManager.setRefreshToken(
               responseData['refreshToken'] ?? '',
             );
-            await prefs.setString(_userKey, jsonEncode(responseData['user']));
+            await SecureStorageManager.setUserData(
+              jsonEncode(responseData['user']),
+            );
 
             _accessToken = responseData['accessToken'];
             _refreshToken = responseData['refreshToken'];
@@ -692,13 +680,11 @@ class AuthService extends ChangeNotifier {
 
         if (responseData['success'] == true) {
           // Save tokens and user info
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(_tokenKey, responseData['accessToken']);
-          await prefs.setString(
-            _refreshTokenKey,
+          await SecureStorageManager.setToken(responseData['accessToken']);
+          await SecureStorageManager.setRefreshToken(
             responseData['refreshToken'] ?? '',
           );
-          await prefs.setString(_userKey, jsonEncode(responseData['user']));
+          await SecureStorageManager.setUserData(jsonEncode(responseData['user']));
 
           _accessToken = responseData['accessToken'];
           _refreshToken = responseData['refreshToken'];
@@ -831,9 +817,10 @@ class AuthService extends ChangeNotifier {
         // Update current user data
         if (responseData['user'] != null) {
           _currentUser = User.fromJson(responseData['user']);
-          // Lưu vào SharedPreferences
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(_userKey, jsonEncode(responseData['user']));
+          // Lưu vào SecureStorage
+          await SecureStorageManager.setUserData(
+            jsonEncode(responseData['user']),
+          );
         }
 
         notifyListeners();

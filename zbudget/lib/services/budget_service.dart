@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/budget.dart';
+import '../utils/secure_storage_manager.dart';
 
 class BudgetService extends ChangeNotifier {
   List<Budget> _budgets = [];
@@ -33,8 +33,7 @@ class BudgetService extends ChangeNotifier {
   }
 
   Future<Map<String, String>> _getHeaders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('access_token');
+    final token = await SecureStorageManager.getToken();
     return {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
@@ -74,16 +73,41 @@ class BudgetService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        debugPrint('✅ getBudgets response: ${response.body.length > 500 ? response.body.substring(0, 500) : response.body}');
+
         if (data['success'] == true) {
-          final budgetsData = data['data']['budgets'] as List;
-          _budgets = budgetsData.map((b) => Budget.fromJson(b)).toList();
-          final rta = data['data']['readyToAssign'];
+          // Safe handling of budgets array
+          try {
+            final budgetsData = data['data']?['budgets'];
+            if (budgetsData is List) {
+              _budgets = budgetsData
+                  .map((b) {
+                    try {
+                      return Budget.fromJson(b);
+                    } catch (e) {
+                      debugPrint('❌ Error parsing budget: $e');
+                      return null;
+                    }
+                  })
+                  .whereType<Budget>()
+                  .toList();
+            } else {
+              debugPrint('⚠️ budgets is not a List: ${budgetsData.runtimeType}');
+              _budgets = [];
+            }
+          } catch (e) {
+            debugPrint('❌ Error parsing budgets: $e');
+            _budgets = [];
+          }
+
+          // Safe handling of readyToAssign
+          final rta = data['data']?['readyToAssign'];
           if (rta is num) {
             _readyToAssign = rta.toDouble();
           } else if (rta is String) {
             _readyToAssign = double.tryParse(rta) ?? 0;
           } else if (rta is Map) {
-            // Nếu backend trả về kiểu Map, lấy giá trị đầu tiên là số
+            // Nếu backend trả về kiểu Map (Decimal128), lấy giá trị
             final value = rta.values.isNotEmpty ? rta.values.first : 0;
             if (value is num) {
               _readyToAssign = value.toDouble();
@@ -335,27 +359,48 @@ class BudgetService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        debugPrint('✅ fundBudgetCategory response: ${response.body}');
+
         if (data['success'] == true) {
-          final updatedBudget = Budget.fromJson(data['data']['budget']);
-          final rta = data['data']['readyToAssign'];
-          double newReadyToAssign = 0;
-          if (rta is num) {
-            newReadyToAssign = rta.toDouble();
-          } else if (rta is String) {
-            newReadyToAssign = double.tryParse(rta) ?? 0;
-          } else {
-            newReadyToAssign = 0;
-          }
+          try {
+            // Safe handling of budget object
+            final budgetData = data['data']?['budget'];
+            if (budgetData == null) {
+              throw Exception('Missing budget data in response');
+            }
 
-          // Update local state
-          final index = _budgets.indexWhere((b) => b.id == budgetId);
-          if (index != -1) {
-            _budgets[index] = updatedBudget;
-          }
-          _readyToAssign = newReadyToAssign;
+            final updatedBudget = Budget.fromJson(budgetData);
 
-          notifyListeners();
-          return {'success': true, 'message': data['message']};
+            // Safe handling of readyToAssign
+            final rta = data['data']?['readyToAssign'];
+            double newReadyToAssign = 0;
+            if (rta is num) {
+              newReadyToAssign = rta.toDouble();
+            } else if (rta is String) {
+              newReadyToAssign = double.tryParse(rta) ?? 0;
+            } else if (rta is Map) {
+              final value = rta.values.isNotEmpty ? rta.values.first : 0;
+              if (value is num) {
+                newReadyToAssign = value.toDouble();
+              } else if (value is String) {
+                newReadyToAssign = double.tryParse(value) ?? 0;
+              }
+            }
+
+            // Update local state
+            final index = _budgets.indexWhere((b) => b.id == budgetId);
+            if (index != -1) {
+              _budgets[index] = updatedBudget;
+            }
+            _readyToAssign = newReadyToAssign;
+
+            notifyListeners();
+            return {'success': true, 'message': data['message']};
+          } catch (e) {
+            debugPrint('❌ Error parsing fund response: $e');
+            _setError('Lỗi xử lý dữ liệu: ${e.toString()}');
+            return {'success': false, 'message': 'Lỗi xử lý dữ liệu'};
+          }
         } else {
           _setError(data['message'] ?? 'Lỗi khi fund ngân sách');
           return {'success': false, 'message': data['message']};

@@ -500,7 +500,13 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB>
 
   Widget _buildBudgetCard(Budget budget) {
     return GestureDetector(
-      onTap: () => context.push('/budget/${budget.id}'),
+      onTap: () async {
+        await context.push('/budget/${budget.id}');
+        // Reload data when returning from detail screen
+        if (mounted) {
+          _loadBudgets();
+        }
+      },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(

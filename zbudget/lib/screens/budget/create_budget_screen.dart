@@ -1462,6 +1462,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                           height: 40,
                           child: TextField(
                             keyboardType: TextInputType.number,
+                            inputFormatters: [PercentageInputFormatter()],
                             decoration: InputDecoration(
                               labelText: '%',
                               isDense: true,
