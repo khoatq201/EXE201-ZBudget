@@ -11,6 +11,7 @@ import '../../models/budget.dart';
 import '../../constants/typography.dart';
 import '../../utils/formatters.dart';
 import '../../utils/theme_extensions.dart';
+import '../../widgets/floating_ai_button.dart';
 
 class DashboardScreenApi extends StatefulWidget {
   const DashboardScreenApi({super.key});
@@ -104,26 +105,31 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
     final authService = Provider.of<AuthService>(context);
     final dashboardService = Provider.of<DashboardService>(context);
 
-    return Container(
-      color: context.screenBackground,
-      child: dashboardService.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : dashboardService.error != null
-          ? _buildErrorView(dashboardService.error!)
-          : dashboardService.dashboardData == null
-          ? Center(
-              child: Text(
-                'Không có dữ liệu',
-                style: TextStyle(color: context.settingsItemTitleColor),
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _refreshDashboard,
-              child: _buildDashboardContent(
-                dashboardService.dashboardData!,
-                authService,
-              ),
-            ),
+    return Stack(
+      children: [
+        Container(
+          color: context.screenBackground,
+          child: dashboardService.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : dashboardService.error != null
+              ? _buildErrorView(dashboardService.error!)
+              : dashboardService.dashboardData == null
+              ? Center(
+                  child: Text(
+                    'Không có dữ liệu',
+                    style: TextStyle(color: context.settingsItemTitleColor),
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _refreshDashboard,
+                  child: _buildDashboardContent(
+                    dashboardService.dashboardData!,
+                    authService,
+                  ),
+                ),
+        ),
+        const FloatingAiButton(),
+      ],
     );
   }
 

@@ -8,6 +8,7 @@ import {
   successResponse,
 } from "../middleware/errorHandler.js";
 import mongoose from "mongoose";
+import { clearUserCache } from "../services/aiFinancialAnalysisService.js";
 /**
  * @desc    Create new income with YNAB-style allocations
  * @route   POST /api/income
@@ -53,60 +54,59 @@ export const createIncome = async (req, res) => {
     const unallocated = parseFloat(income.unallocated?.toString() || "0");
 
     // Update user's financial summary
-    await User.findByIdAndUpdate(
-      userId,
-      {
-        $inc: {
-          'financialSummary.totalIncome': amount,
-          'financialSummary.currentBalance': amount,
-          'financialSummary.readyToAssign': unallocated,
-        },
-        'financialSummary.lastUpdated': new Date(),
-      }
-    );
+    await User.findByIdAndUpdate(userId, {
+      $inc: {
+        "financialSummary.totalIncome": amount,
+        "financialSummary.currentBalance": amount,
+        "financialSummary.readyToAssign": unallocated,
+      },
+      "financialSummary.lastUpdated": new Date(),
+    });
 
     // Process allocations
     if (allocations && allocations.length > 0) {
       for (const alloc of allocations) {
-        if (alloc.type === 'budget') {
+        if (alloc.type === "budget") {
           // Fund budget category
           const budget = await Budget.findById(alloc.targetId);
           if (!budget) {
             console.warn(`⚠️ Budget not found: ${alloc.targetId}`);
             continue;
           }
-          budget.fundCategory(alloc.categoryAllocationId, parseFloat(alloc.amount));
+          budget.fundCategory(
+            alloc.categoryAllocationId,
+            parseFloat(alloc.amount)
+          );
           await budget.save();
 
           // Update user's totalAssigned
-          await User.findByIdAndUpdate(
-            userId,
-            {
-              $inc: {
-                'financialSummary.totalAssigned': parseFloat(alloc.amount),
-              },
-              'financialSummary.lastAssignmentDate': new Date(),
-            }
-          );
-        } else if (alloc.type === 'savings') {
+          await User.findByIdAndUpdate(userId, {
+            $inc: {
+              "financialSummary.totalAssigned": parseFloat(alloc.amount),
+            },
+            "financialSummary.lastAssignmentDate": new Date(),
+          });
+        } else if (alloc.type === "savings") {
           // Fund savings goal
           const savingsGoal = await SavingsGoal.findById(alloc.targetId);
           if (!savingsGoal) {
             console.warn(`⚠️ Savings goal not found: ${alloc.targetId}`);
             continue;
           }
-          savingsGoal.addContribution(parseFloat(alloc.amount), 'income_allocation', income._id, alloc.note);
+          savingsGoal.addContribution(
+            parseFloat(alloc.amount),
+            "income_allocation",
+            income._id,
+            alloc.note
+          );
           await savingsGoal.save();
 
           // Update user's totalSaved
-          await User.findByIdAndUpdate(
-            userId,
-            {
-              $inc: {
-                'financialSummary.totalSaved': parseFloat(alloc.amount),
-              },
-            }
-          );
+          await User.findByIdAndUpdate(userId, {
+            $inc: {
+              "financialSummary.totalSaved": parseFloat(alloc.amount),
+            },
+          });
         }
       }
     }
@@ -129,19 +129,33 @@ export const createIncome = async (req, res) => {
       totalAllocated: parseFloat(income.totalAllocated.toString()),
       unallocated: parseFloat(income.unallocated.toString()),
       isFullyAllocated: income.isFullyAllocated,
-      taxInfo: income.taxInfo ? {
-        isTaxable: income.taxInfo.isTaxable,
-        taxRate: income.taxInfo.taxRate || 0,
-        taxAmount: income.taxInfo.taxAmount ? parseFloat(income.taxInfo.taxAmount.toString()) : 0,
-      } : null,
+      taxInfo: income.taxInfo
+        ? {
+            isTaxable: income.taxInfo.isTaxable,
+            taxRate: income.taxInfo.taxRate || 0,
+            taxAmount: income.taxInfo.taxAmount
+              ? parseFloat(income.taxInfo.taxAmount.toString())
+              : 0,
+          }
+        : null,
       createdAt: income.createdAt,
       updatedAt: income.updatedAt,
     };
 
+    // Clear AI analysis cache for real-time updates
+    try {
+      clearUserCache(userId);
+    } catch (cacheError) {
+      console.error(
+        "⚠️ AI cache invalidation failed (non-critical):",
+        cacheError.message
+      );
+    }
+
     res.status(201).json({
       success: true,
       message: "Income created successfully",
-      data: formattedIncome
+      data: formattedIncome,
     });
   } catch (error) {
     console.error("❌ Create income error:", error);
@@ -177,11 +191,7 @@ export const getIncomes = async (req, res) => {
     }
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const [incomes, total] = await Promise.all([
-      Income.find(query)
-        .sort(sort)
-        .skip(skip)
-        .limit(parseInt(limit))
-        .lean(),
+      Income.find(query).sort(sort).skip(skip).limit(parseInt(limit)).lean(),
       Income.countDocuments(query),
     ]);
     // Convert Decimal128 to numbers
@@ -200,7 +210,7 @@ export const getIncomes = async (req, res) => {
           limit: parseInt(limit),
           pages: Math.ceil(total / parseInt(limit)),
         },
-      }
+      },
     });
   } catch (error) {
     console.error("Get incomes error:", error);
@@ -230,7 +240,7 @@ export const getIncomeById = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Income retrieved successfully",
-      data: formattedIncome
+      data: formattedIncome,
     });
   } catch (error) {
     if (error instanceof NotFoundError) throw error;
@@ -279,10 +289,10 @@ export const updateIncome = async (req, res) => {
         userId,
         {
           $inc: {
-            'financialSummary.totalIncome': amountDiff,
-            'financialSummary.currentBalance': amountDiff,
+            "financialSummary.totalIncome": amountDiff,
+            "financialSummary.currentBalance": amountDiff,
           },
-          'financialSummary.lastUpdated': new Date(),
+          "financialSummary.lastUpdated": new Date(),
         },
         { new: true }
       );
@@ -294,7 +304,7 @@ export const updateIncome = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Income updated successfully",
-      data: formattedIncome
+      data: formattedIncome,
     });
   } catch (error) {
     if (error instanceof NotFoundError) throw error;
@@ -321,17 +331,17 @@ export const deleteIncome = async (req, res) => {
       userId,
       {
         $inc: {
-          'financialSummary.totalIncome': -amount,
-          'financialSummary.currentBalance': -amount,
+          "financialSummary.totalIncome": -amount,
+          "financialSummary.currentBalance": -amount,
         },
-        'financialSummary.lastUpdated': new Date(),
+        "financialSummary.lastUpdated": new Date(),
       },
       { new: true }
     );
     res.status(200).json({
       success: true,
       message: "Income deleted successfully",
-      data: null
+      data: null,
     });
   } catch (error) {
     if (error instanceof NotFoundError) throw error;
@@ -396,7 +406,7 @@ export const getIncomeStats = async (req, res) => {
       data: {
         stats,
         total: totalStats[0] || { total: 0, count: 0 },
-      }
+      },
     });
   } catch (error) {
     console.error("Get income stats error:", error);
@@ -422,40 +432,56 @@ export const assignReadyToAssign = async (req, res) => {
     await session.withTransaction(async () => {
       // Get current Ready to Assign
       const user = await User.findById(userId).session(session);
-      const readyToAssign = parseFloat(user.financialSummary.readyToAssign?.toString() || "0");
+      const readyToAssign = parseFloat(
+        user.financialSummary.readyToAssign?.toString() || "0"
+      );
       // Calculate total assigning
       const totalAssigning = assignments.reduce(
         (sum, a) => sum + parseFloat(a.amount),
         0
       );
       if (totalAssigning > readyToAssign) {
-        throw new BadRequestError(`Insufficient Ready to Assign. Available: ${readyToAssign}, Requested: ${totalAssigning}`);
+        throw new BadRequestError(
+          `Insufficient Ready to Assign. Available: ${readyToAssign}, Requested: ${totalAssigning}`
+        );
       }
       // Process assignments
       for (const assign of assignments) {
-        if (assign.type === 'budget') {
-          const budget = await Budget.findById(assign.targetId).session(session);
+        if (assign.type === "budget") {
+          const budget = await Budget.findById(assign.targetId).session(
+            session
+          );
           if (!budget) {
             console.warn(`⚠️ Budget not found: ${assign.targetId}`);
             continue;
           }
-          budget.fundCategory(assign.categoryAllocationId, parseFloat(assign.amount));
+          budget.fundCategory(
+            assign.categoryAllocationId,
+            parseFloat(assign.amount)
+          );
           await budget.save({ session });
-        } else if (assign.type === 'savings') {
+        } else if (assign.type === "savings") {
           // Fund savings goal
-          const savingsGoal = await SavingsGoal.findById(assign.targetId).session(session);
+          const savingsGoal = await SavingsGoal.findById(
+            assign.targetId
+          ).session(session);
           if (!savingsGoal) {
             console.warn(`⚠️ Savings goal not found: ${assign.targetId}`);
             continue;
           }
-          savingsGoal.addContribution(parseFloat(assign.amount), 'income_allocation', null, assign.note);
+          savingsGoal.addContribution(
+            parseFloat(assign.amount),
+            "income_allocation",
+            null,
+            assign.note
+          );
           await savingsGoal.save({ session });
           // Update user's totalSaved
           await User.findByIdAndUpdate(
             userId,
             {
               $inc: {
-                'financialSummary.totalSaved': parseFloat(assign.amount),
+                "financialSummary.totalSaved": parseFloat(assign.amount),
               },
             },
             { session }
@@ -467,10 +493,10 @@ export const assignReadyToAssign = async (req, res) => {
         userId,
         {
           $inc: {
-            'financialSummary.readyToAssign': -totalAssigning,
-            'financialSummary.totalAssigned': totalAssigning,
+            "financialSummary.readyToAssign": -totalAssigning,
+            "financialSummary.totalAssigned": totalAssigning,
           },
-          'financialSummary.lastAssignmentDate': new Date(),
+          "financialSummary.lastAssignmentDate": new Date(),
         },
         { session }
       );
@@ -481,7 +507,7 @@ export const assignReadyToAssign = async (req, res) => {
         data: {
           assigned: totalAssigning,
           remainingReadyToAssign: remainingReadyToAssign,
-        }
+        },
       });
     });
   } catch (error) {
@@ -500,13 +526,19 @@ export const assignReadyToAssign = async (req, res) => {
 export const getReadyToAssign = async (req, res) => {
   const userId = req.userId;
   try {
-    const user = await User.findById(userId).select('financialSummary');
+    const user = await User.findById(userId).select("financialSummary");
     if (!user) {
       throw new NotFoundError("User not found");
     }
-    const readyToAssign = parseFloat(user.financialSummary.readyToAssign?.toString() || "0");
-    const totalAssigned = parseFloat(user.financialSummary.totalAssigned?.toString() || "0");
-    const totalSaved = parseFloat(user.financialSummary.totalSaved?.toString() || "0");
+    const readyToAssign = parseFloat(
+      user.financialSummary.readyToAssign?.toString() || "0"
+    );
+    const totalAssigned = parseFloat(
+      user.financialSummary.totalAssigned?.toString() || "0"
+    );
+    const totalSaved = parseFloat(
+      user.financialSummary.totalSaved?.toString() || "0"
+    );
     res.status(200).json({
       success: true,
       message: "Ready to Assign retrieved successfully",
@@ -515,7 +547,7 @@ export const getReadyToAssign = async (req, res) => {
         totalAssigned,
         totalSaved,
         lastAssignmentDate: user.financialSummary.lastAssignmentDate,
-      }
+      },
     });
   } catch (error) {
     console.error("Get Ready to Assign error:", error);

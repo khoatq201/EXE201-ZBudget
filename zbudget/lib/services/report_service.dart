@@ -76,7 +76,9 @@ class ReportService extends ChangeNotifier {
       if (startDate != null) queryParams['startDate'] = startDate;
       if (endDate != null) queryParams['endDate'] = endDate;
 
-      final uri = Uri.parse('$baseUrl/trend').replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/trend',
+      ).replace(queryParameters: queryParams);
       debugPrint('📈 Fetching trend report: $uri');
 
       final response = await http.get(uri, headers: headers);
@@ -113,14 +115,13 @@ class ReportService extends ChangeNotifier {
     try {
       final headers = await _getHeaders();
 
-      final queryParams = {
-        'period': period,
-        'type': type,
-      };
+      final queryParams = {'period': period, 'type': type};
       if (startDate != null) queryParams['startDate'] = startDate;
       if (endDate != null) queryParams['endDate'] = endDate;
 
-      final uri = Uri.parse('$baseUrl/categories').replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/categories',
+      ).replace(queryParameters: queryParams);
       debugPrint('📊 Fetching category report: $uri');
 
       final response = await http.get(uri, headers: headers);
@@ -160,7 +161,9 @@ class ReportService extends ChangeNotifier {
         'compareCount': compareCount.toString(),
       };
 
-      final uri = Uri.parse('$baseUrl/comparison').replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/comparison',
+      ).replace(queryParameters: queryParams);
       debugPrint('🔄 Fetching comparison report: $uri');
 
       final response = await http.get(uri, headers: headers);
@@ -184,9 +187,7 @@ class ReportService extends ChangeNotifier {
   }
 
   /// Get Spending Patterns - Day of week and payment method analysis
-  Future<void> getSpendingPatterns({
-    String period = 'month',
-  }) async {
+  Future<void> getSpendingPatterns({String period = 'month'}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -196,7 +197,9 @@ class ReportService extends ChangeNotifier {
 
       final queryParams = {'period': period};
 
-      final uri = Uri.parse('$baseUrl/patterns').replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/patterns',
+      ).replace(queryParameters: queryParams);
       debugPrint('🔍 Fetching spending patterns: $uri');
 
       final response = await http.get(uri, headers: headers);
@@ -220,9 +223,7 @@ class ReportService extends ChangeNotifier {
   }
 
   /// Get Forecast Report - Predictive analytics
-  Future<void> getForecastReport({
-    int months = 3,
-  }) async {
+  Future<void> getForecastReport({int months = 3}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -232,7 +233,9 @@ class ReportService extends ChangeNotifier {
 
       final queryParams = {'months': months.toString()};
 
-      final uri = Uri.parse('$baseUrl/forecast').replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/forecast',
+      ).replace(queryParameters: queryParams);
       debugPrint('🔮 Fetching forecast report: $uri');
 
       final response = await http.get(uri, headers: headers);
@@ -743,10 +746,7 @@ class ForecastTrends {
   final String incomeTrend;
   final String expenseTrend;
 
-  ForecastTrends({
-    required this.incomeTrend,
-    required this.expenseTrend,
-  });
+  ForecastTrends({required this.incomeTrend, required this.expenseTrend});
 
   factory ForecastTrends.fromJson(Map<String, dynamic> json) {
     return ForecastTrends(

@@ -9,7 +9,7 @@ async function testGemini() {
   try {
     console.log("🧪 Testing Gemini AI connection...");
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const result = await model.generateContent([
       "Hello, can you respond with 'Gemini AI is working'?",
