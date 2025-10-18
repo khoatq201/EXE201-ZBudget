@@ -2,10 +2,13 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import '../models/expense.dart';
 import '../models/budget_models.dart';
 import '../utils/date_formatter.dart';
 import '../utils/secure_storage_manager.dart';
+import 'notification_sync_service.dart';
+import '../main.dart';
 
 class ExpenseService extends ChangeNotifier {
   // Base URL - different for web and mobile
@@ -101,7 +104,9 @@ class ExpenseService extends ChangeNotifier {
         final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
 
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
-          final expenseListResponse = ExpenseListResponse.fromJson(jsonResponse['data']);
+          final expenseListResponse = ExpenseListResponse.fromJson(
+            jsonResponse['data'],
+          );
           _expenses = expenseListResponse.expenses;
           _pagination = expenseListResponse.pagination;
           _error = null;
@@ -206,16 +211,25 @@ class ExpenseService extends ChangeNotifier {
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
           final newExpense = Expense.fromJson(jsonResponse['data']['expense']);
           _expenses.insert(0, newExpense); // Add to beginning
+
+          // ✅ KEY: Trigger notification refresh after successful creation
+          await _refreshNotificationsAfterAction();
+
           debugPrint('✅ Expense created: ${newExpense.id}');
           notifyListeners();
           return newExpense;
         } else {
-          throw Exception(jsonResponse['message'] ?? 'Failed to create expense');
+          throw Exception(
+            jsonResponse['message'] ?? 'Failed to create expense',
+          );
         }
       } else {
         final errorBody = jsonDecode(response.body);
         // Parse error message - could be 'error' or 'message' field
-        final errorMessage = errorBody['error'] ?? errorBody['message'] ?? 'Failed to create expense';
+        final errorMessage =
+            errorBody['error'] ??
+            errorBody['message'] ??
+            'Failed to create expense';
         debugPrint('❌ Create expense failed: $errorMessage');
         throw Exception(errorMessage);
       }
@@ -271,7 +285,9 @@ class ExpenseService extends ChangeNotifier {
         final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
 
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
-          final updatedExpense = Expense.fromJson(jsonResponse['data']['expense']);
+          final updatedExpense = Expense.fromJson(
+            jsonResponse['data']['expense'],
+          );
 
           // Update in local list
           final index = _expenses.indexWhere((e) => e.id == id);
@@ -283,7 +299,9 @@ class ExpenseService extends ChangeNotifier {
           debugPrint('✅ Expense updated: $id');
           return updatedExpense;
         } else {
-          throw Exception(jsonResponse['message'] ?? 'Failed to update expense');
+          throw Exception(
+            jsonResponse['message'] ?? 'Failed to update expense',
+          );
         }
       } else {
         final errorBody = jsonDecode(response.body);
@@ -325,7 +343,8 @@ class ExpenseService extends ChangeNotifier {
   Future<ExpenseStats> getExpenseStats({
     String? startDate,
     String? endDate,
-    String groupBy = 'category', // 'day', 'week', 'month', 'year', 'category', 'paymentMethod'
+    String groupBy =
+        'category', // 'day', 'week', 'month', 'year', 'category', 'paymentMethod'
     String? category,
   }) async {
     try {
@@ -336,7 +355,9 @@ class ExpenseService extends ChangeNotifier {
       if (endDate != null) queryParams['endDate'] = endDate;
       if (category != null) queryParams['category'] = category;
 
-      final uri = Uri.parse('$baseUrl/stats').replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/stats',
+      ).replace(queryParameters: queryParams);
       debugPrint('📊 Fetching expense stats');
 
       final response = await http.get(uri, headers: headers);
@@ -533,5 +554,23 @@ class ExpenseService extends ChangeNotifier {
       return expense.date.isAfter(start.subtract(const Duration(days: 1))) &&
           expense.date.isBefore(end.add(const Duration(days: 1)));
     }).toList();
+  }
+
+  /// ✅ NEW: Refresh notifications after action
+  Future<void> _refreshNotificationsAfterAction() async {
+    try {
+      // Get notification service from context
+      final notificationService = Provider.of<NotificationSyncService>(
+        navigatorKey.currentContext!,
+        listen: false,
+      );
+
+      // Refresh notifications
+      await notificationService.fetchNotifications();
+
+      debugPrint('🔄 Notifications refreshed after expense creation');
+    } catch (error) {
+      debugPrint('❌ Failed to refresh notifications: $error');
+    }
   }
 }

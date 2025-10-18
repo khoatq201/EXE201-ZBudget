@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 import { connectDB } from "./models/index.js";
 import logger from "morgan";
 import sessionCleanupJob from "./services/SessionCleanupJob.js";
+import notificationSchedulerJob from "./services/NotificationSchedulerJob.js";
 // Import routes
 import authRoutes from "./routes/authRoutes.js";
 import expenseRoutes from "./routes/expenseRoutes.js";
@@ -26,7 +27,7 @@ import aiAnalysisRoutes from "./routes/aiAnalysisRoutes.js";
 // import userRoutes from './routes/users.js';
 // import challengeRoutes from './routes/challenges.js';
 // import groupRoutes from './routes/groups.js';
-// import notificationRoutes from './routes/notifications.js';
+import notificationRoutes from "./routes/notificationRoutes.js";
 // import healthRoutes from './routes/health.js';
 // Middleware
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -156,7 +157,7 @@ app.use("/api/ai/analysis", aiAnalysisRoutes);
 // app.use('/api/users', authenticate, userRoutes);
 // app.use('/api/challenges', authenticate, challengeRoutes);
 // app.use('/api/groups', authenticate, groupRoutes);
-// app.use('/api/notifications', authenticate, notificationRoutes);
+app.use("/api/notifications", notificationRoutes);
 // API documentation
 app.get("/api", (req, res) => {
   res.json({
@@ -263,6 +264,8 @@ async function startServer() {
       console.log(`🚀 Server is running on port ${PORT}`);
       // Start session cleanup job
       sessionCleanupJob.start();
+      // Start notification scheduler job
+      notificationSchedulerJob.start();
       if (process.env.NODE_ENV === "development") {
         console.log(`📝 API Documentation: http://localhost:${PORT}/api`);
       }

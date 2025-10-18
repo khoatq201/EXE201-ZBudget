@@ -2,8 +2,11 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import '../models/budget.dart';
 import '../utils/secure_storage_manager.dart';
+import 'notification_sync_service.dart';
+import '../main.dart';
 
 class BudgetService extends ChangeNotifier {
   List<Budget> _budgets = [];
@@ -73,7 +76,9 @@ class BudgetService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        debugPrint('✅ getBudgets response: ${response.body.length > 500 ? response.body.substring(0, 500) : response.body}');
+        debugPrint(
+          '✅ getBudgets response: ${response.body.length > 500 ? response.body.substring(0, 500) : response.body}',
+        );
 
         if (data['success'] == true) {
           // Safe handling of budgets array
@@ -92,7 +97,9 @@ class BudgetService extends ChangeNotifier {
                   .whereType<Budget>()
                   .toList();
             } else {
-              debugPrint('⚠️ budgets is not a List: ${budgetsData.runtimeType}');
+              debugPrint(
+                '⚠️ budgets is not a List: ${budgetsData.runtimeType}',
+              );
               _budgets = [];
             }
           } catch (e) {
@@ -287,6 +294,10 @@ class BudgetService extends ChangeNotifier {
           if (index != -1) {
             _budgets[index] = updatedBudget;
           }
+
+          // ✅ KEY: Trigger notification refresh after successful update
+          await _refreshNotificationsAfterAction();
+
           notifyListeners();
           return {'success': true, 'message': data['message']};
         } else {
@@ -468,5 +479,20 @@ class BudgetService extends ChangeNotifier {
     _readyToAssign = 0;
     _error = null;
     notifyListeners();
+  }
+
+  /// ✅ NEW: Refresh notifications after action
+  Future<void> _refreshNotificationsAfterAction() async {
+    try {
+      final notificationService = Provider.of<NotificationSyncService>(
+        navigatorKey.currentContext!,
+        listen: false,
+      );
+
+      await notificationService.fetchNotifications();
+      debugPrint('🔄 Notifications refreshed after budget update');
+    } catch (error) {
+      debugPrint('❌ Failed to refresh notifications: $error');
+    }
   }
 }

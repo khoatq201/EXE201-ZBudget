@@ -6,6 +6,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../services/dashboard_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/budget_service.dart';
+import '../../services/notification_sync_service.dart';
 import '../../models/dashboard.dart';
 import '../../models/budget.dart';
 import '../../constants/typography.dart';
@@ -38,6 +39,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _loadActiveBudgets();
       await _loadDashboardData();
+      await _loadNotificationStats();
     });
   }
 
@@ -98,6 +100,19 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
 
   Future<void> _refreshDashboard() async {
     return _loadDashboardData();
+  }
+
+  /// Load notification stats for badge
+  Future<void> _loadNotificationStats() async {
+    try {
+      final notificationService = Provider.of<NotificationSyncService>(
+        context,
+        listen: false,
+      );
+      await notificationService.getNotificationStats();
+    } catch (e) {
+      debugPrint('Error loading notification stats: $e');
+    }
   }
 
   @override
@@ -194,13 +209,53 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
     return CommonHeaderPresets.dashboard(
       userName: userName,
       subtitle: _getGreeting(),
-      trailing: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.24),
-          borderRadius: BorderRadius.circular(12),
+      trailing: GestureDetector(
+        onTap: _showNotifications,
+        child: Consumer<NotificationSyncService>(
+          builder: (context, notificationService, child) {
+            final unreadCount = notificationService.unreadCount;
+            return Stack(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.24),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.notifications_outlined,
+                    color: Colors.white,
+                  ),
+                ),
+                if (unreadCount > 0)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 20,
+                        minHeight: 20,
+                      ),
+                      child: Text(
+                        unreadCount > 99 ? '99+' : unreadCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
-        child: const Icon(Icons.notifications_outlined, color: Colors.white),
       ),
     );
   }
@@ -210,6 +265,16 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
     if (hour < 12) return 'Chào buổi sáng!';
     if (hour < 18) return 'Chào buổi chiều!';
     return 'Chào buổi tối!';
+  }
+
+  /// Show notifications in a simple bottom sheet
+  void _showNotifications() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _NotificationBottomSheet(),
+    );
   }
 
   Widget _buildBalanceCard(DashboardData data) {
@@ -1304,5 +1369,303 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
       'other': 'Khác',
     };
     return categoryNames[category] ?? category;
+  }
+}
+
+/// Separate widget for notification bottom sheet to avoid loading issues
+class _NotificationBottomSheet extends StatefulWidget {
+  @override
+  _NotificationBottomSheetState createState() =>
+      _NotificationBottomSheetState();
+}
+
+class _NotificationBottomSheetState extends State<_NotificationBottomSheet> {
+  bool _isLoading = true;
+  List<dynamic> _notifications = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    try {
+      final notificationService = Provider.of<NotificationSyncService>(
+        context,
+        listen: false,
+      );
+
+      await notificationService.fetchNotifications();
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _notifications = notificationService.notifications;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.7,
+      decoration: BoxDecoration(
+        color: context.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: context.colorScheme.onSurfaceVariant,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.notifications_outlined,
+                  color: context.colorScheme.primary,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Thông báo',
+                  style: AppTypography.h3.copyWith(
+                    color: context.settingsItemTitleColor,
+                  ),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    context.go('/notifications');
+                  },
+                  child: Text(
+                    'Xem tất cả',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: context.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Notifications list
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _notifications.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.notifications_none_outlined,
+                          size: 64,
+                          color: context.settingsItemSubtitleColor,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Không có thông báo',
+                          style: AppTypography.h3.copyWith(
+                            color: context.settingsItemSubtitleColor,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Bạn sẽ nhận được thông báo khi có hoạt động mới',
+                          textAlign: TextAlign.center,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: context.settingsItemSubtitleColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: _notifications.length,
+                    itemBuilder: (context, index) {
+                      final notification = _notifications[index];
+                      return _buildNotificationItem(notification);
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build notification item widget
+  Widget _buildNotificationItem(dynamic notification) {
+    return GestureDetector(
+      onTap: () => _markNotificationAsRead(notification),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.cardBackground,
+          borderRadius: BorderRadius.circular(12),
+          border: notification.isRead == false
+              ? Border.all(
+                  color: context.colorScheme.primary.withOpacity(0.3),
+                  width: 1,
+                )
+              : null,
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _getNotificationColor(
+                  notification.type,
+                ).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                _getNotificationIcon(notification.type),
+                color: _getNotificationColor(notification.type),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    notification.title ?? 'Thông báo',
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontWeight: notification.isRead == false
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                      color: context.settingsItemTitleColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    notification.message ?? '',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: context.settingsItemSubtitleColor,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _formatNotificationTime(notification.createdAt),
+                    style: AppTypography.bodySmall.copyWith(
+                      color: context.settingsItemSubtitleColor,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (notification.isRead == false)
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: context.colorScheme.primary,
+                  shape: BoxShape.circle,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Mark notification as read
+  Future<void> _markNotificationAsRead(dynamic notification) async {
+    try {
+      final notificationService = Provider.of<NotificationSyncService>(
+        context,
+        listen: false,
+      );
+
+      if (notification.isRead == false) {
+        await notificationService.markAsRead(notification.id);
+        // Refresh the list
+        await _loadNotifications();
+      }
+    } catch (e) {
+      debugPrint('Error marking notification as read: $e');
+    }
+  }
+
+  /// Get notification icon based on type
+  IconData _getNotificationIcon(String type) {
+    switch (type) {
+      case 'income_added':
+        return Icons.trending_up;
+      case 'expense_added':
+        return Icons.trending_down;
+      case 'budget_updated':
+        return Icons.account_balance_wallet;
+      case 'savings_goal_created':
+        return Icons.savings;
+      case 'large_expense_alert':
+        return Icons.warning;
+      default:
+        return Icons.notifications;
+    }
+  }
+
+  /// Get notification color based on type
+  Color _getNotificationColor(String type) {
+    switch (type) {
+      case 'income_added':
+        return context.incomeColor;
+      case 'expense_added':
+        return context.colorScheme.error;
+      case 'budget_updated':
+        return context.colorScheme.primary;
+      case 'savings_goal_created':
+        return context.colorScheme.tertiary;
+      case 'large_expense_alert':
+        return context.colorScheme.secondary;
+      default:
+        return context.colorScheme.onSurfaceVariant;
+    }
+  }
+
+  /// Format notification time
+  String _formatNotificationTime(DateTime? createdAt) {
+    if (createdAt == null) return '';
+
+    final now = DateTime.now();
+    final difference = now.difference(createdAt);
+
+    if (difference.inMinutes < 1) {
+      return 'Vừa xong';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} phút trước';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} giờ trước';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} ngày trước';
+    } else {
+      return '${createdAt.day}/${createdAt.month}/${createdAt.year}';
+    }
   }
 }

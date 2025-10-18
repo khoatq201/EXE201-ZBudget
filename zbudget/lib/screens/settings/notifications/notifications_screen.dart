@@ -736,9 +736,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => NotificationTypeSettingsDialog(
-        notificationType: type,
-        initialSetting: setting,
-        notificationService: notificationService,
+        settings: notificationService.notificationSettings,
+        onSave: (newSettings) {
+          // Handle save logic here
+        },
       ),
     );
 
@@ -753,8 +754,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => QuietHoursDialog(
-        initialQuietHours: notificationService.notificationSettings.quietHours,
-        notificationService: notificationService,
+        startTime:
+            notificationService.notificationSettings.quietHours.startTime,
+        endTime: notificationService.notificationSettings.quietHours.endTime,
+        onSave: (start, end) {
+          // Handle save logic here
+        },
       ),
     );
 
@@ -769,8 +774,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => QuietHoursDialog(
-        initialQuietHours: notificationService.notificationSettings.quietHours,
-        notificationService: notificationService,
+        startTime:
+            notificationService.notificationSettings.quietHours.startTime,
+        endTime: notificationService.notificationSettings.quietHours.endTime,
+        onSave: (start, end) {
+          // Handle save logic here
+        },
       ),
     );
 
@@ -821,9 +830,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => MaxNotificationsDialog(
-        initialValue:
+        maxNotifications:
             notificationService.notificationSettings.maxNotificationsPerDay,
-        notificationService: notificationService,
+        onSave: (value) {
+          // Handle save logic here
+        },
       ),
     );
 

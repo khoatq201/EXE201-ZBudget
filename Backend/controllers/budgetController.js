@@ -1,6 +1,7 @@
-import mongoose from 'mongoose';
-import Budget from '../models/Budget.js';
-import User from '../models/User.js';
+import mongoose from "mongoose";
+import Budget from "../models/Budget.js";
+import User from "../models/User.js";
+import NotificationService from "../services/notificationService.js";
 /**
  * @desc    Get all budgets for a user
  * @route   GET /api/budgets
@@ -12,47 +13,53 @@ export const getBudgets = async (req, res) => {
     const userId = req.userId;
     const { status, period, year, month } = req.query;
     if (!userId) {
-      return res.status(401).json({ success: false, error: "Unauthorized: Missing userId" });
+      return res
+        .status(401)
+        .json({ success: false, error: "Unauthorized: Missing userId" });
     }
     const query = { userId };
     // Filter by active status
-    if (status === 'active') {
+    if (status === "active") {
       query.isActive = true;
-    } else if (status === 'inactive') {
+    } else if (status === "inactive") {
       query.isActive = false;
     }
     // Filter by period type
     if (period) {
-      query['period.type'] = period;
+      query["period.type"] = period;
     }
     // Filter by year/month
     if (year && month) {
       const startDate = new Date(year, month - 1, 1);
       const endDate = new Date(year, month, 0, 23, 59, 59);
-      query['period.startDate'] = { $gte: startDate };
-      query['period.endDate'] = { $lte: endDate };
+      query["period.startDate"] = { $gte: startDate };
+      query["period.endDate"] = { $lte: endDate };
     }
-    const budgets = await Budget.find(query)
-      .sort({ 'period.startDate': -1, createdAt: -1 });
+    const budgets = await Budget.find(query).sort({
+      "period.startDate": -1,
+      createdAt: -1,
+    });
     // Get user financial summary
-    const user = await User.findById(userId).select('financialSummary');
+    const user = await User.findById(userId).select("financialSummary");
     if (!user) {
       return res.status(404).json({ success: false, error: "User not found" });
     }
-    const readyToAssign = parseFloat(user.financialSummary?.readyToAssign?.toString() || "0");
+    const readyToAssign = parseFloat(
+      user.financialSummary?.readyToAssign?.toString() || "0"
+    );
     res.status(200).json({
       success: true,
       data: {
-        budgets: budgets.map(b => b.toJSON()),
+        budgets: budgets.map((b) => b.toJSON()),
         readyToAssign,
         count: budgets.length,
       },
     });
   } catch (error) {
-    console.error('Error in getBudgets:', error);
+    console.error("Error in getBudgets:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi lấy danh sách ngân sách',
+      message: "Lỗi khi lấy danh sách ngân sách",
       error: error.message,
     });
   }
@@ -70,7 +77,7 @@ export const getBudgetById = async (req, res) => {
     if (!budget) {
       return res.status(404).json({
         success: false,
-        message: 'Không tìm thấy ngân sách',
+        message: "Không tìm thấy ngân sách",
       });
     }
     res.status(200).json({
@@ -78,10 +85,10 @@ export const getBudgetById = async (req, res) => {
       data: budget.toJSON(),
     });
   } catch (error) {
-    console.error('Error in getBudgetById:', error);
+    console.error("Error in getBudgetById:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi lấy thông tin ngân sách',
+      message: "Lỗi khi lấy thông tin ngân sách",
       error: error.message,
     });
   }
@@ -94,22 +101,33 @@ export const getBudgetById = async (req, res) => {
 export const createBudget = async (req, res) => {
   try {
     const userId = req.userId;
-    const { name, totalAmount, currency, period, categoryAllocations, alerts, goals } = req.body;
+    const {
+      name,
+      totalAmount,
+      currency,
+      period,
+      categoryAllocations,
+      alerts,
+      goals,
+    } = req.body;
     // Validate period dates
     const startDate = new Date(period.startDate);
     const endDate = new Date(period.endDate);
     if (endDate <= startDate) {
       return res.status(400).json({
         success: false,
-        message: 'Ngày kết thúc phải sau ngày bắt đầu',
+        message: "Ngày kết thúc phải sau ngày bắt đầu",
       });
     }
     // Validate category allocations percentage sum
-    const totalPercentage = categoryAllocations.reduce((sum, cat) => sum + cat.percentage, 0);
+    const totalPercentage = categoryAllocations.reduce(
+      (sum, cat) => sum + cat.percentage,
+      0
+    );
     if (totalPercentage > 100) {
       return res.status(400).json({
         success: false,
-        message: 'Tổng phần trăm phân bổ không được vượt quá 100%',
+        message: "Tổng phần trăm phân bổ không được vượt quá 100%",
       });
     }
     // Create budget
@@ -117,13 +135,13 @@ export const createBudget = async (req, res) => {
       userId,
       name,
       totalAmount,
-      currency: currency || 'VND',
+      currency: currency || "VND",
       period: {
         startDate,
         endDate,
-        type: period.type || 'monthly',
+        type: period.type || "monthly",
       },
-      categoryAllocations: categoryAllocations.map(cat => ({
+      categoryAllocations: categoryAllocations.map((cat) => ({
         ...cat,
         funded: 0,
         spent: 0,
@@ -133,16 +151,44 @@ export const createBudget = async (req, res) => {
       goals: goals || {},
     });
     await budget.save();
+
+    // ✅ NEW: Notification trigger for budget creation
+    try {
+      await NotificationService.createNotification(
+        userId,
+        "budget_created",
+        {
+          budgetId: budget._id,
+          budgetName: budget.name,
+          totalAmount: budget.totalAmount,
+          category: budget.categoryAllocations?.[0]?.category || "general",
+        },
+        {
+          title: "💰 Ngân sách mới được tạo",
+          message: `Bạn đã tạo ngân sách "${
+            budget.name
+          }" với tổng số tiền ${budget.totalAmount.toLocaleString()}đ`,
+          category: "budget",
+          priority: "normal",
+        }
+      );
+    } catch (notificationError) {
+      console.error(
+        "⚠️ Budget creation notification failed (non-critical):",
+        notificationError.message
+      );
+    }
+
     res.status(201).json({
       success: true,
-      message: 'Tạo ngân sách thành công',
+      message: "Tạo ngân sách thành công",
       data: budget.toJSON(),
     });
   } catch (error) {
-    console.error('Error in createBudget:', error);
+    console.error("Error in createBudget:", error);
     res.status(400).json({
       success: false,
-      message: error.message || 'Lỗi khi tạo ngân sách',
+      message: error.message || "Lỗi khi tạo ngân sách",
       error: error.message,
     });
   }
@@ -161,29 +207,57 @@ export const updateBudget = async (req, res) => {
     if (!budget) {
       return res.status(404).json({
         success: false,
-        message: 'Không tìm thấy ngân sách',
+        message: "Không tìm thấy ngân sách",
       });
     }
+    // Store original values for comparison
+    const originalTotalAmount = budget.totalAmount;
+    const originalName = budget.name;
+
     // Update allowed fields
     if (updates.name) budget.name = updates.name;
     if (updates.totalAmount) budget.totalAmount = updates.totalAmount;
     if (updates.currency) budget.currency = updates.currency;
     if (updates.period) budget.period = updates.period;
-    if (updates.categoryAllocations) budget.categoryAllocations = updates.categoryAllocations;
+    if (updates.categoryAllocations)
+      budget.categoryAllocations = updates.categoryAllocations;
     if (updates.alerts) budget.alerts = updates.alerts;
     if (updates.goals) budget.goals = updates.goals;
-    if (typeof updates.isActive === 'boolean') budget.isActive = updates.isActive;
+    if (typeof updates.isActive === "boolean")
+      budget.isActive = updates.isActive;
     await budget.save();
+
+    // ✅ NEW: Notification trigger for budget updates
+    try {
+      if (updates.totalAmount && updates.totalAmount !== originalTotalAmount) {
+        const changeType =
+          updates.totalAmount > originalTotalAmount
+            ? "amount_increase"
+            : "amount_decrease";
+        await NotificationService.triggerBudgetUpdateNotification(userId, {
+          budgetId: budget._id,
+          budgetName: budget.name,
+          oldAmount: originalTotalAmount,
+          newAmount: updates.totalAmount,
+          changeType,
+        });
+      }
+    } catch (notificationError) {
+      console.error(
+        "⚠️ Budget update notification trigger failed (non-critical):",
+        notificationError.message
+      );
+    }
     res.status(200).json({
       success: true,
-      message: 'Cập nhật ngân sách thành công',
+      message: "Cập nhật ngân sách thành công",
       data: budget.toJSON(),
     });
   } catch (error) {
-    console.error('Error in updateBudget:', error);
+    console.error("Error in updateBudget:", error);
     res.status(400).json({
       success: false,
-      message: error.message || 'Lỗi khi cập nhật ngân sách',
+      message: error.message || "Lỗi khi cập nhật ngân sách",
       error: error.message,
     });
   }
@@ -201,18 +275,18 @@ export const deleteBudget = async (req, res) => {
     if (!budget) {
       return res.status(404).json({
         success: false,
-        message: 'Không tìm thấy ngân sách',
+        message: "Không tìm thấy ngân sách",
       });
     }
     res.status(200).json({
       success: true,
-      message: 'Xóa ngân sách thành công',
+      message: "Xóa ngân sách thành công",
     });
   } catch (error) {
-    console.error('Error in deleteBudget:', error);
+    console.error("Error in deleteBudget:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi xóa ngân sách',
+      message: "Lỗi khi xóa ngân sách",
       error: error.message,
     });
   }
@@ -230,7 +304,7 @@ export const fundBudgetCategory = async (req, res) => {
     if (!category || !amount || amount <= 0) {
       return res.status(400).json({
         success: false,
-        message: 'Category và amount là bắt buộc',
+        message: "Category và amount là bắt buộc",
       });
     }
     // Get budget
@@ -238,12 +312,14 @@ export const fundBudgetCategory = async (req, res) => {
     if (!budget) {
       return res.status(404).json({
         success: false,
-        message: 'Không tìm thấy ngân sách',
+        message: "Không tìm thấy ngân sách",
       });
     }
     // Get user's ready to assign amount
     const user = await User.findById(userId);
-    const readyToAssign = parseFloat(user.financialSummary?.readyToAssign?.toString() || '0');
+    const readyToAssign = parseFloat(
+      user.financialSummary?.readyToAssign?.toString() || "0"
+    );
     if (readyToAssign < amount) {
       return res.status(400).json({
         success: false,
@@ -259,11 +335,12 @@ export const fundBudgetCategory = async (req, res) => {
       await budget.save();
       // Deduct from user's Ready to Assign
       const newReadyToAssign = readyToAssign - amount;
-      user.financialSummary.readyToAssign = mongoose.Types.Decimal128.fromString(newReadyToAssign.toFixed(2));
+      user.financialSummary.readyToAssign =
+        mongoose.Types.Decimal128.fromString(newReadyToAssign.toFixed(2));
       await user.save();
       res.status(200).json({
         success: true,
-        message: 'Fund ngân sách thành công',
+        message: "Fund ngân sách thành công",
         data: {
           budget: budget.toJSON(),
           readyToAssign: newReadyToAssign,
@@ -271,23 +348,26 @@ export const fundBudgetCategory = async (req, res) => {
       });
     } catch (saveError) {
       // Rollback: restore original state
-      console.error('Error saving, attempting rollback:', saveError);
+      console.error("Error saving, attempting rollback:", saveError);
       try {
         // Restore budget
         await Budget.findByIdAndUpdate(id, originalBudgetState);
         // Restore user ready to assign
-        user.financialSummary.readyToAssign = mongoose.Types.Decimal128.fromString(originalReadyToAssign.toFixed(2));
+        user.financialSummary.readyToAssign =
+          mongoose.Types.Decimal128.fromString(
+            originalReadyToAssign.toFixed(2)
+          );
         await user.save();
       } catch (rollbackError) {
-        console.error('Rollback failed:', rollbackError);
+        console.error("Rollback failed:", rollbackError);
       }
       throw saveError;
     }
   } catch (error) {
-    console.error('Error in fundBudgetCategory:', error);
+    console.error("Error in fundBudgetCategory:", error);
     res.status(400).json({
       success: false,
-      message: error.message || 'Lỗi khi fund ngân sách',
+      message: error.message || "Lỗi khi fund ngân sách",
       error: error.message,
     });
   }
@@ -303,7 +383,11 @@ export const getBudgetStats = async (req, res) => {
     const { year, month } = req.query;
     const currentYear = year ? parseInt(year) : new Date().getFullYear();
     const currentMonth = month ? parseInt(month) : null;
-    const summary = await Budget.getBudgetSummary(userId, currentYear, currentMonth);
+    const summary = await Budget.getBudgetSummary(
+      userId,
+      currentYear,
+      currentMonth
+    );
     res.status(200).json({
       success: true,
       data: summary[0] || {
@@ -314,10 +398,10 @@ export const getBudgetStats = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error in getBudgetStats:', error);
+    console.error("Error in getBudgetStats:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi lấy thống kê ngân sách',
+      message: "Lỗi khi lấy thống kê ngân sách",
       error: error.message,
     });
   }
@@ -334,7 +418,7 @@ export const getCurrentBudget = async (req, res) => {
     if (!budget) {
       return res.status(404).json({
         success: false,
-        message: 'Không có ngân sách đang hoạt động',
+        message: "Không có ngân sách đang hoạt động",
       });
     }
     res.status(200).json({
@@ -342,10 +426,10 @@ export const getCurrentBudget = async (req, res) => {
       data: budget.toJSON(),
     });
   } catch (error) {
-    console.error('Error in getCurrentBudget:', error);
+    console.error("Error in getCurrentBudget:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi lấy ngân sách hiện tại',
+      message: "Lỗi khi lấy ngân sách hiện tại",
       error: error.message,
     });
   }

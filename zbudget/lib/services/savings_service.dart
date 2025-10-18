@@ -1,8 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import '../models/savings_models.dart';
 import '../utils/secure_storage_manager.dart';
+import 'notification_sync_service.dart';
+import '../main.dart';
 
 class SavingsService extends ChangeNotifier {
   // Base URL - different for web and mobile
@@ -21,8 +24,9 @@ class SavingsService extends ChangeNotifier {
 
   // Getters
   List<SavingsGoal> get savingsGoals => List.unmodifiable(_savingsGoals);
-  List<SavingsGoal> get activeSavingsGoals =>
-      _savingsGoals.where((goal) => goal.status == SavingsStatus.active).toList();
+  List<SavingsGoal> get activeSavingsGoals => _savingsGoals
+      .where((goal) => goal.status == SavingsStatus.active)
+      .toList();
   bool get isLoading => _isLoading;
   String? get error => _error;
   SavingsStats? get stats => _stats;
@@ -84,7 +88,9 @@ class SavingsService extends ChangeNotifier {
         final data = json.decode(response.body);
         if (data['success'] == true) {
           final goalsData = data['data']['goals'] as List;
-          _savingsGoals = goalsData.map((g) => SavingsGoal.fromJson(g)).toList();
+          _savingsGoals = goalsData
+              .map((g) => SavingsGoal.fromJson(g))
+              .toList();
           _error = null;
         } else {
           _error = data['message'] ?? 'Failed to load savings goals';
@@ -169,10 +175,20 @@ class SavingsService extends ChangeNotifier {
       if (response.statusCode == 201 && data['success'] == true) {
         final newGoal = SavingsGoal.fromJson(data['data']);
         _savingsGoals.add(newGoal);
+
+        // ✅ KEY: Trigger notification refresh after successful creation
+        await _refreshNotificationsAfterAction();
+
         notifyListeners();
-        return {'success': true, 'message': 'Savings goal created successfully'};
+        return {
+          'success': true,
+          'message': 'Savings goal created successfully',
+        };
       } else {
-        return {'success': false, 'message': data['message'] ?? 'Failed to create savings goal'};
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to create savings goal',
+        };
       }
     } catch (e) {
       if (kDebugMode) {
@@ -231,9 +247,15 @@ class SavingsService extends ChangeNotifier {
           _savingsGoals[index] = updatedGoal;
           notifyListeners();
         }
-        return {'success': true, 'message': 'Savings goal updated successfully'};
+        return {
+          'success': true,
+          'message': 'Savings goal updated successfully',
+        };
       } else {
-        return {'success': false, 'message': data['message'] ?? 'Failed to update savings goal'};
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to update savings goal',
+        };
       }
     } catch (e) {
       if (kDebugMode) {
@@ -255,9 +277,15 @@ class SavingsService extends ChangeNotifier {
       if (response.statusCode == 200 && data['success'] == true) {
         _savingsGoals.removeWhere((g) => g.id == id);
         notifyListeners();
-        return {'success': true, 'message': 'Savings goal deleted successfully'};
+        return {
+          'success': true,
+          'message': 'Savings goal deleted successfully',
+        };
       } else {
-        return {'success': false, 'message': data['message'] ?? 'Failed to delete savings goal'};
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to delete savings goal',
+        };
       }
     } catch (e) {
       if (kDebugMode) {
@@ -304,7 +332,8 @@ class SavingsService extends ChangeNotifier {
         return {'success': true, 'message': 'Contribution added successfully'};
       } else {
         // Parse error - could be 'message' or 'error' field
-        final errorMsg = data['message'] ?? data['error'] ?? 'Failed to add contribution';
+        final errorMsg =
+            data['message'] ?? data['error'] ?? 'Failed to add contribution';
         if (kDebugMode) {
           print('❌ Add contribution failed: $errorMsg');
         }
@@ -328,10 +357,7 @@ class SavingsService extends ChangeNotifier {
       final headers = await _getHeaders();
       final uri = Uri.parse('$baseUrl/$goalId/withdraw');
 
-      final body = {
-        'amount': amount,
-        if (reason != null) 'reason': reason,
-      };
+      final body = {'amount': amount, if (reason != null) 'reason': reason};
 
       final response = await http.post(
         uri,
@@ -351,7 +377,8 @@ class SavingsService extends ChangeNotifier {
         return {'success': true, 'message': 'Withdrawal successful'};
       } else {
         // Parse error - could be 'message' or 'error' field
-        final errorMsg = data['message'] ?? data['error'] ?? 'Failed to withdraw';
+        final errorMsg =
+            data['message'] ?? data['error'] ?? 'Failed to withdraw';
         if (kDebugMode) {
           print('❌ Withdraw failed: $errorMsg');
         }
@@ -417,5 +444,20 @@ class SavingsService extends ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  /// ✅ NEW: Refresh notifications after action
+  Future<void> _refreshNotificationsAfterAction() async {
+    try {
+      final notificationService = Provider.of<NotificationSyncService>(
+        navigatorKey.currentContext!,
+        listen: false,
+      );
+
+      await notificationService.fetchNotifications();
+      debugPrint('🔄 Notifications refreshed after savings goal creation');
+    } catch (error) {
+      debugPrint('❌ Failed to refresh notifications: $error');
+    }
   }
 }

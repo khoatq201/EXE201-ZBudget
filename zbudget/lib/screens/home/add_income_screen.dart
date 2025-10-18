@@ -725,11 +725,15 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
         title: _noteController.text.isNotEmpty
             ? _noteController.text
             : categoryOption.name,
-        description: _noteController.text.isNotEmpty ? _noteController.text : null,
+        description: _noteController.text.isNotEmpty
+            ? _noteController.text
+            : null,
         amount: amount,
         category: categoryName,
         date: _selectedDate,
         paymentMethod: paymentMethodId,
+        source: categoryOption
+            .name, // ✅ FIX: Thêm source để tránh "undefined" trong thông báo
       );
 
       if (!mounted) return;
