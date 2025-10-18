@@ -18,6 +18,7 @@ import mongoose from "mongoose";
 // ✅ NEW: Import utilities and services
 import { FinancialSummaryService } from "../services/financialSummaryService.js";
 import { toNumber } from "../utils/currencyHelper.js";
+import { clearUserCache } from "../services/aiFinancialAnalysisService.js";
 /**
  * @desc    Tạo chi tiêu mới
  * @route   POST /api/expenses
@@ -95,7 +96,10 @@ export const createExpense = async (req, res) => {
           }
         }
       } catch (budgetError) {
-        console.error('⚠️ Budget update failed (non-critical):', budgetError.message);
+        console.error(
+          "⚠️ Budget update failed (non-critical):",
+          budgetError.message
+        );
         // Don't fail the whole request if budget update fails
       }
     }
@@ -111,9 +115,20 @@ export const createExpense = async (req, res) => {
       hasReceipt: !!receipt,
       hasBudget: !!budgetId,
     });
+
+    // Clear AI analysis cache for real-time updates
+    try {
+      clearUserCache(userId);
+    } catch (cacheError) {
+      console.error(
+        "⚠️ AI cache invalidation failed (non-critical):",
+        cacheError.message
+      );
+    }
+
     return successResponse(res, "Tạo chi tiêu thành công!", { expense }, 201);
   } catch (error) {
-    console.error('❌ Create expense error:', error);
+    console.error("❌ Create expense error:", error);
     // Clean up uploaded file if failed
     if (receipt) {
       try {
@@ -872,9 +887,13 @@ export const bulkDeleteExpenses = async (req, res) => {
       deletedCount: result.deletedCount,
       expenseIds,
     });
-    return successResponse(res, `Xóa thành công ${result.deletedCount} chi tiêu!`, {
-      deletedCount: result.deletedCount,
-    });
+    return successResponse(
+      res,
+      `Xóa thành công ${result.deletedCount} chi tiêu!`,
+      {
+        deletedCount: result.deletedCount,
+      }
+    );
   } catch (error) {
     await session.abortTransaction();
     throw error;
@@ -913,7 +932,12 @@ export const duplicateExpense = async (req, res) => {
     { path: "groupId", select: "name type" },
   ]);
   res.locals.expenseId = duplicatedExpense._id;
-  return successResponse(res, "Nhân bản chi tiêu thành công!", {
-    expense: duplicatedExpense,
-  }, 201);
+  return successResponse(
+    res,
+    "Nhân bản chi tiêu thành công!",
+    {
+      expense: duplicatedExpense,
+    },
+    201
+  );
 };

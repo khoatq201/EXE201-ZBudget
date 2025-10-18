@@ -21,6 +21,8 @@ import savingsRoutes from "./routes/savingsRoutes.js";
 import budgetRoutes from "./routes/budgetRoutes.js";
 import groupBudgetRoutes from "./routes/groupBudgetRoutes.js";
 import ocrRoutes from "./routes/ocrRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
+import aiAnalysisRoutes from "./routes/aiAnalysisRoutes.js";
 // import userRoutes from './routes/users.js';
 // import challengeRoutes from './routes/challenges.js';
 // import groupRoutes from './routes/groups.js';
@@ -148,6 +150,8 @@ app.use("/api/savings", savingsRoutes);
 app.use("/api/budgets", budgetRoutes);
 app.use("/api/group-budgets", groupBudgetRoutes);
 app.use("/api/ocr", ocrRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/ai/analysis", aiAnalysisRoutes);
 // Protected routes (will be added later)
 // app.use('/api/users', authenticate, userRoutes);
 // app.use('/api/challenges', authenticate, challengeRoutes);
@@ -166,6 +170,8 @@ app.get("/api", (req, res) => {
       income: "/api/income",
       reports: "/api/reports",
       savings: "/api/savings",
+      ai: "/api/ai",
+      aiAnalysis: "/api/ai/analysis",
       health: "/api/health",
     },
     todo_endpoints: {

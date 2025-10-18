@@ -89,6 +89,20 @@ dependencies:
   csv: ^6.0.0
   path_provider: ^2.1.4
 
+  # AI Chat & Streaming
+  flutter_chat_ui: ^1.6.15 # Beautiful chat UI
+  dash_chat_2: ^0.0.21 # Alternative chat UI
+  flutter_markdown: ^0.7.4+1 # Markdown support for AI responses
+  web_socket_channel: ^3.0.1 # WebSocket for streaming
+  stream_channel: ^2.1.2 # Stream handling
+  animated_text_kit: ^4.2.2 # Text animations
+
+  # Charts for financial insights
+  syncfusion_flutter_charts: ^27.2.5 # Professional charts
+
+  # Animations
+  lottie: ^3.2.0 # Lottie animations for loading
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

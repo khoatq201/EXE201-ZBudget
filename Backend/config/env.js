@@ -27,6 +27,15 @@ export const config = {
   EMAIL_PASS: process.env.EMAIL_PASS,
   // Gemini AI OCR
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  // Groq AI Configuration
+  GROQ_API_KEY: process.env.GROQ_API_KEY,
+  GROQ_MODEL: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+  AI_FEATURES_ENABLED: process.env.AI_FEATURES_ENABLED === "true",
+  // AI Analysis Config
+  AI_ANALYSIS_CACHE_TTL: process.env.AI_ANALYSIS_CACHE_TTL || 1800, // 30 min
+  PROPHET_ENABLED: process.env.PROPHET_ENABLED !== "false", // true by default
+  MAX_FORECAST_MONTHS: 12,
+  ANOMALY_THRESHOLD: 2.0, // 2 standard deviations
 };
 // Debug Cloudinary config
 export default config;

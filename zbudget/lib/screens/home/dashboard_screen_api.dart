@@ -12,6 +12,7 @@ import '../../constants/typography.dart';
 import '../../utils/formatters.dart';
 import '../../utils/theme_extensions.dart';
 import '../../widgets/common_header.dart';
+import '../../widgets/floating_ai_button.dart';
 
 class DashboardScreenApi extends StatefulWidget {
   const DashboardScreenApi({super.key});
@@ -105,26 +106,31 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
     final authService = Provider.of<AuthService>(context);
     final dashboardService = Provider.of<DashboardService>(context);
 
-    return Container(
-      color: context.screenBackground,
-      child: dashboardService.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : dashboardService.error != null
-          ? _buildErrorView(dashboardService.error!)
-          : dashboardService.dashboardData == null
-          ? Center(
-              child: Text(
-                'Không có dữ liệu',
-                style: TextStyle(color: context.settingsItemTitleColor),
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _refreshDashboard,
-              child: _buildDashboardContent(
-                dashboardService.dashboardData!,
-                authService,
-              ),
-            ),
+    return Stack(
+      children: [
+        Container(
+          color: context.screenBackground,
+          child: dashboardService.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : dashboardService.error != null
+              ? _buildErrorView(dashboardService.error!)
+              : dashboardService.dashboardData == null
+              ? Center(
+                  child: Text(
+                    'Không có dữ liệu',
+                    style: TextStyle(color: context.settingsItemTitleColor),
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _refreshDashboard,
+                  child: _buildDashboardContent(
+                    dashboardService.dashboardData!,
+                    authService,
+                  ),
+                ),
+        ),
+        const FloatingAiButton(),
+      ],
     );
   }
 
@@ -194,10 +200,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
           color: Colors.white.withValues(alpha: 0.24),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Icon(
-          Icons.notifications_outlined,
-          color: Colors.white,
-        ),
+        child: const Icon(Icons.notifications_outlined, color: Colors.white),
       ),
     );
   }
@@ -388,13 +391,13 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: hasUnassignedMoney
-          ? context.incomeColor.withValues(alpha: 0.15)
-          : context.colorScheme.onPrimary.withValues(alpha: 0.1),
+            ? context.incomeColor.withValues(alpha: 0.15)
+            : context.colorScheme.onPrimary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: hasUnassignedMoney
-            ? context.incomeColor.withValues(alpha: 0.3)
-            : context.colorScheme.onPrimary.withValues(alpha: 0.2),
+              ? context.incomeColor.withValues(alpha: 0.3)
+              : context.colorScheme.onPrimary.withValues(alpha: 0.2),
           width: 1.5,
         ),
       ),
@@ -406,7 +409,9 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
               Icon(
                 Icons.account_balance_wallet_rounded,
                 size: 20,
-                color: hasUnassignedMoney ? context.incomeColor : context.headerSubtitleColor,
+                color: hasUnassignedMoney
+                    ? context.incomeColor
+                    : context.headerSubtitleColor,
               ),
               const SizedBox(width: 8),
               Text(
@@ -419,7 +424,10 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
               const Spacer(),
               if (hasUnassignedMoney)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: context.incomeColor,
                     borderRadius: BorderRadius.circular(12),
@@ -472,7 +480,12 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
     );
   }
 
-  Widget _buildMoneyFlowItem(String label, double amount, IconData icon, Color color) {
+  Widget _buildMoneyFlowItem(
+    String label,
+    double amount,
+    IconData icon,
+    Color color,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

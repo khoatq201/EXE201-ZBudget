@@ -56,6 +56,23 @@ class ApiConfig {
   // Dashboard endpoints
   static const String dashboardEndpoint = '/dashboard';
 
+  // AI Endpoints
+  static const String aiChatStart = '/ai/chat/start';
+  static const String aiChatMessage = '/ai/chat/message';
+  static const String aiChatHistory = '/ai/chat/history';
+  static const String aiChatEnd = '/ai/chat/end';
+  static const String aiChatSessions = '/ai/chat/sessions';
+
+  // AI Analysis Endpoints
+  static const String aiAnalysisDeep = '/ai/analysis/deep';
+  static const String aiAnalysisForecast = '/ai/analysis/forecast';
+  static const String aiAnalysisAnomalies = '/ai/analysis/anomalies';
+  static const String aiAnalysisRecommendations =
+      '/ai/analysis/recommendations';
+  static const String aiAnalysisInsights = '/ai/analysis/insights';
+  static const String aiAnalysisPatterns = '/ai/analysis/patterns';
+  static const String aiAnalysisCache = '/ai/analysis/cache';
+
   // Request timeout settings
   static const Duration requestTimeout = Duration(seconds: 30);
   static const Duration connectionTimeout = Duration(seconds: 10);
