@@ -43,8 +43,6 @@ import '../screens/settings/help/help_screen.dart';
 import '../screens/settings/feedback/feedback_screen.dart';
 import '../screens/auth/result_screen.dart';
 import '../screens/auth/complete_profile_screen.dart';
-// import '../screens/test/common_header_demo_screen.dart'; // File not found
-import '../test_notifications.dart';
 import '../screens/notifications/notifications_list_screen.dart';
 import '../utils/auth_guard.dart';
 import '../screens/initialization_wrapper.dart';
@@ -299,11 +297,6 @@ final router = GoRouter(
         GoRoute(
           path: '/feedback',
           builder: (context, state) => const FeedbackScreen(),
-        ),
-        // Test/Demo screens
-        GoRoute(
-          path: '/test-notifications',
-          builder: (context, state) => const NotificationTestScreen(),
         ),
       ],
     ),
