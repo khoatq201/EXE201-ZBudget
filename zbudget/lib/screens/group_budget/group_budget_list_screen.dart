@@ -256,9 +256,9 @@ class _GroupBudgetListScreenState extends State<GroupBudgetListScreen>
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.white,
+              context.cardBackground,
               budget.isOverBudget
-                  ? Colors.red.shade50
+                  ? (context.isDarkTheme ? Colors.red.shade900.withValues(alpha: 0.3) : Colors.red.shade50)
                   : context.colorScheme.primaryContainer.withValues(alpha: 0.1),
             ],
           ),

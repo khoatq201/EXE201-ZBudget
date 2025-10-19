@@ -66,7 +66,7 @@ class _SavingsListScreenState extends State<SavingsListScreen>
         onPressed: () => context.push('/savings/create'),
         icon: const Icon(Icons.add),
         label: const Text('Thêm mục tiêu'),
-        backgroundColor: context.colorScheme.primary,
+        backgroundColor: context.headerGradientStart,
       ),
     );
   }
@@ -97,7 +97,7 @@ class _SavingsListScreenState extends State<SavingsListScreen>
                   Text(
                     'Tiết kiệm',
                     style: AppTypography.h2.copyWith(
-                      color: context.colorScheme.onPrimary,
+                      color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -105,7 +105,7 @@ class _SavingsListScreenState extends State<SavingsListScreen>
                   Text(
                     'Mục tiêu tài chính của bạn',
                     style: AppTypography.bodySmall.copyWith(
-                      color: context.colorScheme.onPrimary.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                     ),
                   ),
                 ],
@@ -113,12 +113,12 @@ class _SavingsListScreenState extends State<SavingsListScreen>
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: context.colorScheme.onPrimary.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.savings_outlined,
-                  color: context.colorScheme.onPrimary,
+                  color: Colors.white,
                   size: 28,
                 ),
               ),
@@ -146,14 +146,14 @@ class _SavingsListScreenState extends State<SavingsListScreen>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                context.colorScheme.primary,
-                context.colorScheme.primary.withOpacity(0.8),
+                context.headerGradientStart,
+                context.headerGradientEnd,
               ],
             ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: context.colorScheme.primary.withOpacity(0.3),
+                color: context.headerGradientStart.withOpacity(0.3),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -297,12 +297,12 @@ class _SavingsListScreenState extends State<SavingsListScreen>
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: isSelected
-                ? context.colorScheme.primary
+                ? context.headerGradientStart
                 : context.cardBackground,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isSelected
-                  ? context.colorScheme.primary
+                  ? context.headerGradientStart
                   : context.colorScheme.outline.withOpacity(0.3),
             ),
           ),
@@ -494,7 +494,7 @@ class _SavingsListScreenState extends State<SavingsListScreen>
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: context.colorScheme.primary.withOpacity(0.1),
+                      color: context.headerGradientStart.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -503,13 +503,13 @@ class _SavingsListScreenState extends State<SavingsListScreen>
                         Icon(
                           Icons.check_circle,
                           size: 16,
-                          color: context.colorScheme.primary,
+                          color: context.headerGradientStart,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           'Hoàn thành',
                           style: AppTypography.caption.copyWith(
-                            color: context.colorScheme.primary,
+                            color: context.headerGradientStart,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
