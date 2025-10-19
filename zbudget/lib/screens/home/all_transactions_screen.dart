@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../constants/colors.dart';
 import '../../constants/typography.dart';
+import '../../utils/theme_extensions.dart';
 import '../../models/dashboard.dart';
 import '../../services/dashboard_service.dart';
 import '../../utils/formatters.dart';
@@ -87,7 +88,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
+      backgroundColor: context.scaffoldBackground,
       appBar: AppBar(
         title: const Text('Toàn bộ giao dịch'),
         backgroundColor: AppColors.primary500,
@@ -113,7 +114,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(13),
@@ -227,10 +228,10 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? color : Colors.grey.shade100,
+          color: isSelected ? color : context.cardBackground,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? color : Colors.grey.shade300,
+            color: isSelected ? color : context.cardBorder,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -240,13 +241,13 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
             Icon(
               icon,
               size: 16,
-              color: isSelected ? Colors.white : Colors.grey.shade600,
+              color: isSelected ? Colors.white : context.secondaryTextColor,
             ),
             const SizedBox(width: 4),
             Text(
               label,
               style: AppTypography.bodySmall.copyWith(
-                color: isSelected ? Colors.white : Colors.grey.shade600,
+                color: isSelected ? Colors.white : context.secondaryTextColor,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -262,9 +263,9 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: context.cardBackground,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: context.cardBorder),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -274,7 +275,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
             Text(
               label,
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textPrimary,
+                color: context.primaryTextColor,
               ),
             ),
           ],
@@ -397,7 +398,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                 child: Text(
                   dateKey,
                   style: AppTypography.h4.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.secondaryTextColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -416,7 +417,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -451,13 +452,14 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                   transaction.title,
                   style: AppTypography.bodyMedium.copyWith(
                     fontWeight: FontWeight.w600,
+                    color: context.primaryTextColor,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   _getCategoryName(transaction.category),
                   style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.secondaryTextColor,
                   ),
                 ),
               ],
