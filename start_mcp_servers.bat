@@ -46,3 +46,5 @@ echo.
 echo You can now use MCP tools in Cursor IDE
 echo.
 pause
+
+

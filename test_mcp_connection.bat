@@ -54,3 +54,5 @@ echo 1. Run start_mcp_servers.bat to start MCP servers
 echo 2. Open Cursor IDE and use MCP tools
 echo.
 pause
+
+

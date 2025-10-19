@@ -1,15 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../models/ai_analysis_models.dart';
+import '../utils/auth_utils.dart';
 
 class AiAnalysisService {
   final String baseUrl = ApiConfig.baseUrl;
 
   Future<Map<String, String>> _getHeaders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('access_token');
+    final token = await AuthUtils.getToken();
 
     if (token == null) {
       throw Exception('No access token found. Please login again.');
