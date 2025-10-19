@@ -268,7 +268,7 @@ Hãy bắt đầu bằng cách hỏi tôi về tình hình tài chính của b�
       width: 140,
       margin: const EdgeInsets.only(right: 12),
       child: ElevatedButton(
-        onPressed: () => _sendMessage(action.message),
+        onPressed: _isStreaming ? null : () => _sendMessage(action.message),
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.all(12),
           shape: RoundedRectangleBorder(
@@ -423,19 +423,36 @@ Hãy bắt đầu bằng cách hỏi tôi về tình hình tài chính của b�
           Expanded(
             child: TextField(
               controller: _messageController,
+              enabled: !_isStreaming, // Disable khi đang streaming
               decoration: InputDecoration(
-                hintText: 'Hỏi AI về tài chính...',
+                hintText: _isStreaming
+                    ? 'AI đang trả lời...'
+                    : 'Hỏi AI về tài chính...',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                 ),
               ),
-              onSubmitted: _sendMessage,
+              onSubmitted: _isStreaming ? null : _sendMessage,
             ),
           ),
           const SizedBox(width: 12),
           FloatingActionButton(
-            onPressed: () => _sendMessage(_messageController.text),
-            child: const Icon(Icons.send),
+            onPressed: _isStreaming
+                ? null
+                : () => _sendMessage(_messageController.text),
+            backgroundColor: _isStreaming
+                ? Colors.grey.withOpacity(0.3)
+                : context.colorScheme.primary,
+            child: _isStreaming
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(Colors.white),
+                    ),
+                  )
+                : const Icon(Icons.send),
           ),
         ],
       ),

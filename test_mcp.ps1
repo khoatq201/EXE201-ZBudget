@@ -38,3 +38,5 @@ if (Test-Path ".vscode\mcp.json") {
 Write-Host "MCP Test completed!" -ForegroundColor Cyan
 
 
+
+
