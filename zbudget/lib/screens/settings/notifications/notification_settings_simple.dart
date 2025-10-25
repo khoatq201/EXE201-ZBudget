@@ -13,7 +13,7 @@ class NotificationSettingsSimple extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Cài đặt thông báo'),
         backgroundColor: context.headerGradientStart,
-        foregroundColor: context.colorScheme.onPrimary,
+        foregroundColor: context.headerTextColor,
         elevation: 0,
       ),
       body: Consumer<NotificationService>(

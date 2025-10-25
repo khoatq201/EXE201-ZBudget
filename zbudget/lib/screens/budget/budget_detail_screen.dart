@@ -82,8 +82,8 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            context.colorScheme.primary,
-            context.colorScheme.primary.withValues(alpha: 0.8),
+            context.headerGradientStart,
+            context.headerGradientEnd,
           ],
         ),
       ),

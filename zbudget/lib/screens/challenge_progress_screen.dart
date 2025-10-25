@@ -74,8 +74,8 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen>
           backgroundColor: Colors.grey[50],
           appBar: AppBar(
             title: Text(challenge.title),
-            backgroundColor: AppColors.primary500,
-            foregroundColor: Colors.white,
+            backgroundColor: context.headerGradientStart,
+            foregroundColor: context.headerTextColor,
             elevation: 0,
             actions: [
               IconButton(

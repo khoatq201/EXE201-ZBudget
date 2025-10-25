@@ -141,8 +141,8 @@ class _AddGroupExpenseScreenState extends State<AddGroupExpenseScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Thêm chi tiêu'),
-        backgroundColor: context.colorScheme.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: context.headerGradientStart,
+        foregroundColor: context.headerTextColor,
       ),
       body: Form(
         key: _formKey,

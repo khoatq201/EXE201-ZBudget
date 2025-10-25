@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../services/group_service.dart';
 import '../../models/group_models.dart';
 import '../../constants/colors.dart';
+import '../../utils/theme_extensions.dart';
 
 class CreateGroupScreen extends StatefulWidget {
   const CreateGroupScreen({super.key});
@@ -203,8 +204,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tạo nhóm mới'),
-        backgroundColor: AppColors.primary500,
-        foregroundColor: Colors.white,
+        backgroundColor: context.headerGradientStart,
+        foregroundColor: context.headerTextColor,
         actions: [
           TextButton(
             onPressed: createGroup,

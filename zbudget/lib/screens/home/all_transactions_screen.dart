@@ -91,8 +91,8 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       backgroundColor: context.scaffoldBackground,
       appBar: AppBar(
         title: const Text('Toàn bộ giao dịch'),
-        backgroundColor: AppColors.primary500,
-        foregroundColor: Colors.white,
+        backgroundColor: context.headerGradientStart,
+        foregroundColor: context.headerTextColor,
         elevation: 0,
       ),
       body: Column(

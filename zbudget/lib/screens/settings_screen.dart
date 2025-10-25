@@ -185,15 +185,6 @@ class SettingsScreen extends StatelessWidget {
                         context.go('/notifications');
                       },
                     ),
-                    _buildSettingItem(
-                      context: context,
-                      icon: Icons.bug_report,
-                      title: 'Test Notifications',
-                      subtitle: 'Test hệ thống thông báo',
-                      onTap: () {
-                        context.go('/test-notifications');
-                      },
-                    ),
 
                     const SizedBox(height: AppSpacing.sectionSpacing),
 

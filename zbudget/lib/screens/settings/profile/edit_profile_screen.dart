@@ -59,7 +59,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: context.headerGradientStart,
-        foregroundColor: context.colorScheme.onPrimary,
+        foregroundColor: context.headerTextColor,
         title: const Text('Chỉnh sửa thông tin'),
         actions: [
           TextButton(

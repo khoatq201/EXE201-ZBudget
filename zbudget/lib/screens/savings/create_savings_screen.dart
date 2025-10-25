@@ -176,13 +176,10 @@ class _CreateSavingsScreenState extends State<CreateSavingsScreen> {
       appBar: AppBar(
         title: Text(
           _isEditMode ? 'Chỉnh sửa mục tiêu' : 'Thêm mục tiêu tiết kiệm',
-          style: AppTypography.h4.copyWith(
-            color: context.colorScheme.onPrimary,
-          ),
         ),
-        backgroundColor: context.colorScheme.primary,
+        backgroundColor: context.headerGradientStart,
+        foregroundColor: context.headerTextColor,
         elevation: 0,
-        iconTheme: IconThemeData(color: context.colorScheme.onPrimary),
       ),
       body: Form(
         key: _formKey,

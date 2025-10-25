@@ -124,7 +124,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       floating: false,
       pinned: true,
       backgroundColor: context.headerGradientStart,
-      foregroundColor: context.colorScheme.onPrimary,
+      foregroundColor: context.headerTextColor,
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: BoxDecoration(

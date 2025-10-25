@@ -216,9 +216,9 @@ class _CreateGroupBudgetScreenState extends State<CreateGroupBudgetScreen> {
     return Scaffold(
       backgroundColor: context.colorScheme.surface,
       appBar: AppBar(
-        title: Text('Tạo ngân sách nhóm', style: AppTypography.h2),
-        backgroundColor: context.colorScheme.primary,
-        foregroundColor: Colors.white,
+        title: const Text('Tạo ngân sách nhóm'),
+        backgroundColor: context.headerGradientStart,
+        foregroundColor: context.headerTextColor,
         elevation: 0,
       ),
       body: Form(
