@@ -366,5 +366,28 @@ class SessionService {
       throw error;
     }
   }
+  // Terminate session by JWT token ID
+  static async terminateSessionByToken(jwtTokenId) {
+    try {
+      const result = await Session.updateOne(
+        { jwtTokenId, isActive: true },
+        {
+          isActive: false,
+          terminatedAt: new Date(),
+        }
+      );
+      logger.info("Session terminated by token", {
+        jwtTokenId,
+        modified: result.modifiedCount > 0,
+      });
+      return result.modifiedCount > 0;
+    } catch (error) {
+      logger.error("Failed to terminate session by token:", {
+        jwtTokenId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
 }
 export default SessionService;

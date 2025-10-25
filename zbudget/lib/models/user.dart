@@ -4,6 +4,10 @@ class User {
   final String email;
   final String? phone;
   final String? avatar;
+  final DateTime? dateOfBirth;
+  final String? gender;
+  final String? city;
+  final String? country;
   final bool isPremium;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -14,6 +18,10 @@ class User {
     required this.email,
     this.phone,
     this.avatar,
+    this.dateOfBirth,
+    this.gender,
+    this.city,
+    this.country,
     required this.isPremium,
     required this.createdAt,
     required this.updatedAt,
@@ -26,6 +34,12 @@ class User {
       email: json['email'] as String,
       phone: json['phone'] ?? json['phoneNumber'],
       avatar: json['avatar'] as String?,
+      dateOfBirth: json['dateOfBirth'] != null
+          ? DateTime.parse(json['dateOfBirth'] as String)
+          : null,
+      gender: json['gender'] as String?,
+      city: json['city'] as String?,
+      country: json['country'] as String?,
       isPremium: json['isPremium'] ?? false,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
@@ -43,6 +57,10 @@ class User {
       'email': email,
       'phone': phone,
       'avatar': avatar,
+      'dateOfBirth': dateOfBirth?.toIso8601String(),
+      'gender': gender,
+      'city': city,
+      'country': country,
       'isPremium': isPremium,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
@@ -55,6 +73,10 @@ class User {
     String? email,
     String? phone,
     String? avatar,
+    DateTime? dateOfBirth,
+    String? gender,
+    String? city,
+    String? country,
     bool? isPremium,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -65,6 +87,10 @@ class User {
       email: email ?? this.email,
       phone: phone ?? this.phone,
       avatar: avatar ?? this.avatar,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      gender: gender ?? this.gender,
+      city: city ?? this.city,
+      country: country ?? this.country,
       isPremium: isPremium ?? this.isPremium,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

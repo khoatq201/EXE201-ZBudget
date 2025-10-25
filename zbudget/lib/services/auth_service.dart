@@ -1,10 +1,8 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user.dart';
-import '../services/session_manager.dart';
 import '../utils/device_info_helper.dart';
 import '../utils/secure_storage_manager.dart';
 
@@ -67,7 +65,8 @@ class AuthService extends ChangeNotifier {
     required String email,
     required String phoneNumber,
     required String password,
-    DateTime? dateOfBirth,
+    required String confirmPassword,
+    String? dateOfBirth,
     String? gender,
   }) async {
     try {
@@ -81,10 +80,11 @@ class AuthService extends ChangeNotifier {
         'email': email,
         'phoneNumber': phoneNumber,
         'password': password,
+        'confirmPassword': confirmPassword,
       };
 
       if (dateOfBirth != null) {
-        requestBody['dateOfBirth'] = dateOfBirth.toIso8601String();
+        requestBody['dateOfBirth'] = dateOfBirth;
       }
 
       if (gender != null && gender.isNotEmpty) {
@@ -409,6 +409,46 @@ class AuthService extends ChangeNotifier {
     };
   }
 
+  /// Gửi lại OTP cho đăng ký
+  Future<Map<String, dynamic>> resendOTP({required String email}) async {
+    try {
+      debugPrint('🔄 Resending OTP for email: $email');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/resend-otp'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'email': email}),
+      );
+
+      debugPrint('📥 Resend OTP response status: ${response.statusCode}');
+      debugPrint('📥 Resend OTP response body: ${response.body}');
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Mã OTP mới đã được gửi',
+          'data': responseData['data'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Không thể gửi lại mã OTP',
+        };
+      }
+    } catch (e) {
+      debugPrint('Error during resend OTP: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi kết nối. Vui lòng thử lại sau.',
+      };
+    }
+  }
+
   /// Xác thực OTP reset password
   Future<Map<String, dynamic>> verifyPasswordResetOTP(
     String email,
@@ -527,129 +567,11 @@ class AuthService extends ChangeNotifier {
 
   /// Google Sign-In method
   Future<Map<String, dynamic>> signInWithGoogle() async {
-    /// 🚀 DEVELOPMENT WORKAROUND: Test backend Google Sign-In without Google Services
-    Future<Map<String, dynamic>> signInWithGoogleDev() async {
-      try {
-        _setLoading(true);
-        debugPrint('🔧 DEV MODE: Testing backend Google Sign-In directly');
-
-        // Send mock request to backend to test integration
-        final response = await http
-            .post(
-              Uri.parse('$baseUrl/google-signin'),
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-              },
-              body: jsonEncode({
-                'idToken':
-                    'mock_dev_id_token_${DateTime.now().millisecondsSinceEpoch}',
-                'accessToken': 'mock_dev_access_token',
-                'email': 'developer@test.com',
-                'displayName': 'Test Developer',
-                'photoUrl': 'https://via.placeholder.com/150',
-              }),
-            )
-            .timeout(
-              Duration(seconds: 10),
-              onTimeout: () {
-                throw Exception(
-                  'Backend timeout - vui lòng kiểm tra kết nối mạng',
-                );
-              },
-            );
-
-        debugPrint('📦 DEV Backend response: ${response.statusCode}');
-        debugPrint('📦 DEV Response body: ${response.body}');
-
-        if (response.statusCode == 200) {
-          final responseData = jsonDecode(response.body);
-
-          if (responseData['success'] == true) {
-            // Save tokens and user info
-            await SecureStorageManager.setToken(responseData['accessToken']);
-            await SecureStorageManager.setRefreshToken(
-              responseData['refreshToken'] ?? '',
-            );
-            await SecureStorageManager.setUserData(
-              jsonEncode(responseData['user']),
-            );
-
-            _accessToken = responseData['accessToken'];
-            _refreshToken = responseData['refreshToken'];
-            _currentUser = User.fromJson(responseData['user']);
-            _isAuthenticated = true;
-
-            debugPrint('✅ DEV Google Sign-In completed successfully');
-            _setLoading(false);
-            return {
-              'success': true,
-              'message':
-                  responseData['message'] ??
-                  'Google Sign-In thành công (DEV MODE)',
-              'user': _currentUser?.toJson(),
-            };
-          } else {
-            _setLoading(false);
-            return {
-              'success': false,
-              'message':
-                  responseData['message'] ??
-                  'Backend từ chối request (DEV MODE)',
-            };
-          }
-        } else {
-          _setLoading(false);
-          return {
-            'success': false,
-            'message': 'Backend error ${response.statusCode} (DEV MODE)',
-          };
-        }
-      } catch (e) {
-        _setLoading(false);
-        debugPrint('❌ DEV Google Sign-In Error: $e');
-        return {
-          'success': false,
-          'message': 'DEV MODE: Backend connection error - $e',
-        };
-      }
-    }
-
     try {
       _setLoading(true);
-      debugPrint('🚀 Starting Google Sign-In process');
+      debugPrint('🔧 DEV MODE: Testing backend Google Sign-In directly');
 
-      // Pre-check if Google Services are available to fail fast
-      final bool isAvailable = await _googleSignIn.isSignedIn();
-      debugPrint('📱 Google Services available: $isAvailable');
-
-      // Trigger Google Sign-In flow
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-
-      if (googleUser == null) {
-        debugPrint('❌ User cancelled Google Sign-In');
-        _setLoading(false);
-        return {'success': false, 'message': 'Đăng nhập đã bị hủy'};
-      }
-
-      debugPrint('✅ Google user obtained: ${googleUser.email}');
-
-      // Get authentication details
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      if (googleAuth.idToken == null) {
-        debugPrint('❌ No ID token received');
-        _setLoading(false);
-        return {
-          'success': false,
-          'message': 'Không thể lấy token từ Google. Vui lòng thử lại.',
-        };
-      }
-
-      debugPrint('� Sending to backend for verification');
-
-      // Send to backend for verification
+      // Send mock request to backend to test integration
       final response = await http
           .post(
             Uri.parse('$baseUrl/google-signin'),
@@ -658,14 +580,16 @@ class AuthService extends ChangeNotifier {
               'Accept': 'application/json',
             },
             body: jsonEncode({
-              'idToken': googleAuth.idToken,
-              'email': googleUser.email,
-              'displayName': googleUser.displayName,
-              'photoUrl': googleUser.photoUrl,
+              'idToken':
+                  'mock_dev_id_token_${DateTime.now().millisecondsSinceEpoch}',
+              'accessToken': 'mock_dev_access_token',
+              'email': 'developer@test.com',
+              'displayName': 'Test Developer',
+              'photoUrl': 'https://via.placeholder.com/150',
             }),
           )
           .timeout(
-            Duration(seconds: 10), // Add timeout for backend calls
+            Duration(seconds: 10),
             onTimeout: () {
               throw Exception(
                 'Backend timeout - vui lòng kiểm tra kết nối mạng',
@@ -673,7 +597,8 @@ class AuthService extends ChangeNotifier {
             },
           );
 
-      debugPrint('📥 Backend response: ${response.statusCode}');
+      debugPrint('📦 DEV Backend response: ${response.statusCode}');
+      debugPrint('📦 DEV Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
@@ -684,47 +609,46 @@ class AuthService extends ChangeNotifier {
           await SecureStorageManager.setRefreshToken(
             responseData['refreshToken'] ?? '',
           );
-          await SecureStorageManager.setUserData(jsonEncode(responseData['user']));
+          await SecureStorageManager.setUserData(
+            jsonEncode(responseData['user']),
+          );
 
           _accessToken = responseData['accessToken'];
           _refreshToken = responseData['refreshToken'];
           _currentUser = User.fromJson(responseData['user']);
           _isAuthenticated = true;
 
-          debugPrint('✅ Google Sign-In completed successfully');
+          debugPrint('✅ DEV Google Sign-In completed successfully');
           _setLoading(false);
           return {
             'success': true,
-            'message': responseData['message'] ?? 'Đăng nhập Google thành công',
+            'message':
+                responseData['message'] ??
+                'Google Sign-In thành công (DEV MODE)',
             'user': _currentUser?.toJson(),
           };
         } else {
           _setLoading(false);
           return {
             'success': false,
-            'message': responseData['message'] ?? 'Đăng nhập Google thất bại',
+            'message':
+                responseData['message'] ?? 'Backend từ chối request (DEV MODE)',
           };
         }
       } else {
         _setLoading(false);
-        return {'success': false, 'message': 'Lỗi server. Vui lòng thử lại.'};
+        return {
+          'success': false,
+          'message': 'Backend error ${response.statusCode} (DEV MODE)',
+        };
       }
     } catch (e) {
       _setLoading(false);
-      debugPrint('❌ Google Sign-In Error: $e');
-
-      // Provide specific error messages
-      String errorMessage = 'Không thể đăng nhập với Google.';
-      if (e.toString().contains('network_error') ||
-          e.toString().contains('ApiException: 7')) {
-        errorMessage = 'Lỗi kết nối. Vui lòng kiểm tra mạng và thử lại.';
-      } else if (e.toString().contains('timeout')) {
-        errorMessage = 'Quá thời gian chờ. Vui lòng thử lại.';
-      } else if (e.toString().contains('ApiException: 10')) {
-        errorMessage = 'Lỗi cấu hình Google Sign-In.';
-      }
-
-      return {'success': false, 'message': errorMessage};
+      debugPrint('❌ DEV Google Sign-In Error: $e');
+      return {
+        'success': false,
+        'message': 'DEV MODE: Backend connection error - $e',
+      };
     }
   }
 

@@ -83,10 +83,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
         fullName: _nameController.text.trim(),
         email: _emailController.text.trim().toLowerCase(),
         password: _passwordController.text,
+        confirmPassword: _confirmPasswordController.text,
         phoneNumber: _phoneController.text.trim().isEmpty
             ? ''
             : _phoneController.text.trim(),
-        dateOfBirth: _dateOfBirth,
+        dateOfBirth: _dateOfBirth != null
+            ? '${_dateOfBirth!.day.toString().padLeft(2, '0')}/${_dateOfBirth!.month.toString().padLeft(2, '0')}/${_dateOfBirth!.year}'
+            : null,
         gender: _gender,
       );
 
@@ -379,12 +382,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                   validator: (value) {
                     if (value != null && value.isNotEmpty) {
-                      // Basic phone validation if provided
-                      if (value.length < 10 || value.length > 15) {
-                        return 'Số điện thoại không hợp lệ';
-                      }
-                      if (!RegExp(r'^[\d\+\-\s\(\)]+$').hasMatch(value)) {
-                        return 'Số điện thoại chỉ được chứa số và ký tự +, -, (), khoảng trắng';
+                      // Vietnamese phone validation if provided
+                      if (!RegExp(
+                        r'^(\+84|84|0)(3|5|7|8|9)[0-9]{8}$',
+                      ).hasMatch(value)) {
+                        return 'Số điện thoại phải là số Việt Nam hợp lệ';
                       }
                     }
                     return null;
@@ -586,8 +588,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Vui lòng nhập mật khẩu';
                     }
-                    if (value.length < 6) {
-                      return 'Mật khẩu phải có ít nhất 6 ký tự';
+                    if (value.length < 8) {
+                      return 'Mật khẩu phải có ít nhất 8 ký tự';
+                    }
+                    if (!RegExp(
+                      r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]',
+                    ).hasMatch(value)) {
+                      return 'Mật khẩu phải chứa chữ hoa, chữ thường, số và ký tự đặc biệt';
                     }
                     return null;
                   },

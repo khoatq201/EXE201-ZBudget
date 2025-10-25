@@ -128,6 +128,9 @@ export const userSchemas = {
         "string.pattern.base": "Mã OTP chỉ được chứa các chữ số",
       }),
   }).messages(vietnameseMessages),
+  resendOTP: Joi.object({
+    email: Joi.string().email().required().label("Email"),
+  }).messages(vietnameseMessages),
   updateProfile: Joi.object({
     fullName: Joi.string().min(2).max(50).optional().label("Họ tên"),
     phoneNumber: commonSchemas.vietnamesePhone.optional(),
@@ -671,8 +674,8 @@ export const validate = (schema, property = "body") => {
       property === "query"
         ? req.query
         : property === "params"
-          ? req.params
-          : req.body;
+        ? req.params
+        : req.body;
     try {
       const { error, value } = schema.validate(dataToValidate, {
         abortEarly: false,
