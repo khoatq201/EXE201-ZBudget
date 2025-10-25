@@ -2,17 +2,14 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../utils/secure_storage_manager.dart';
+import '../config/api_config.dart';
 
 /// Report Service - Handles all report-related API calls
 /// Manages trend, category, comparison, pattern, and forecast reports
 class ReportService extends ChangeNotifier {
-  // Base URL - different for web and mobile
+  // Base URL - sử dụng ApiConfig để quản lý theo environment
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000/api/reports';
-    } else {
-      return 'http://10.0.2.2:3000/api/reports';
-    }
+    return ApiConfig.baseUrl + '/reports';
   }
 
   // State management

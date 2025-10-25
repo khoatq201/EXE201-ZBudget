@@ -6,15 +6,38 @@ class ApiConfig {
   static const String _devBaseUrlWeb = 'http://localhost:3000/api';
   static const String _devBaseUrlAndroid = 'http://10.0.2.2:3000/api';
   static const String _prodBaseUrl = 'https://zbudget-backend.onrender.com/api';
-  static const String _stagingBaseUrl = 'https://zbudget-backend.onrender.com/api';
+  static const String _stagingBaseUrl =
+      'https://zbudget-backend.onrender.com/api';
 
-  // Current environment
-  static const bool _isDevelopment =
-      false; // Change to false for production build
-  static const bool _isProduction = true; // Change to true for production build
+  // Current environment - sử dụng environment variables
+  static const bool _isDevelopment = bool.fromEnvironment(
+    'dart.vm.product',
+    defaultValue: true,
+  );
+  static const bool _isProduction = bool.fromEnvironment(
+    'dart.vm.product',
+    defaultValue: false,
+  );
+  // static String get baseUrl {
+  //   if (kIsWeb) {
+  //     // Cho Flutter web, sử dụng localhost
+  //     return 'http://localhost:3000/api/auth';
+  //   } else {
+  //     // Cho Android emulator, sử dụng 10.0.2.2 thay vì localhost
+  //     // 10.0.2.2 là địa chỉ đặc biệt trong Android emulator để truy cập host machine
+  //     return 'http://10.0.2.2:3000/api/auth';
+  //   }
+  // }
 
   /// Get the base URL based on the current environment
   static String get baseUrl {
+    // Kiểm tra environment variable trước
+    const String envUrl = String.fromEnvironment('BACKEND_URL');
+    if (envUrl.isNotEmpty) {
+      return envUrl;
+    }
+
+    // Fallback logic
     if (_isDevelopment) {
       // Different URLs for web and mobile
       if (kIsWeb) {

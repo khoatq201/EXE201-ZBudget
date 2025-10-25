@@ -3,16 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../utils/device_info_helper.dart';
 import '../utils/secure_storage_manager.dart';
+import '../config/api_config.dart';
 
 /// API service for security-related operations
 class SecurityApiService {
-  // Base URL - different for web and mobile
+  // Base URL - sử dụng ApiConfig để quản lý theo environment
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000/api/security';
-    } else {
-      return 'http://10.0.2.2:3000/api/security';
-    }
+    return ApiConfig.baseUrl + '/security';
   }
 
   /// Get authorization headers

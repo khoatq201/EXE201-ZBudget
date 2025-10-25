@@ -6,15 +6,12 @@ import '../models/savings_models.dart';
 import '../utils/secure_storage_manager.dart';
 import 'notification_sync_service.dart';
 import '../main.dart';
+import '../config/api_config.dart';
 
 class SavingsService extends ChangeNotifier {
-  // Base URL - different for web and mobile
+  // Base URL - sử dụng ApiConfig để quản lý theo environment
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000/api/savings';
-    } else {
-      return 'http://10.0.2.2:3000/api/savings';
-    }
+    return ApiConfig.baseUrl + '/savings';
   }
 
   List<SavingsGoal> _savingsGoals = [];

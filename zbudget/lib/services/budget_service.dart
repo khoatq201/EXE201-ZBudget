@@ -7,6 +7,7 @@ import '../models/budget.dart';
 import '../utils/secure_storage_manager.dart';
 import 'notification_sync_service.dart';
 import '../main.dart';
+import '../config/api_config.dart';
 
 class BudgetService extends ChangeNotifier {
   List<Budget> _budgets = [];
@@ -28,11 +29,7 @@ class BudgetService extends ChangeNotifier {
       _budgets.where((b) => !b.isActive).toList();
 
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000/api/budgets';
-    } else {
-      return 'http://10.0.2.2:3000/api/budgets';
-    }
+    return ApiConfig.baseUrl + '/budgets';
   }
 
   Future<Map<String, String>> _getHeaders() async {

@@ -115,7 +115,17 @@ class ZBudgetApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => GroupService()),
         ChangeNotifierProvider(create: (_) => GroupBudgetService()),
         ChangeNotifierProvider(create: (_) => ChallengeService()),
-        ChangeNotifierProvider(create: (_) => ProfileService()),
+        ChangeNotifierProvider(
+          create: (context) {
+            final authService = Provider.of<AuthService>(
+              context,
+              listen: false,
+            );
+            final profileService = ProfileService()..initialize();
+            profileService.setAuthService(authService);
+            return profileService;
+          },
+        ),
         ChangeNotifierProvider(create: (_) => CurrencyService()),
         ChangeNotifierProvider(create: (_) => DashboardService()),
         ChangeNotifierProvider(create: (_) => IncomeService()),

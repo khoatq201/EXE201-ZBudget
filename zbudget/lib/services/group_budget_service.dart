@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/group_budget.dart';
 import '../utils/secure_storage_manager.dart';
+import '../config/api_config.dart';
 
 /// Service for managing GroupBudget operations
 class GroupBudgetService extends ChangeNotifier {
@@ -22,11 +23,7 @@ class GroupBudgetService extends ChangeNotifier {
       _budgets.where((b) => b.isSettled).toList();
 
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000/api/group-budgets';
-    } else {
-      return 'http://10.0.2.2:3000/api/group-budgets';
-    }
+    return ApiConfig.baseUrl + '/group-budgets';
   }
 
   Future<Map<String, String>> _getHeaders() async {
@@ -379,7 +376,9 @@ class GroupBudgetService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        debugPrint('✅ Get settlement plan response type: ${data['data'].runtimeType}');
+        debugPrint(
+          '✅ Get settlement plan response type: ${data['data'].runtimeType}',
+        );
 
         // Handle both array and single object/null response
         if (data['data'] == null) {
@@ -390,7 +389,9 @@ class GroupBudgetService extends ChangeNotifier {
           // If single object returned, wrap in array
           return [Map<String, dynamic>.from(data['data'])];
         } else {
-          debugPrint('⚠️ Unexpected settlement plan data type: ${data['data'].runtimeType}');
+          debugPrint(
+            '⚠️ Unexpected settlement plan data type: ${data['data'].runtimeType}',
+          );
           return [];
         }
       } else {

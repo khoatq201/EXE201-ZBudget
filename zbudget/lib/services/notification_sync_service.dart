@@ -3,10 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/notification_model.dart';
 import '../utils/secure_storage_manager.dart';
+import '../config/api_config.dart';
 
 /// Notification Sync Service - Đồng bộ notifications với backend
 class NotificationSyncService extends ChangeNotifier {
-  static const String baseUrl = 'http://10.0.2.2:3000/api/notifications';
+  static String get baseUrl => ApiConfig.baseUrl + '/notifications';
 
   List<NotificationModel> _notifications = [];
   NotificationPagination? _pagination;

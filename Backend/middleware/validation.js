@@ -49,7 +49,20 @@ const commonSchemas = {
   },
   // Vietnamese phone number
   vietnamesePhone: Joi.string()
-    .pattern(/^(\+84|84|0)[3|5|7|8|9]([0-9]{8})$/)
+    .optional() // Make it optional
+    .allow("") // Allow empty string
+    .custom((value, helpers) => {
+      // If empty or null, allow it
+      if (!value || value.trim() === "") {
+        return value;
+      }
+      // If not empty, validate pattern
+      const pattern = /^(\+84|84|0)(3|5|7|8|9)[0-9]{8}$/;
+      if (!pattern.test(value)) {
+        return helpers.error("string.pattern.base");
+      }
+      return value;
+    })
     .message("Số điện thoại phải là số điện thoại Việt Nam hợp lệ")
     .label("Số điện thoại"),
   // Currency amount (VND)

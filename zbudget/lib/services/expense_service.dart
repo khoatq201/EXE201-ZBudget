@@ -9,15 +9,12 @@ import '../utils/date_formatter.dart';
 import '../utils/secure_storage_manager.dart';
 import 'notification_sync_service.dart';
 import '../main.dart';
+import '../config/api_config.dart';
 
 class ExpenseService extends ChangeNotifier {
-  // Base URL - different for web and mobile
+  // Base URL - sử dụng ApiConfig để quản lý theo environment
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000/api/expenses';
-    } else {
-      return 'http://10.0.2.2:3000/api/expenses';
-    }
+    return ApiConfig.baseUrl + '/expenses';
   }
 
   List<Expense> _expenses = [];

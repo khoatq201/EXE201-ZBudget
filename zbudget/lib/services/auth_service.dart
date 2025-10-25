@@ -2,22 +2,17 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../utils/device_info_helper.dart';
 import '../utils/secure_storage_manager.dart';
+import '../config/api_config.dart';
 
 /// Service để xử lý authentication với backend API
 class AuthService extends ChangeNotifier {
-  // Sử dụng URL khác nhau cho web và mobile để tránh CORS
+  // Sử dụng ApiConfig để quản lý URL theo environment
   static String get baseUrl {
-    if (kIsWeb) {
-      // Cho Flutter web, sử dụng localhost
-      return 'http://localhost:3000/api/auth';
-    } else {
-      // Cho Android emulator, sử dụng 10.0.2.2 thay vì localhost
-      // 10.0.2.2 là địa chỉ đặc biệt trong Android emulator để truy cập host machine
-      return 'http://10.0.2.2:3000/api/auth';
-    }
+    return ApiConfig.baseUrl + '/auth';
   }
 
   String? _accessToken;
@@ -343,6 +338,9 @@ class AuthService extends ChangeNotifier {
 
       // Xóa khỏi SecureStorage
       await SecureStorageManager.clearAll();
+
+      // Clear profile data from SharedPreferences
+      await _clearProfileData();
 
       debugPrint('✅ Local logout cleanup completed');
       notifyListeners();
@@ -769,6 +767,22 @@ class AuthService extends ChangeNotifier {
       };
     } finally {
       _setLoading(false);
+    }
+  }
+
+  /// Clear profile data from SharedPreferences
+  Future<void> _clearProfileData() async {
+    try {
+      print('🧹 AuthService._clearProfileData() called');
+      final prefs = await SharedPreferences.getInstance();
+
+      // Clear profile-related keys
+      await prefs.remove('user_profile');
+      await prefs.remove('profile_last_sync');
+
+      print('✅ AuthService._clearProfileData() completed');
+    } catch (e) {
+      print('❌ Error clearing profile data: $e');
     }
   }
 }
