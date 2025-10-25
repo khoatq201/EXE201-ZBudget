@@ -73,8 +73,8 @@ class _JoinByCodeScreenState extends State<JoinByCodeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tham gia ngân sách'),
-        backgroundColor: context.colorScheme.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: context.headerGradientStart,
+        foregroundColor: context.headerTextColor,
       ),
       body: Form(
         key: _formKey,

@@ -152,8 +152,8 @@ class _SettlementScreenState extends State<SettlementScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Phương án thanh toán'),
-        backgroundColor: context.colorScheme.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: context.headerGradientStart,
+        foregroundColor: context.headerTextColor,
       ),
       body: Consumer<GroupBudgetService>(
         builder: (context, service, child) {

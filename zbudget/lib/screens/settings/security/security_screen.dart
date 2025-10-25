@@ -35,16 +35,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
                 floating: false,
                 pinned: true,
                 backgroundColor: context.headerGradientStart,
-                foregroundColor: context.colorScheme.onPrimary,
+                foregroundColor: context.headerTextColor,
                 elevation: 0,
                 flexibleSpace: FlexibleSpaceBar(
-                  title: Text(
-                    'Bảo mật',
-                    style: AppTypography.h3.copyWith(
-                      color: context.colorScheme.onPrimary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  title: const Text('Bảo mật'),
                   background: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(

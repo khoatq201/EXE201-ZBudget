@@ -62,7 +62,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
       backgroundColor: context.colorScheme.background,
       appBar: AppBar(
         backgroundColor: context.headerGradientStart,
-        foregroundColor: context.colorScheme.onPrimary,
+        foregroundColor: context.headerTextColor,
         elevation: 0,
         title: const Text('Gửi phản hồi'),
       ),
@@ -492,7 +492,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: context.colorScheme.secondary,
-                    foregroundColor: context.colorScheme.onPrimary,
+                    foregroundColor: context.headerTextColor,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),

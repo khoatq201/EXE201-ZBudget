@@ -35,7 +35,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 floating: false,
                 pinned: true,
                 backgroundColor: context.headerGradientStart,
-                foregroundColor: context.colorScheme.onPrimary,
+                foregroundColor: context.headerTextColor,
                 elevation: 0,
                 flexibleSpace: FlexibleSpaceBar(
                   title: Text(

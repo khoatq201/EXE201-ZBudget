@@ -289,12 +289,12 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
     );
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
+      backgroundColor: context.scaffoldBackground,
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundPrimary,
+        backgroundColor: context.scaffoldBackground,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back, color: context.primaryTextColor),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
