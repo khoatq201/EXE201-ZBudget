@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/challenge.dart';
 import '../services/challenge_service.dart';
 import '../constants/colors.dart';
+import '../utils/theme_extensions.dart';
 
 class ChallengeProgressScreen extends StatefulWidget {
   final String challengeId;

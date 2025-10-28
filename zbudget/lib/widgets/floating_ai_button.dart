@@ -9,7 +9,7 @@ class FloatingAiButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Positioned(
       right: 16,
-      bottom: 80,
+      bottom: 16, // Giảm từ 80 xuống 16 để gần bottom bar
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(

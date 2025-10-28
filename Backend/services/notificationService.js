@@ -4,6 +4,18 @@ import logger from "../middleware/logger.js";
 import mongoose from "mongoose";
 
 /**
+ * Format currency helper - Format số tiền theo chuẩn VNĐ
+ * @param {number} amount - Số tiền cần format
+ * @returns {string} Số tiền đã format (VD: 1.000.000 ₫)
+ */
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+  }).format(amount);
+};
+
+/**
  * Notification Service - Xử lý logic tạo và quản lý thông báo
  */
 class NotificationService {
@@ -252,6 +264,7 @@ class NotificationService {
         return;
       }
 
+      // Format currency helper
       let priority = "normal";
       let title = "⚠️ Cảnh báo ngân sách";
       let message = `Bạn đã chi ${spentPercentage.toFixed(
@@ -267,7 +280,7 @@ class NotificationService {
         title = "⚠️ Ngân sách sắp hết!";
         message = `Bạn đã chi ${spentPercentage.toFixed(
           1
-        )}% ngân sách ${category}. Còn lại ${remainingAmount.toLocaleString()}đ.`;
+        )}% ngân sách ${category}. Còn lại ${formatCurrency(remainingAmount)}.`;
       }
 
       const notification = await this.createNotification(
@@ -358,7 +371,7 @@ class NotificationService {
         },
         {
           title: "🔍 Chi tiêu bất thường",
-          message: `Bạn vừa chi ${expenseAmount.toLocaleString()}đ cho ${category}. Đây là giao dịch lớn bất thường.`,
+          message: `Bạn vừa chi ${formatCurrency(expenseAmount)} cho ${category}. Đây là giao dịch lớn bất thường.`,
           category: "expense",
           priority: "high",
           requiresAction: true,
@@ -415,9 +428,7 @@ class NotificationService {
         },
         {
           title: "💸 Chi tiêu mới",
-          message: `Bạn đã thêm chi tiêu ${
-            expenseAmount?.toLocaleString() || 0
-          }đ cho ${category}`,
+          message: `Bạn đã thêm chi tiêu ${formatCurrency(expenseAmount || 0)} cho ${category}`,
           category: "expense",
           priority: "normal",
           requiresAction: false,
@@ -464,17 +475,15 @@ class NotificationService {
 
       if (daysUntilDue <= 0) {
         title = "🚨 Hóa đơn quá hạn!";
-        message = `Hóa đơn ${billName} đã quá hạn ${Math.abs(
-          daysUntilDue
-        )} ngày. Số tiền: ${amount.toLocaleString()}đ`;
+        message = `Hóa đơn ${billName} đã quá hạn ${Math.abs(daysUntilDue)} ngày. Số tiền: ${formatCurrency(amount)}`;
         priority = "urgent";
       } else if (daysUntilDue === 1) {
         title = "⚠️ Hóa đơn đến hạn ngày mai";
-        message = `Hóa đơn ${billName} đến hạn ngày mai. Số tiền: ${amount.toLocaleString()}đ`;
+        message = `Hóa đơn ${billName} đến hạn ngày mai. Số tiền: ${formatCurrency(amount)}`;
         priority = "high";
       } else {
         title = "📅 Nhắc nhở hóa đơn";
-        message = `Hóa đơn ${billName} đến hạn trong ${daysUntilDue} ngày. Số tiền: ${amount.toLocaleString()}đ`;
+        message = `Hóa đơn ${billName} đến hạn trong ${daysUntilDue} ngày. Số tiền: ${formatCurrency(amount)}`;
       }
 
       const notification = await this.createNotification(
@@ -642,16 +651,14 @@ class NotificationService {
         ([, a], [, b]) => b - a
       )[0];
 
-      let message = `Tuần này bạn chi ${totalExpenses.toLocaleString()}đ, thu ${totalIncomes.toLocaleString()}đ. `;
+      let message = `Tuần này bạn chi ${formatCurrency(totalExpenses)}, thu ${formatCurrency(totalIncomes)}. `;
       if (netAmount > 0) {
-        message += `Tiết kiệm được ${netAmount.toLocaleString()}đ. `;
+        message += `Tiết kiệm được ${formatCurrency(netAmount)}. `;
       } else {
-        message += `Chi vượt thu ${Math.abs(netAmount).toLocaleString()}đ. `;
+        message += `Chi vượt thu ${formatCurrency(Math.abs(netAmount))}. `;
       }
       if (topCategory) {
-        message += `Chi nhiều nhất cho ${
-          topCategory[0]
-        }: ${topCategory[1].toLocaleString()}đ.`;
+        message += `Chi nhiều nhất cho ${topCategory[0]}: ${formatCurrency(topCategory[1])}.`;
       }
 
       const notification = await this.createNotification(
@@ -706,21 +713,21 @@ class NotificationService {
       const sourceName = source?.name || source || "Nguồn không xác định";
 
       let title = "💰 Thu nhập mới";
-      let message = `Bạn đã thêm thu nhập ${incomeAmount.toLocaleString()}đ từ ${sourceName}`;
+      let message = `Bạn đã thêm thu nhập ${formatCurrency(incomeAmount)} từ ${sourceName}`;
       let priority = "normal";
 
       // Check for large income
       if (incomeAmount > 10000000) {
         // 10 triệu
         title = "💎 Thu nhập lớn!";
-        message = `Chúc mừng! Bạn vừa có thu nhập lớn ${incomeAmount.toLocaleString()}đ từ ${sourceName}`;
+        message = `Chúc mừng! Bạn vừa có thu nhập lớn ${formatCurrency(incomeAmount)} từ ${sourceName}`;
         priority = "high";
       }
 
       // Check for recurring income
       if (isRecurring) {
         title = "🔄 Thu nhập định kỳ";
-        message = `Thu nhập định kỳ ${incomeAmount.toLocaleString()}đ từ ${sourceName} đã được ghi nhận`;
+        message = `Thu nhập định kỳ ${formatCurrency(incomeAmount)} từ ${sourceName} đã được ghi nhận`;
       }
 
       const notification = await this.createNotification(
@@ -778,7 +785,7 @@ class NotificationService {
       } = savingsData;
 
       let title = "🎯 Mục tiêu tiết kiệm mới";
-      let message = `Bạn đã tạo mục tiêu "${goalName}" với số tiền ${targetAmount.toLocaleString()}đ`;
+      let message = `Bạn đã tạo mục tiêu "${goalName}" với số tiền ${formatCurrency(targetAmount)}`;
       let priority = "normal";
 
       const notification = await this.createNotification(
@@ -839,7 +846,7 @@ class NotificationService {
       } = contributionData;
 
       let title = "💳 Đóng góp mục tiêu";
-      let message = `Bạn đã đóng góp ${contributionAmount.toLocaleString()}đ vào mục tiêu "${goalName}"`;
+      let message = `Bạn đã đóng góp ${formatCurrency(contributionAmount)} vào mục tiêu "${goalName}"`;
       let priority = "normal";
 
       // Check for milestone achievements
@@ -932,11 +939,11 @@ class NotificationService {
 
       if (changeType === "amount_increase") {
         title = "📈 Tăng ngân sách";
-        message = `Ngân sách "${budgetName}" đã tăng từ ${oldAmount.toLocaleString()}đ lên ${newAmount.toLocaleString()}đ`;
+        message = `Ngân sách "${budgetName}" đã tăng từ ${formatCurrency(oldAmount)} lên ${formatCurrency(newAmount)}`;
         priority = "normal";
       } else if (changeType === "amount_decrease") {
         title = "📉 Giảm ngân sách";
-        message = `Ngân sách "${budgetName}" đã giảm từ ${oldAmount.toLocaleString()}đ xuống ${newAmount.toLocaleString()}đ`;
+        message = `Ngân sách "${budgetName}" đã giảm từ ${formatCurrency(oldAmount)} xuống ${formatCurrency(newAmount)}`;
         priority = "high";
       }
 
@@ -1063,22 +1070,14 @@ class NotificationService {
       budget_alert: `Bạn đã chi ${data.spentPercentage || 0}% ngân sách ${
         data.category || ""
       }`,
-      large_expense_alert: `Bạn vừa chi ${
-        data.expenseAmount?.toLocaleString() || 0
-      }đ cho ${data.category || ""}`,
+      large_expense_alert: `Bạn vừa chi ${formatCurrency(data.expenseAmount || 0)} cho ${data.category || ""}`,
       daily_expense_reminder:
         "Bạn chưa ghi chi tiêu hôm nay. Hãy cập nhật để theo dõi tài chính tốt hơn!",
       weekly_report: "Báo cáo tài chính tuần này đã sẵn sàng.",
       bill_reminder: `Hóa đơn ${data.billName || ""} sắp đến hạn.`,
-      income_added: `Bạn đã thêm thu nhập ${
-        data.incomeAmount?.toLocaleString() || 0
-      }đ từ ${data.incomeSource || ""}`,
-      savings_goal_created: `Bạn đã tạo mục tiêu "${
-        data.savingsGoalName || ""
-      }" với số tiền ${data.targetAmount?.toLocaleString() || 0}đ`,
-      savings_contribution: `Bạn đã đóng góp ${
-        data.contributionAmount?.toLocaleString() || 0
-      }đ vào mục tiêu "${data.savingsGoalName || ""}"`,
+      income_added: `Bạn đã thêm thu nhập ${formatCurrency(data.incomeAmount || 0)} từ ${data.incomeSource || ""}`,
+      savings_goal_created: `Bạn đã tạo mục tiêu "${data.savingsGoalName || ""}" với số tiền ${formatCurrency(data.targetAmount || 0)}`,
+      savings_contribution: `Bạn đã đóng góp ${formatCurrency(data.contributionAmount || 0)} vào mục tiêu "${data.savingsGoalName || ""}"`,
       budget_updated: `Ngân sách "${data.budgetName || ""}" đã được cập nhật`,
     };
 

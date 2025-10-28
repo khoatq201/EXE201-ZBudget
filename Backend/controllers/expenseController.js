@@ -98,14 +98,9 @@ export const createExpense = async (req, res) => {
           isActive: true,
         });
         if (budget) {
-          // Note: Budget model uses categoryAllocations, not categories
-          const categoryAllocation = budget.categoryAllocations?.find(
-            (cat) => cat.category === category
-          );
-          if (categoryAllocation) {
-            categoryAllocation.spent = (categoryAllocation.spent || 0) + amount;
-            await budget.save();
-          }
+          // Use Budget model's addExpense method to properly handle Decimal128
+          budget.addExpense(amount, category);
+          await budget.save();
         }
       } catch (budgetError) {
         console.error(
@@ -417,28 +412,9 @@ export const updateExpense = async (req, res) => {
       const budget = await Budget.findById(expense.budgetId).session(session);
       if (budget) {
         // Remove old amount from old category
-        const oldCategoryBudget = budget.categories.find(
-          (cat) => cat.category === oldCategory
-        );
-        if (oldCategoryBudget) {
-          oldCategoryBudget.spent = Math.max(
-            0,
-            (oldCategoryBudget.spent || 0) - oldAmount
-          );
-        }
+        budget.removeExpense(oldAmount, oldCategory);
         // Add new amount to new category
-        const newCategoryBudget = budget.categories.find(
-          (cat) => cat.category === expense.category
-        );
-        if (newCategoryBudget) {
-          newCategoryBudget.spent =
-            (newCategoryBudget.spent || 0) + expense.amount;
-        }
-        // Recalculate total spent
-        budget.totalSpent = budget.categories.reduce(
-          (total, cat) => total + (cat.spent || 0),
-          0
-        );
+        budget.addExpense(expense.amount, expense.category);
         await budget.save({ session });
       }
     }
@@ -506,20 +482,9 @@ export const deleteExpense = async (req, res) => {
     if (expense.budgetId) {
       const budget = await Budget.findById(expense.budgetId).session(session);
       if (budget) {
-        const categoryBudget = budget.categories.find(
-          (cat) => cat.category === expense.category
-        );
-        if (categoryBudget) {
-          categoryBudget.spent = Math.max(
-            0,
-            (categoryBudget.spent || 0) - expense.amount
-          );
-          budget.totalSpent = Math.max(
-            0,
-            (budget.totalSpent || 0) - expense.amount
-          );
-          await budget.save({ session });
-        }
+        // Use Budget model's removeExpense method to properly handle Decimal128
+        budget.removeExpense(expense.amount, expense.category);
+        await budget.save({ session });
       }
     }
     // Delete receipt file if exists

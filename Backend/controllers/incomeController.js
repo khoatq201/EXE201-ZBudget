@@ -10,6 +10,7 @@ import {
 import mongoose from "mongoose";
 import { clearUserCache } from "../services/aiFinancialAnalysisService.js";
 import NotificationService from "../services/notificationService.js";
+import FinancialSummaryService from "../services/financialSummaryService.js";
 /**
  * @desc    Create new income with YNAB-style allocations
  * @route   POST /api/income
@@ -356,36 +357,38 @@ export const updateIncome = async (req, res) => {
 export const deleteIncome = async (req, res) => {
   const userId = req.userId;
   const { id } = req.params;
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
-    const income = await Income.findOneAndDelete({ _id: id, userId });
+    const income = await Income.findOne({ _id: id, userId }).session(session);
     if (!income) {
       throw new NotFoundError("Income not found");
     }
     const amount = parseFloat(income.amount.toString());
-    // Update user's financial summary
-    await User.findByIdAndUpdate(
-      userId,
-      {
-        $inc: {
-          "financialSummary.totalIncome": -amount,
-          "financialSummary.currentBalance": -amount,
-        },
-        "financialSummary.lastUpdated": new Date(),
-      },
-      { new: true }
-    );
+
+    // Update financial summary using service
+    await FinancialSummaryService.removeIncome(userId, amount);
+
+    // Delete income
+    await Income.deleteOne({ _id: id }, { session });
+
+    await session.commitTransaction();
+
     res.status(200).json({
       success: true,
       message: "Income deleted successfully",
       data: null,
     });
   } catch (error) {
+    await session.abortTransaction();
     if (error instanceof NotFoundError) throw error;
     console.error("Delete income error:", error);
     res.status(500).json({
       success: false,
       error: "Failed to delete income",
     });
+  } finally {
+    session.endSession();
   }
 };
 /**

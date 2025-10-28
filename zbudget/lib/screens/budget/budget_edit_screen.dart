@@ -6,6 +6,7 @@ import '../../models/budget_models.dart';
 import '../../models/expense.dart';
 import '../../utils/currency_input_formatter.dart';
 import '../../utils/currency_formatter.dart';
+import '../../utils/theme_extensions.dart';
 
 class BudgetEditScreen extends StatefulWidget {
   final BudgetData budget;
