@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:async';
 import '../../services/auth_service.dart';
+import '../../utils/theme_extensions.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
   final String email;
@@ -197,14 +198,14 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen>
               content: Text(
                 result['message'] ?? 'Mã OTP mới đã được gửi đến email của bạn',
               ),
-              backgroundColor: Colors.green,
+              backgroundColor: context.colorScheme.primary,
             ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message'] ?? 'Không thể gửi lại mã OTP'),
-              backgroundColor: Colors.red,
+              backgroundColor: context.errorColor,
             ),
           );
         }
@@ -230,12 +231,12 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: context.screenBackground,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          icon: Icon(Icons.arrow_back, color: context.primaryTextColor),
           onPressed: () => context.go('/signup'),
         ),
       ),
@@ -277,12 +278,12 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen>
               const SizedBox(height: 32),
 
               // Title
-              const Text(
+              Text(
                 'Xác thực tài khoản',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: context.primaryTextColor,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -293,9 +294,9 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen>
               RichText(
                 textAlign: TextAlign.center,
                 text: TextSpan(
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
-                    color: Colors.black54,
+                    color: context.secondaryTextColor,
                     height: 1.5,
                   ),
                   children: [
