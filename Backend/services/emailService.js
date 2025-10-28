@@ -1,13 +1,18 @@
 import * as brevo from "@getbrevo/brevo";
 
-// Khởi tạo Brevo client
-const brevoApi = new brevo.TransactionalEmailsApi();
-if (process.env.BREVO_API_KEY) {
-  brevoApi.setApiKey(
-    brevo.TransactionalEmailsApiApiKeys.apiKey,
-    process.env.BREVO_API_KEY
-  );
-}
+// Khởi tạo Brevo API configuration
+let brevoApi = null;
+
+const getBrevoApi = () => {
+  if (!brevoApi && process.env.BREVO_API_KEY) {
+    brevoApi = new brevo.TransactionalEmailsApi();
+    brevoApi.setApiKey(
+      brevo.TransactionalEmailsApiApiKeys.apiKey,
+      process.env.BREVO_API_KEY
+    );
+  }
+  return brevoApi;
+};
 // Email templates
 const emailTemplates = {
   verification: (name, token) => ({
@@ -238,6 +243,12 @@ const sendEmail = async (to, template) => {
       return { success: false, error: "Email service not configured" };
     }
 
+    // Lấy Brevo API instance
+    const api = getBrevoApi();
+    if (!api) {
+      return { success: false, error: "Brevo API not initialized" };
+    }
+
     // Gửi email qua Brevo API
     const fromEmail = process.env.BREVO_FROM_EMAIL || "noreply@brevo.com";
     const fromName = "ZBudget";
@@ -249,11 +260,19 @@ const sendEmail = async (to, template) => {
     sendSmtpEmail.htmlContent = template.html;
     sendSmtpEmail.textContent = template.text || "";
 
-    const data = await brevoApi.sendTransacEmail(sendSmtpEmail);
+    console.log("🔍 Brevo API Key exists:", !!process.env.BREVO_API_KEY);
+    console.log("🔍 Sending email to:", to);
+    console.log("🔍 From:", fromEmail);
+
+    const data = await api.sendTransacEmail(sendSmtpEmail);
 
     return { success: true, messageId: data.messageId };
   } catch (error) {
     console.warn("⚠️ Email send error:", error.message);
+    if (error.response) {
+      console.warn("Error status:", error.response.status);
+      console.warn("Error body:", error.response.body);
+    }
     return { success: false, error: error.message };
   }
 };
@@ -421,6 +440,12 @@ export const testEmailService = async () => {
       return { success: false, error: "Brevo API key not configured" };
     }
 
+    // Lấy Brevo API instance
+    const api = getBrevoApi();
+    if (!api) {
+      return { success: false, error: "Brevo API not initialized" };
+    }
+
     // Test bằng cách gửi email test đến chính mình
     const fromEmail = process.env.BREVO_FROM_EMAIL || "noreply@brevo.com";
     const testEmail = process.env.TEST_EMAIL || "test@example.com";
@@ -431,7 +456,7 @@ export const testEmailService = async () => {
     sendSmtpEmail.subject = "ZBudget Email Test";
     sendSmtpEmail.htmlContent = "<p>Email service is working correctly!</p>";
 
-    const data = await brevoApi.sendTransacEmail(sendSmtpEmail);
+    const data = await api.sendTransacEmail(sendSmtpEmail);
 
     return {
       success: true,
@@ -439,6 +464,8 @@ export const testEmailService = async () => {
       emailId: data.messageId,
     };
   } catch (error) {
+    console.warn("⚠️ Test email error:", error.message);
+    console.warn("Error details:", error);
     return { success: false, error: error.message };
   }
 };
