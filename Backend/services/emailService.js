@@ -20,13 +20,8 @@ const createTransporter = () => {
       // Không cần rejectUnauthorized với Gmail (mặc định true)
       // Không cần ciphers vì Node sẽ tự chọn
     },
-    debug: true, // Set true để debug chi tiết SMTP handshake
-    logger: {
-      debug: console.log,
-      info: console.info,
-      warn: console.warn,
-      error: console.error,
-    },
+    debug: false, // Set false để tắt SMTP debug logs
+    logger: false, // Set false để tắt SMTP transaction logs
   });
 };
 // Email templates
@@ -253,54 +248,14 @@ const emailTemplates = {
 // Send email function với debug logging tốt hơn
 const sendEmail = async (to, template) => {
   try {
-    // Log environment check đầu tiên
-    console.log("🔍 Checking email environment variables...");
-    console.log("EMAIL_USER exists:", !!process.env.EMAIL_USER);
-    console.log("EMAIL_PASS exists:", !!process.env.EMAIL_PASS);
-
     // Kiểm tra email credentials
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
       console.warn("⚠️ Email credentials not configured");
-      console.warn("EMAIL_USER:", process.env.EMAIL_USER ? "SET" : "NOT SET");
-      console.warn("EMAIL_PASS:", process.env.EMAIL_PASS ? "SET" : "NOT SET");
       return { success: false, error: "Email not configured" };
     }
 
-    console.log(`📧 Attempting to send email to: ${to}`);
-
-    // Test connection first
+    // Skip verification vì Render block email ports
     const transporter = createTransporter();
-    console.log("🔌 Verifying email connection...");
-
-    try {
-      console.log("⏳ Starting connection verification (timeout: 60s)...");
-      await transporter.verify();
-      console.log("✅ Email server ready");
-    } catch (verifyError) {
-      console.error("❌ Email verification FAILED");
-      console.error("Error message:", verifyError.message);
-      console.error("Error code:", verifyError.code);
-      console.error("Error command:", verifyError.command);
-      console.error("Error response:", verifyError.response);
-      console.error("Error responseCode:", verifyError.responseCode);
-      console.error(
-        "Error responseCodeDetails:",
-        verifyError.responseCodeDetails
-      );
-      console.error("Error errno:", verifyError.errno);
-      console.error("Error syscall:", verifyError.syscall);
-      console.error("Error address:", verifyError.address);
-      console.error("Error port:", verifyError.port);
-      console.error(
-        "Full error object:",
-        JSON.stringify(verifyError, Object.getOwnPropertyNames(verifyError))
-      );
-
-      return {
-        success: false,
-        error: `Connection failed: ${verifyError.message} (code: ${verifyError.code})`,
-      };
-    }
 
     const mailOptions = {
       from: `"ZBudget" <${process.env.EMAIL_USER}>`,
@@ -309,29 +264,12 @@ const sendEmail = async (to, template) => {
       html: template.html,
     };
 
-    console.log("📤 Sending email...");
     const result = await transporter.sendMail(mailOptions);
-    console.log(`✅ Email sent successfully. Message ID: ${result.messageId}`);
 
     return { success: true, messageId: result.messageId };
   } catch (error) {
-    console.error("❌ Email send error:", error.message);
-    console.error("📋 Error details:", {
-      code: error.code,
-      command: error.command,
-      response: error.response,
-      responseCode: error.responseCode,
-      responseCodeDetails: error.responseCodeDetails,
-      errno: error.errno,
-      syscall: error.syscall,
-      address: error.address,
-      port: error.port,
-    });
-    console.error("Full error stack:", error.stack);
-    console.error(
-      "Full error object:",
-      JSON.stringify(error, Object.getOwnPropertyNames(error))
-    );
+    // Chỉ log lỗi ngắn gọn vì Render block email
+    console.warn("⚠️ Email send failed:", error.message);
     return { success: false, error: error.message };
   }
 };
