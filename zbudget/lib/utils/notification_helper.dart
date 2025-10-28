@@ -61,7 +61,7 @@ class NotificationHelper {
         channelId: 'finance_daily',
       );
 
-      debugPrint('✅ Expense reminder scheduled for ${time.format(context)}');
+      debugPrint('✅ Expense reminder scheduled for ${time.hour}:${time.minute.toString().padLeft(2, '0')}');
     } catch (e) {
       debugPrint('❌ Failed to schedule expense reminder: $e');
     }

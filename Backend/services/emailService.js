@@ -1,27 +1,6 @@
 import nodemailer from "nodemailer";
-// ⚠️ IMPORTANT: Render Free Tier blocks SMTP ports 25, 465, 587
-// Solutions:
-// 1. Use SMTP service with port 2525 (SMTP2GO, Mailgun, SendGrid)
-// 2. Use email API (SendGrid REST API, Mailgun API)
-// 3. Upgrade to Render paid tier
-
+// Tạo transporter đơn giản với Gmail
 const createTransporter = () => {
-  // Option 1: SMTP with port 2525 (works on Render free tier)
-  if (process.env.SMTP_HOST && process.env.SMTP_PORT) {
-    console.log(`📧 Using SMTP: ${process.env.SMTP_HOST}:${process.env.SMTP_PORT}`);
-    return nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT),
-      secure: process.env.SMTP_PORT === "465", // true for 465, false for other ports
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-  }
-
-  // Option 2: Gmail (only works locally or on paid Render tier)
-  console.log("📧 Using Gmail SMTP (may not work on Render free tier)");
   return nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -235,15 +214,14 @@ const emailTemplates = {
     `,
   }),
 };
-// Send email function with timeout protection for Render
-const sendEmail = async (to, template, timeoutMs = 25000) => {
+// Send email function - đơn giản và hiệu quả
+const sendEmail = async (to, template) => {
   try {
     // Kiểm tra email credentials
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.warn("⚠️ Email credentials not configured");
+      console.warn("Email credentials not configured");
       return { success: false, error: "Email not configured" };
     }
-
     const transporter = createTransporter();
     const mailOptions = {
       from: `"ZBudget" <${process.env.EMAIL_USER}>`,
@@ -251,19 +229,10 @@ const sendEmail = async (to, template, timeoutMs = 25000) => {
       subject: template.subject,
       html: template.html,
     };
-
-    // Add timeout protection (important for Render free tier)
-    const sendPromise = transporter.sendMail(mailOptions);
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Email send timeout")), timeoutMs)
-    );
-
-    const result = await Promise.race([sendPromise, timeoutPromise]);
-    console.log(`✅ Email sent successfully to ${to}`);
+    const result = await transporter.sendMail(mailOptions);
     return { success: true, messageId: result.messageId };
   } catch (error) {
-    console.error(`❌ Email send error to ${to}:`, error.message);
-    // Return success: false but don't throw - email is non-critical
+    console.error("Email send error:", error.message);
     return { success: false, error: error.message };
   }
 };

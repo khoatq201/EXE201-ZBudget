@@ -480,56 +480,13 @@ class ExpenseService extends ChangeNotifier {
         receipt: receipt,
       );
 
-      // Update local budget (legacy behavior)
-      if (budgetId != null && _budgets.containsKey(budgetId)) {
-        await _updateBudgetSpentAmount(budgetId, category, amount);
-      }
+      // ✅ FIX: Don't update local budget cache
+      // Backend already updated the budget, let UI refetch to get correct data
+      // This prevents string concatenation bug: "542083" + 108417 = "542083108417"
     } catch (e) {
       debugPrint('❌ Legacy addExpense error: $e');
       rethrow;
     }
-  }
-
-  /// Update budget spent amount (legacy - local only)
-  Future<void> _updateBudgetSpentAmount(
-    String budgetId,
-    ExpenseCategory category,
-    int amount,
-  ) async {
-    final budget = _budgets[budgetId];
-    if (budget == null) return;
-
-    // Update categories
-    final updatedCategories = budget.categories.map((cat) {
-      if (cat.category == category) {
-        return BudgetCategoryData(
-          category: cat.category,
-          allocatedAmount: cat.allocatedAmount,
-          spentAmount: cat.spentAmount + amount,
-          color: cat.color,
-        );
-      }
-      return cat;
-    }).toList();
-
-    // Calculate total spent
-    final totalSpent = updatedCategories.fold<int>(
-      0,
-      (sum, cat) => sum + cat.spentAmount,
-    );
-
-    // Update budget
-    final updatedBudget = BudgetData(
-      id: budget.id,
-      name: budget.name,
-      totalAmount: budget.totalAmount,
-      spentAmount: totalSpent,
-      period: budget.period,
-      categories: updatedCategories,
-    );
-
-    _budgets[budgetId] = updatedBudget;
-    notifyListeners();
   }
 
   /// Get expenses by budget (legacy)
