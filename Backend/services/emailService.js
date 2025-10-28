@@ -1,12 +1,23 @@
 import nodemailer from "nodemailer";
-// Tạo transporter đơn giản với Gmail
+// Tạo transporter với cấu hình cho Gmail trên Render
 const createTransporter = () => {
   return nodemailer.createTransport({
     service: "gmail",
     auth: {
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+      pass: process.env.EMAIL_PASS, // Nên sử dụng App Password
     },
+    // Thêm timeout và security options cho Render
+    connectionTimeout: 60000, // 60s timeout
+    greetingTimeout: 30000, // 30s greeting timeout
+    socketTimeout: 60000, // 60s socket timeout
+    secure: true, // Sử dụng TLS
+    tls: {
+      rejectUnauthorized: false, // Cho phép self-signed certificates
+    },
+    pool: true, // Sử dụng connection pooling để tăng hiệu quả
+    maxConnections: 2,
+    maxMessages: 10,
   });
 };
 // Email templates
@@ -26,7 +37,9 @@ const emailTemplates = {
             vui lòng xác thực địa chỉ email của bạn bằng cách nhấp vào nút bên dưới:
           </p>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.FRONTEND_URL || "http://localhost:3000"}/verify-email/${token}"
+            <a href="${
+              process.env.FRONTEND_URL || "http://localhost:3000"
+            }/verify-email/${token}"
                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                       color: white;
                       padding: 12px 30px;
@@ -41,7 +54,9 @@ const emailTemplates = {
             Nếu bạn không thể nhấp vào nút trên, hãy sao chép và dán liên kết sau vào trình duyệt:
           </p>
           <p style="background-color: #e9ecef; padding: 10px; border-radius: 4px; word-break: break-all; font-size: 14px;">
-            ${process.env.FRONTEND_URL || "http://localhost:3000"}/verify-email/${token}
+            ${
+              process.env.FRONTEND_URL || "http://localhost:3000"
+            }/verify-email/${token}
           </p>
           <div style="border-top: 1px solid #dee2e6; margin-top: 30px; padding-top: 20px;">
             <p style="color: #666; font-size: 14px; margin-bottom: 10px;">
@@ -75,7 +90,9 @@ const emailTemplates = {
             Nhấp vào nút bên dưới để tạo mật khẩu mới:
           </p>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.FRONTEND_URL || "http://localhost:3000"}/reset-password/${token}"
+            <a href="${
+              process.env.FRONTEND_URL || "http://localhost:3000"
+            }/reset-password/${token}"
                style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
                       color: white;
                       padding: 12px 30px;
@@ -90,7 +107,9 @@ const emailTemplates = {
             Hoặc sao chép và dán liên kết sau vào trình duyệt:
           </p>
           <p style="background-color: #e9ecef; padding: 10px; border-radius: 4px; word-break: break-all; font-size: 14px;">
-            ${process.env.FRONTEND_URL || "http://localhost:3000"}/reset-password/${token}
+            ${
+              process.env.FRONTEND_URL || "http://localhost:3000"
+            }/reset-password/${token}
           </p>
           <div style="border-top: 1px solid #dee2e6; margin-top: 30px; padding-top: 20px;">
             <p style="color: #dc3545; font-size: 14px; margin-bottom: 10px;">
@@ -133,7 +152,9 @@ const emailTemplates = {
             </ul>
           </div>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.FRONTEND_URL || "http://localhost:3000"}/dashboard"
+            <a href="${
+              process.env.FRONTEND_URL || "http://localhost:3000"
+            }/dashboard"
                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                       color: white;
                       padding: 12px 30px;
@@ -175,11 +196,15 @@ const emailTemplates = {
           <div style="background-color: white; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin: 25px 0;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
               <span style="color: #666;">Đã chi tiêu:</span>
-              <span style="color: #dc3545; font-weight: bold; font-size: 18px;">${spent.toLocaleString("vi-VN")} ₫</span>
+              <span style="color: #dc3545; font-weight: bold; font-size: 18px;">${spent.toLocaleString(
+                "vi-VN"
+              )} ₫</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
               <span style="color: #666;">Tổng ngân sách:</span>
-              <span style="color: #333; font-weight: bold; font-size: 18px;">${total.toLocaleString("vi-VN")} ₫</span>
+              <span style="color: #333; font-weight: bold; font-size: 18px;">${total.toLocaleString(
+                "vi-VN"
+              )} ₫</span>
             </div>
             <div style="background-color: #e9ecef; border-radius: 10px; height: 20px; margin: 15px 0;">
               <div style="background: linear-gradient(90deg, #ffa500 0%, #ff6347 100%);
@@ -193,7 +218,9 @@ const emailTemplates = {
             </p>
           </div>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.FRONTEND_URL || "http://localhost:3000"}/budgets"
+            <a href="${
+              process.env.FRONTEND_URL || "http://localhost:3000"
+            }/budgets"
                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                       color: white;
                       padding: 12px 30px;

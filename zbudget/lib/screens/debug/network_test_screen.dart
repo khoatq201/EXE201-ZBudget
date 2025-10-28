@@ -33,7 +33,7 @@ class _NetworkTestScreenState extends State<NetworkTestScreen> {
       // Test 1: Check if backend is reachable
       addLog('🔧 Testing backend connectivity...');
 
-      final baseUrl = 'https://exe201-zbudget.onrender.com/api/auth';
+      final baseUrl = 'http://10.0.2.2:3000/api/auth'; // Local
       addLog('🔧 Base URL: $baseUrl');
 
       // Test simple endpoint first
@@ -67,9 +67,7 @@ class _NetworkTestScreenState extends State<NetworkTestScreen> {
 
       final googleResponse = await http
           .post(
-            Uri.parse(
-              'https://exe201-zbudget.onrender.com/api/auth/google-signin',
-            ),
+            Uri.parse('http://10.0.2.2:3000/api/auth/google-signin'),
             headers: {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
