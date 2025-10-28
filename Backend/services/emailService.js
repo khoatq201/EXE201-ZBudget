@@ -214,14 +214,15 @@ const emailTemplates = {
     `,
   }),
 };
-// Send email function - đơn giản và hiệu quả
-const sendEmail = async (to, template) => {
+// Send email function with timeout protection for Render
+const sendEmail = async (to, template, timeoutMs = 25000) => {
   try {
     // Kiểm tra email credentials
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.warn("Email credentials not configured");
+      console.warn("⚠️ Email credentials not configured");
       return { success: false, error: "Email not configured" };
     }
+
     const transporter = createTransporter();
     const mailOptions = {
       from: `"ZBudget" <${process.env.EMAIL_USER}>`,
@@ -229,10 +230,19 @@ const sendEmail = async (to, template) => {
       subject: template.subject,
       html: template.html,
     };
-    const result = await transporter.sendMail(mailOptions);
+
+    // Add timeout protection (important for Render free tier)
+    const sendPromise = transporter.sendMail(mailOptions);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Email send timeout")), timeoutMs)
+    );
+
+    const result = await Promise.race([sendPromise, timeoutPromise]);
+    console.log(`✅ Email sent successfully to ${to}`);
     return { success: true, messageId: result.messageId };
   } catch (error) {
-    console.error("Email send error:", error.message);
+    console.error(`❌ Email send error to ${to}:`, error.message);
+    // Return success: false but don't throw - email is non-critical
     return { success: false, error: error.message };
   }
 };
