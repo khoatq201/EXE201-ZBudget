@@ -50,6 +50,26 @@ class SavingsService extends ChangeNotifier {
     };
   }
 
+  /// Safely decode JSON response body
+  /// Returns null if body is empty or invalid JSON
+  Map<String, dynamic>? _safeJsonDecode(String body) {
+    if (body.isEmpty) {
+      if (kDebugMode) {
+        print('⚠️ Response body is empty');
+      }
+      return null;
+    }
+    try {
+      return json.decode(body) as Map<String, dynamic>;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ JSON decode error: $e');
+        print('Response body: $body');
+      }
+      return null;
+    }
+  }
+
   /// Get all savings goals with filters
   Future<void> getSavingsGoals({
     String? status,
@@ -82,19 +102,19 @@ class SavingsService extends ChangeNotifier {
       final response = await http.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
+        final data = _safeJsonDecode(response.body);
+        if (data != null && data['success'] == true) {
           final goalsData = data['data']['goals'] as List;
           _savingsGoals = goalsData
               .map((g) => SavingsGoal.fromJson(g))
               .toList();
           _error = null;
         } else {
-          _error = data['message'] ?? 'Failed to load savings goals';
+          _error = data?['message'] ?? 'Failed to load savings goals';
         }
       } else {
-        final data = json.decode(response.body);
-        _error = data['message'] ?? 'Failed to load savings goals';
+        final data = _safeJsonDecode(response.body);
+        _error = data?['message'] ?? 'Failed to load savings goals';
       }
     } catch (e) {
       _error = e.toString();
@@ -115,8 +135,8 @@ class SavingsService extends ChangeNotifier {
       final response = await http.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
+        final data = _safeJsonDecode(response.body);
+        if (data != null && data['success'] == true) {
           return SavingsGoal.fromJson(data['data']);
         }
       }
@@ -167,9 +187,9 @@ class SavingsService extends ChangeNotifier {
         body: json.encode(body),
       );
 
-      final data = json.decode(response.body);
+      final data = _safeJsonDecode(response.body);
 
-      if (response.statusCode == 201 && data['success'] == true) {
+      if (response.statusCode == 201 && data != null && data['success'] == true) {
         final newGoal = SavingsGoal.fromJson(data['data']);
         _savingsGoals.add(newGoal);
 
@@ -184,7 +204,7 @@ class SavingsService extends ChangeNotifier {
       } else {
         return {
           'success': false,
-          'message': data['message'] ?? 'Failed to create savings goal',
+          'message': data?['message'] ?? 'Failed to create savings goal',
         };
       }
     } catch (e) {
@@ -235,9 +255,9 @@ class SavingsService extends ChangeNotifier {
         body: json.encode(body),
       );
 
-      final data = json.decode(response.body);
+      final data = _safeJsonDecode(response.body);
 
-      if (response.statusCode == 200 && data['success'] == true) {
+      if (response.statusCode == 200 && data != null && data['success'] == true) {
         final updatedGoal = SavingsGoal.fromJson(data['data']);
         final index = _savingsGoals.indexWhere((g) => g.id == id);
         if (index != -1) {
@@ -251,7 +271,7 @@ class SavingsService extends ChangeNotifier {
       } else {
         return {
           'success': false,
-          'message': data['message'] ?? 'Failed to update savings goal',
+          'message': data?['message'] ?? 'Failed to update savings goal',
         };
       }
     } catch (e) {
@@ -269,9 +289,9 @@ class SavingsService extends ChangeNotifier {
       final uri = Uri.parse('$baseUrl/$id');
 
       final response = await http.delete(uri, headers: headers);
-      final data = json.decode(response.body);
+      final data = _safeJsonDecode(response.body);
 
-      if (response.statusCode == 200 && data['success'] == true) {
+      if (response.statusCode == 200 && data != null && data['success'] == true) {
         _savingsGoals.removeWhere((g) => g.id == id);
         notifyListeners();
         return {
@@ -281,7 +301,7 @@ class SavingsService extends ChangeNotifier {
       } else {
         return {
           'success': false,
-          'message': data['message'] ?? 'Failed to delete savings goal',
+          'message': data?['message'] ?? 'Failed to delete savings goal',
         };
       }
     } catch (e) {
@@ -317,9 +337,9 @@ class SavingsService extends ChangeNotifier {
         body: json.encode(body),
       );
 
-      final data = json.decode(response.body);
+      final data = _safeJsonDecode(response.body);
 
-      if (response.statusCode == 200 && data['success'] == true) {
+      if (response.statusCode == 200 && data != null && data['success'] == true) {
         final updatedGoal = SavingsGoal.fromJson(data['data']);
         final index = _savingsGoals.indexWhere((g) => g.id == goalId);
         if (index != -1) {
@@ -330,7 +350,7 @@ class SavingsService extends ChangeNotifier {
       } else {
         // Parse error - could be 'message' or 'error' field
         final errorMsg =
-            data['message'] ?? data['error'] ?? 'Failed to add contribution';
+            data?['message'] ?? data?['error'] ?? 'Failed to add contribution';
         if (kDebugMode) {
           print('❌ Add contribution failed: $errorMsg');
         }
@@ -362,9 +382,9 @@ class SavingsService extends ChangeNotifier {
         body: json.encode(body),
       );
 
-      final data = json.decode(response.body);
+      final data = _safeJsonDecode(response.body);
 
-      if (response.statusCode == 200 && data['success'] == true) {
+      if (response.statusCode == 200 && data != null && data['success'] == true) {
         final updatedGoal = SavingsGoal.fromJson(data['data']);
         final index = _savingsGoals.indexWhere((g) => g.id == goalId);
         if (index != -1) {
@@ -375,7 +395,7 @@ class SavingsService extends ChangeNotifier {
       } else {
         // Parse error - could be 'message' or 'error' field
         final errorMsg =
-            data['message'] ?? data['error'] ?? 'Failed to withdraw';
+            data?['message'] ?? data?['error'] ?? 'Failed to withdraw';
         if (kDebugMode) {
           print('❌ Withdraw failed: $errorMsg');
         }
@@ -398,8 +418,8 @@ class SavingsService extends ChangeNotifier {
       final response = await http.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
+        final data = _safeJsonDecode(response.body);
+        if (data != null && data['success'] == true) {
           _stats = SavingsStats.fromJson(data['data']);
           notifyListeners();
         }
