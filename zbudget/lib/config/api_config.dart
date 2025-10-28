@@ -5,8 +5,9 @@ class ApiConfig {
   // Base URLs for different environments
   static const String _devBaseUrlWeb = 'http://localhost:3000/api';
   static const String _devBaseUrlAndroid = 'http://10.0.2.2:3000/api';
-  static const String _prodBaseUrl = 'https://your-production-api.com/api';
-  static const String _stagingBaseUrl = 'https://your-staging-api.com/api';
+  static const String _prodBaseUrl = 'https://exe201-zbudget.onrender.com/api';
+  static const String _stagingBaseUrl =
+      'https://exe201-zbudget.onrender.com/api';
 
   // Current environment
   static const bool _isDevelopment =

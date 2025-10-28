@@ -96,6 +96,7 @@ const consoleLog = (level, message, meta = {}) => {
   if (Object.keys(meta).length > 0) {
     logOutput += `\n${colors.dim}${JSON.stringify(meta, null, 2)}${resetColor}`;
   }
+  console.log(logOutput);
 };
 // Main logger class
 class Logger {

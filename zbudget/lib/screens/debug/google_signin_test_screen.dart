@@ -93,7 +93,8 @@ class _GoogleSignInTestScreenState extends State<GoogleSignInTestScreen> {
     GoogleSignInAuthentication auth,
   ) async {
     try {
-      const String baseUrl = 'http://10.0.2.2:3000'; // Android emulator
+      const String baseUrl =
+          'https://exe201-zbudget.onrender.com'; // Android emulator
 
       final Map<String, dynamic> requestBody = {
         'email': account.email,

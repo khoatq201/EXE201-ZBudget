@@ -124,6 +124,39 @@ app.use(
     limit: process.env.MAX_URLENCODED_SIZE || "10mb",
   })
 );
+// Simple console logging for every request (works better on Render)
+app.use((req, res, next) => {
+  const startTime = Date.now();
+  const timestamp = new Date().toISOString();
+  console.log(
+    `[${timestamp}] 📥 ${req.method} ${req.originalUrl} - IP: ${
+      req.ip || req.connection.remoteAddress
+    }`
+  );
+
+  if (req.method !== "GET" && req.body && Object.keys(req.body).length > 0) {
+    // Sanitize sensitive data for logging
+    const body = { ...req.body };
+    if (body.password) body.password = "***REDACTED***";
+    if (body.token) body.token = "***REDACTED***";
+    console.log(`Request body:`, JSON.stringify(body));
+  }
+
+  // Log response when it finishes
+  res.on("finish", () => {
+    const duration = Date.now() - startTime;
+    const statusEmoji =
+      res.statusCode >= 500 ? "❌" : res.statusCode >= 400 ? "⚠️" : "✅";
+    console.log(
+      `[${new Date().toISOString()}] 📤 ${statusEmoji} ${req.method} ${
+        req.originalUrl
+      } - Status: ${res.statusCode} - Time: ${duration}ms`
+    );
+  });
+
+  next();
+});
+
 // Request and response logging middleware
 app.use(requestLogger);
 app.use(responseLogger);
@@ -256,16 +289,36 @@ process.on("uncaughtException", (error) => {
 // Start server
 async function startServer() {
   try {
+    console.log("🌍 Environment:", process.env.NODE_ENV || "development");
+    console.log("🔌 Connecting to database...");
     // Connect to database
     await connectDB();
+    console.log("✅ Database connected successfully");
+
     // Start HTTP server
     server = app.listen(PORT, () => {
       console.log(`🚀 Server is running on port ${PORT}`);
+      console.log(
+        `📍 Server URL: ${
+          process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`
+        }`
+      );
+      console.log(
+        `🏥 Health check: ${
+          process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`
+        }/api/health`
+      );
       // Start session cleanup job
       sessionCleanupJob.start();
+      // Start notification scheduler job
+      notificationSchedulerJob.start();
+      console.log("✅ Background jobs started");
+
       if (process.env.NODE_ENV === "development") {
         console.log(`📝 API Documentation: http://localhost:${PORT}/api`);
       }
+
+      console.log("🎉 Server is ready to accept requests!");
     });
     return server;
   } catch (error) {
