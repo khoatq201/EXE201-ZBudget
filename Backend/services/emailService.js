@@ -21,7 +21,12 @@ const createTransporter = () => {
       // Không cần ciphers vì Node sẽ tự chọn
     },
     debug: true, // Set true để debug chi tiết SMTP handshake
-    logger: console.log, // Log tất cả SMTP transactions
+    logger: {
+      debug: console.log,
+      info: console.info,
+      warn: console.warn,
+      error: console.error,
+    },
   });
 };
 // Email templates
