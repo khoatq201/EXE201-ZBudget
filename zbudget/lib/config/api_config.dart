@@ -10,14 +10,8 @@ class ApiConfig {
       'https://zbudget-backend.onrender.com/api';
 
   // Current environment - sử dụng environment variables
-  static const bool _isDevelopment = bool.fromEnvironment(
-    'dart.vm.product',
-    defaultValue: true,
-  );
-  static const bool _isProduction = bool.fromEnvironment(
-    'dart.vm.product',
-    defaultValue: false,
-  );
+  static const bool _isDevelopment = false;
+  static const bool _isProduction = true;
   // static String get baseUrl {
   //   if (kIsWeb) {
   //     // Cho Flutter web, sử dụng localhost
