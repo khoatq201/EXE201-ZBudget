@@ -1,6 +1,27 @@
 import nodemailer from "nodemailer";
-// Tạo transporter đơn giản với Gmail
+// ⚠️ IMPORTANT: Render Free Tier blocks SMTP ports 25, 465, 587
+// Solutions:
+// 1. Use SMTP service with port 2525 (SMTP2GO, Mailgun, SendGrid)
+// 2. Use email API (SendGrid REST API, Mailgun API)
+// 3. Upgrade to Render paid tier
+
 const createTransporter = () => {
+  // Option 1: SMTP with port 2525 (works on Render free tier)
+  if (process.env.SMTP_HOST && process.env.SMTP_PORT) {
+    console.log(`📧 Using SMTP: ${process.env.SMTP_HOST}:${process.env.SMTP_PORT}`);
+    return nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT),
+      secure: process.env.SMTP_PORT === "465", // true for 465, false for other ports
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+  }
+
+  // Option 2: Gmail (only works locally or on paid Render tier)
+  console.log("📧 Using Gmail SMTP (may not work on Render free tier)");
   return nodemailer.createTransport({
     service: "gmail",
     auth: {
