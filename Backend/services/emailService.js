@@ -1,29 +1,7 @@
-import nodemailer from "nodemailer";
-// Tạo transporter với cấu hình đúng cho Gmail
-// Sử dụng port 465 với SSL (không STARTTLS) - ổn định nhất trên Render
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true, // SSL connection cho port 465
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS, // Sử dụng Gmail App Password
-    },
-    // Timeout settings
-    connectionTimeout: 60000, // 60s
-    greetingTimeout: 30000, // 30s
-    socketTimeout: 60000, // 60s
-    // TLS configuration đúng cách
-    tls: {
-      minVersion: "TLSv1.2", // Yêu cầu TLS 1.2 minimum
-      // Không cần rejectUnauthorized với Gmail (mặc định true)
-      // Không cần ciphers vì Node sẽ tự chọn
-    },
-    debug: false, // Set false để tắt SMTP debug logs
-    logger: false, // Set false để tắt SMTP transaction logs
-  });
-};
+import { Resend } from "resend";
+
+// Khởi tạo Resend client
+const resend = new Resend(process.env.RESEND_API_KEY);
 // Email templates
 const emailTemplates = {
   verification: (name, token) => ({
@@ -245,31 +223,35 @@ const emailTemplates = {
     `,
   }),
 };
-// Send email function với debug logging tốt hơn
+// Send email function sử dụng Resend API
 const sendEmail = async (to, template) => {
   try {
-    // Kiểm tra email credentials
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.warn("⚠️ Email credentials not configured");
-      return { success: false, error: "Email not configured" };
+    // Kiểm tra Resend API key
+    if (!process.env.RESEND_API_KEY) {
+      console.warn("⚠️ Resend API key not configured");
+      return { success: false, error: "Email service not configured" };
     }
 
-    // Skip verification vì Render block email ports
-    const transporter = createTransporter();
+    // Gửi email qua Resend API
+    const fromEmail =
+      process.env.RESEND_FROM_EMAIL || "ZBudget <onboarding@resend.dev>";
 
-    const mailOptions = {
-      from: `"ZBudget" <${process.env.EMAIL_USER}>`,
-      to,
+    const { data, error } = await resend.emails.send({
+      from: fromEmail,
+      to: [to],
       subject: template.subject,
       html: template.html,
-    };
+      text: template.text, // Plain text version if available
+    });
 
-    const result = await transporter.sendMail(mailOptions);
+    if (error) {
+      console.warn("⚠️ Resend API error:", error);
+      return { success: false, error: error.message || "Failed to send email" };
+    }
 
-    return { success: true, messageId: result.messageId };
+    return { success: true, messageId: data.id };
   } catch (error) {
-    // Chỉ log lỗi ngắn gọn vì Render block email
-    console.warn("⚠️ Email send failed:", error.message);
+    console.warn("⚠️ Email send error:", error.message);
     return { success: false, error: error.message };
   }
 };
@@ -430,15 +412,29 @@ export const sendBulkEmail = async (recipients, template, data = {}) => {
   }
   return results;
 };
-// Test email configuration - đơn giản
+// Test email configuration với Resend
 export const testEmailService = async () => {
   try {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      return { success: false, error: "Email credentials not configured" };
+    if (!process.env.RESEND_API_KEY) {
+      return { success: false, error: "Resend API key not configured" };
     }
-    const transporter = createTransporter();
-    await transporter.verify();
-    return { success: true, message: "Email service ready" };
+    // Test bằng cách gửi email test đến chính mình
+    const fromEmail =
+      process.env.RESEND_FROM_EMAIL || "ZBudget <onboarding@resend.dev>";
+    const testEmail = process.env.TEST_EMAIL || "test@example.com";
+
+    const { data, error } = await resend.emails.send({
+      from: fromEmail,
+      to: [testEmail],
+      subject: "ZBudget Email Test",
+      html: "<p>Email service is working correctly!</p>",
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, message: "Email service ready", emailId: data.id };
   } catch (error) {
     return { success: false, error: error.message };
   }

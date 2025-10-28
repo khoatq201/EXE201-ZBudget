@@ -23,8 +23,12 @@ export const config = {
   USE_CLOUDINARY: process.env.USE_CLOUDINARY === "true",
   // Other configs
   CORS_ORIGINS: process.env.CORS_ORIGINS,
+  // Email config - Old Gmail SMTP (kept for reference)
   EMAIL_USER: process.env.EMAIL_USER,
   EMAIL_PASS: process.env.EMAIL_PASS,
+  // Resend Email Service (recommended for production)
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+  RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
   // Gemini AI OCR
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
   // Groq AI Configuration
