@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../constants/colors.dart';
 import '../../constants/typography.dart';
+import '../../utils/theme_extensions.dart';
 import '../../services/income_service.dart';
 import '../../utils/formatters.dart';
 
@@ -213,7 +214,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
+      backgroundColor: context.scaffoldBackground,
       body: SafeArea(
         child: SlideTransition(
           position: _slideAnimation,
@@ -280,12 +281,12 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: context.headerTextColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_back,
-                color: Colors.white,
+                color: context.headerTextColor,
                 size: 24,
               ),
             ),
@@ -298,14 +299,14 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
                 Text(
                   'Thêm thu nhập',
                   style: AppTypography.h2.copyWith(
-                    color: Colors.white,
+                    color: context.headerTextColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
                   'Ghi lại khoản thu nhập của bạn',
                   style: AppTypography.body.copyWith(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: context.headerSubtitleColor,
                   ),
                 ),
               ],
@@ -323,16 +324,16 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
         Text(
           'Số tiền *',
           style: AppTypography.h4.copyWith(
-            color: AppColors.textPrimary,
+            color: context.primaryTextColor,
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardBackground,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.dark200),
+            border: Border.all(color: context.cardBorder),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
@@ -355,7 +356,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
             decoration: InputDecoration(
               hintText: '0',
               hintStyle: AppTypography.h3.copyWith(
-                color: AppColors.textTertiary,
+                color: context.tertiaryTextColor,
               ),
               prefixIcon: Padding(
                 padding: const EdgeInsets.all(16),
@@ -383,7 +384,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
         Text(
           'Danh mục *',
           style: AppTypography.h4.copyWith(
-            color: AppColors.textPrimary,
+            color: context.primaryTextColor,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -412,10 +413,10 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
-                  color: isSelected ? category.color : Colors.white,
+                  color: isSelected ? category.color : context.cardBackground,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isSelected ? category.color : AppColors.dark200,
+                    color: isSelected ? category.color : context.cardBorder,
                     width: isSelected ? 2 : 1,
                   ),
                   boxShadow: [
@@ -437,7 +438,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
                       style: AppTypography.caption.copyWith(
                         color: isSelected
                             ? Colors.white
-                            : AppColors.textSecondary,
+                            : context.secondaryTextColor,
                         fontWeight: isSelected
                             ? FontWeight.w600
                             : FontWeight.normal,
@@ -463,7 +464,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
         Text(
           'Phương thức nhận tiền *',
           style: AppTypography.h4.copyWith(
-            color: AppColors.textPrimary,
+            color: context.primaryTextColor,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -488,10 +489,10 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: isSelected ? method.color : Colors.white,
+                  color: isSelected ? method.color : context.cardBackground,
                   borderRadius: BorderRadius.circular(25),
                   border: Border.all(
-                    color: isSelected ? method.color : AppColors.dark200,
+                    color: isSelected ? method.color : context.cardBorder,
                     width: isSelected ? 2 : 1,
                   ),
                   boxShadow: [
@@ -513,7 +514,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
                       style: AppTypography.body.copyWith(
                         color: isSelected
                             ? Colors.white
-                            : AppColors.textPrimary,
+                            : context.primaryTextColor,
                         fontWeight: isSelected
                             ? FontWeight.w600
                             : FontWeight.normal,
@@ -536,7 +537,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
         Text(
           'Ngày thu nhập',
           style: AppTypography.h4.copyWith(
-            color: AppColors.textPrimary,
+            color: context.primaryTextColor,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -566,9 +567,9 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.cardBackground,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.dark200),
+              border: Border.all(color: context.cardBorder),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
@@ -584,12 +585,12 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
                 Text(
                   '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textPrimary,
+                    color: context.primaryTextColor,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 const Spacer(),
-                Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
+                Icon(Icons.arrow_drop_down, color: context.secondaryTextColor),
               ],
             ),
           ),
@@ -605,16 +606,16 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
         Text(
           'Ghi chú',
           style: AppTypography.h4.copyWith(
-            color: AppColors.textPrimary,
+            color: context.primaryTextColor,
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardBackground,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.dark200),
+            border: Border.all(color: context.cardBorder),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
@@ -626,11 +627,11 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
           child: TextField(
             controller: _noteController,
             maxLines: 3,
-            style: AppTypography.body.copyWith(color: AppColors.textPrimary),
+            style: AppTypography.body.copyWith(color: context.primaryTextColor),
             decoration: InputDecoration(
               hintText: 'Nhập ghi chú cho khoản thu nhập này...',
               hintStyle: AppTypography.body.copyWith(
-                color: AppColors.textTertiary,
+                color: context.tertiaryTextColor,
               ),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.all(16),
@@ -650,7 +651,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.1),
@@ -725,11 +726,15 @@ class _AddIncomeScreenState extends State<AddIncomeScreen>
         title: _noteController.text.isNotEmpty
             ? _noteController.text
             : categoryOption.name,
-        description: _noteController.text.isNotEmpty ? _noteController.text : null,
+        description: _noteController.text.isNotEmpty
+            ? _noteController.text
+            : null,
         amount: amount,
         category: categoryName,
         date: _selectedDate,
         paymentMethod: paymentMethodId,
+        source: categoryOption
+            .name, // ✅ FIX: Thêm source để tránh "undefined" trong thông báo
       );
 
       if (!mounted) return;

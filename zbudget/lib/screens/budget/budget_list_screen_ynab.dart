@@ -115,7 +115,7 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB>
                   Text(
                     'Ngân sách',
                     style: AppTypography.h2.copyWith(
-                      color: context.colorScheme.onPrimary,
+                      color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -123,7 +123,7 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB>
                   Text(
                     'Quản lý chi tiêu hiệu quả',
                     style: AppTypography.bodySmall.copyWith(
-                      color: context.colorScheme.onPrimary.withValues(
+                      color: Colors.white.withValues(
                         alpha: 0.9,
                       ),
                     ),
@@ -256,15 +256,17 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB>
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [
-            context.colorScheme.primary,
-            context.colorScheme.primary.withValues(alpha: 0.8),
+            context.headerGradientStart,
+            context.headerGradientEnd,
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: context.colorScheme.primary.withValues(alpha: 0.3),
+            color: context.headerGradientStart.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -439,12 +441,12 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB>
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? context.colorScheme.primary
+              ? context.headerGradientStart
               : context.cardBackground,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? context.colorScheme.primary
+                ? context.headerGradientStart
                 : Colors.grey.shade300,
           ),
         ),
@@ -500,7 +502,13 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB>
 
   Widget _buildBudgetCard(Budget budget) {
     return GestureDetector(
-      onTap: () => context.push('/budget/${budget.id}'),
+      onTap: () async {
+        await context.push('/budget/${budget.id}');
+        // Reload data when returning from detail screen
+        if (mounted) {
+          _loadBudgets();
+        }
+      },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
@@ -521,7 +529,7 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB>
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: context.colorScheme.primary.withValues(alpha: 0.1),
+                color: context.headerGradientStart.withValues(alpha: 0.1),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(16),
                   topRight: Radius.circular(16),
@@ -684,7 +692,7 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB>
     } else if (percentage >= 80) {
       progressColor = context.warningColor;
     } else {
-      progressColor = context.colorScheme.primary;
+      progressColor = context.headerGradientStart;
     }
 
     return Column(
@@ -722,7 +730,7 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB>
   Widget _buildStatItem(String label, String value, IconData icon) {
     return Column(
       children: [
-        Icon(icon, size: 20, color: context.colorScheme.primary),
+        Icon(icon, size: 20, color: context.headerGradientStart),
         const SizedBox(height: 4),
         Text(label, style: AppTypography.caption),
         const SizedBox(height: 2),

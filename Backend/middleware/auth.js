@@ -357,7 +357,10 @@ export const debugRateLimitAuth = (req, res, next) => {
   });
 };
 // Rate limiting for password-related routes
-export const rateLimitPassword = (windowMs = 5 * 60 * 1000, max = 3) => {
+export const rateLimitPassword = (
+  windowMs = parseInt(process.env.RATE_LIMIT_PASSWORD_WINDOW_MS) || 5 * 60 * 1000,
+  max = parseInt(process.env.RATE_LIMIT_PASSWORD_MAX_REQUESTS) || 10
+) => {
   const attempts = new Map();
   return (req, res, next) => {
     const key = req.ip || req.connection.remoteAddress;
@@ -394,7 +397,10 @@ export const rateLimitPassword = (windowMs = 5 * 60 * 1000, max = 3) => {
   };
 };
 // General rate limiting for API routes
-export const rateLimitGeneral = (windowMs = 15 * 60 * 1000, max = 100) => {
+export const rateLimitGeneral = (
+  windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+  max = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 500
+) => {
   const attempts = new Map();
   return (req, res, next) => {
     const key = req.ip || req.connection.remoteAddress;

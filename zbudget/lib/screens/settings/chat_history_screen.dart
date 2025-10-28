@@ -175,8 +175,8 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
       backgroundColor: context.colorScheme.background,
       appBar: AppBar(
         title: const Text('Lịch sử Chat AI'),
-        backgroundColor: context.colorScheme.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: context.headerGradientStart,
+        foregroundColor: context.headerTextColor,
         elevation: 0,
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadSessions),

@@ -130,8 +130,8 @@ class _CurrencyScreenState extends State<CurrencyScreen>
       floating: false,
       pinned: true,
       elevation: 0,
-      backgroundColor: AppColors.primary500,
-      foregroundColor: Colors.white,
+      backgroundColor: context.headerGradientStart,
+      foregroundColor: context.headerTextColor,
       flexibleSpace: FlexibleSpaceBar(
         title: const Text(
           'Currency',

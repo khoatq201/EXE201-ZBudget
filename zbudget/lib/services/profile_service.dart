@@ -8,6 +8,7 @@ import '../models/settings/user_profile.dart';
 import '../utils/auth_utils.dart';
 import 'profile_api_service.dart';
 import 'image_upload_service.dart';
+import 'auth_service.dart';
 
 class ProfileService extends ChangeNotifier {
   static const String _profileKey = 'user_profile';
@@ -20,6 +21,7 @@ class ProfileService extends ChangeNotifier {
   DateTime? _lastSync;
 
   final ProfileApiService _apiService = ProfileApiService();
+  AuthService? _authService;
 
   UserProfile? get currentProfile => _currentProfile;
   bool get isLoading => _isLoading;
@@ -27,8 +29,41 @@ class ProfileService extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   DateTime? get lastSync => _lastSync;
 
+  /// Set auth service reference for listening to auth changes
+  void setAuthService(AuthService authService) {
+    print('🔗 ProfileService.setAuthService() called');
+    _authService = authService;
+    _authService!.addListener(_onAuthChanged);
+    print('✅ ProfileService auth listener added');
+  }
+
+  void _onAuthChanged() {
+    print('🔔 ProfileService._onAuthChanged() called');
+    if (_authService != null) {
+      print(
+        '🔔 ProfileService: Auth service exists, isAuthenticated: ${_authService!.isAuthenticated}',
+      );
+      if (!_authService!.isAuthenticated) {
+        // User logged out, clear profile
+        print(
+          '🔔 ProfileService: Auth changed - user logged out, clearing profile',
+        );
+        clearProfile();
+      } else {
+        // User logged in, force refresh
+        print(
+          '🔔 ProfileService: Auth changed - user logged in, force refreshing',
+        );
+        forceRefresh();
+      }
+    } else {
+      print('🔔 ProfileService: Auth service is null');
+    }
+  }
+
   // Initialize with backend sync or local fallback
   Future<void> initialize() async {
+    print('🚀 ProfileService.initialize() called');
     _isLoading = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       notifyListeners();
@@ -42,8 +77,8 @@ class ProfileService extends ChangeNotifier {
         print(
           'ProfileService.initialize: Clearing local storage to force sync...',
         );
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove(_profileKey);
+        // Clear all profile data first
+        await clearProfile();
 
         print('ProfileService.initialize: Trying server sync...');
         final syncSuccess = await _syncWithServer();
@@ -55,13 +90,11 @@ class ProfileService extends ChangeNotifier {
           _currentProfile = null;
         }
       } else {
-        print('ProfileService.initialize: Not authenticated, loading local...');
-        await _loadLocalProfile();
-        if (_currentProfile == null) {
-          print(
-            'ProfileService.initialize: No local profile, no profile loaded',
-          );
-        }
+        print(
+          'ProfileService.initialize: Not authenticated, clearing profile...',
+        );
+        // Clear profile when not authenticated
+        await clearProfile();
       }
 
       _clearError();
@@ -75,6 +108,13 @@ class ProfileService extends ChangeNotifier {
         notifyListeners();
       });
     }
+  }
+
+  /// Force clear and re-sync profile data
+  Future<void> forceRefresh() async {
+    print('🔄 ProfileService.forceRefresh() called');
+    await clearProfile();
+    await initialize();
   }
 
   /// Sync profile with server
@@ -447,13 +487,25 @@ class ProfileService extends ChangeNotifier {
 
   Future<void> clearProfile() async {
     try {
+      print('🧹 ProfileService.clearProfile() called');
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_profileKey);
+      await prefs.remove(_lastSyncKey);
       _currentProfile = null;
+      _lastSync = null;
+      print('✅ ProfileService.clearProfile() completed');
       notifyListeners();
     } catch (e) {
       debugPrint('Error clearing profile: $e');
     }
+  }
+
+  @override
+  void dispose() {
+    if (_authService != null) {
+      _authService!.removeListener(_onAuthChanged);
+    }
+    super.dispose();
   }
 
   // Helper methods for formatting

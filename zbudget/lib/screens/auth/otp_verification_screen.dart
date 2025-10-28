@@ -177,18 +177,54 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen>
   }
 
   Future<void> _resendOTP() async {
-    // TODO: Implement resend OTP functionality
     setState(() {
-      _remainingTime = 600; // Reset timer to 10 minutes
+      _isLoading = true;
     });
-    _startTimer();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Mã OTP mới đã được gửi đến email của bạn'),
-        backgroundColor: Colors.green,
-      ),
-    );
+    try {
+      final authService = context.read<AuthService>();
+      final result = await authService.resendOTP(email: widget.email);
+
+      if (mounted) {
+        if (result['success'] == true) {
+          setState(() {
+            _remainingTime = 600; // Reset timer to 10 minutes
+          });
+          _startTimer();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result['message'] ?? 'Mã OTP mới đã được gửi đến email của bạn',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Không thể gửi lại mã OTP'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Có lỗi xảy ra. Vui lòng thử lại sau.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -419,18 +455,26 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen>
 
               // Resend OTP
               TextButton(
-                onPressed: _remainingTime == 0 ? _resendOTP : null,
-                child: Text(
-                  _remainingTime == 0
-                      ? 'Gửi lại mã OTP'
-                      : 'Gửi lại mã OTP sau $_formattedTime',
-                  style: TextStyle(
-                    color: _remainingTime == 0
-                        ? const Color(0xFF3DA13D)
-                        : Colors.grey,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                onPressed: _remainingTime == 0 && !_isLoading
+                    ? _resendOTP
+                    : null,
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(
+                        _remainingTime == 0
+                            ? 'Gửi lại mã OTP'
+                            : 'Gửi lại mã OTP sau $_formattedTime',
+                        style: TextStyle(
+                          color: _remainingTime == 0
+                              ? const Color(0xFF3DA13D)
+                              : Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
               ),
 
               const SizedBox(height: 20),

@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/group_budget.dart';
+import '../utils/secure_storage_manager.dart';
+import '../config/api_config.dart';
 
 /// Service for managing GroupBudget operations
 class GroupBudgetService extends ChangeNotifier {
@@ -22,16 +23,11 @@ class GroupBudgetService extends ChangeNotifier {
       _budgets.where((b) => b.isSettled).toList();
 
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000/api/group-budgets';
-    } else {
-      return 'http://10.0.2.2:3000/api/group-budgets';
-    }
+    return ApiConfig.baseUrl + '/group-budgets';
   }
 
   Future<Map<String, String>> _getHeaders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('access_token');
+    final token = await SecureStorageManager.getToken();
     return {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
@@ -380,7 +376,24 @@ class GroupBudgetService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data['data']);
+        debugPrint(
+          '✅ Get settlement plan response type: ${data['data'].runtimeType}',
+        );
+
+        // Handle both array and single object/null response
+        if (data['data'] == null) {
+          return [];
+        } else if (data['data'] is List) {
+          return List<Map<String, dynamic>>.from(data['data']);
+        } else if (data['data'] is Map) {
+          // If single object returned, wrap in array
+          return [Map<String, dynamic>.from(data['data'])];
+        } else {
+          debugPrint(
+            '⚠️ Unexpected settlement plan data type: ${data['data'].runtimeType}',
+          );
+          return [];
+        }
       } else {
         final error =
             jsonDecode(response.body)['message'] ??
@@ -388,7 +401,9 @@ class GroupBudgetService extends ChangeNotifier {
         _setError(error);
         return null;
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error getting settlement plan: $e');
+      debugPrint('Stack: $stackTrace');
       _setError(e.toString());
       return null;
     } finally {

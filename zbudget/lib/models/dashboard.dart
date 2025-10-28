@@ -4,6 +4,9 @@ class DashboardData {
   final double totalExpenses;
   final double totalSavings;
   final double monthlyAllowance;
+  final double readyToAssign; // ✅ NEW: Ready to Assign amount
+  final double totalAssigned; // ✅ NEW: Total assigned to budgets
+  final double totalSaved;    // ✅ NEW: Total saved in savings goals
   final PeriodStats period;
   final BudgetInfo? budget;
   final List<Transaction> recentTransactions;
@@ -18,6 +21,9 @@ class DashboardData {
     required this.totalExpenses,
     required this.totalSavings,
     required this.monthlyAllowance,
+    this.readyToAssign = 0.0,
+    this.totalAssigned = 0.0,
+    this.totalSaved = 0.0,
     required this.period,
     this.budget,
     required this.recentTransactions,
@@ -29,11 +35,14 @@ class DashboardData {
 
   factory DashboardData.fromJson(Map<String, dynamic> json) {
     return DashboardData(
-      currentBalance: (json['currentBalance'] as num).toDouble(),
-      totalIncome: (json['totalIncome'] as num).toDouble(),
-      totalExpenses: (json['totalExpenses'] as num).toDouble(),
-      totalSavings: (json['totalSavings'] as num).toDouble(),
-      monthlyAllowance: (json['monthlyAllowance'] as num).toDouble(),
+      currentBalance: (json['currentBalance'] as num?)?.toDouble() ?? 0.0,
+      totalIncome: (json['totalIncome'] as num?)?.toDouble() ?? 0.0,
+      totalExpenses: (json['totalExpenses'] as num?)?.toDouble() ?? 0.0,
+      totalSavings: (json['totalSavings'] as num?)?.toDouble() ?? 0.0,
+      monthlyAllowance: (json['monthlyAllowance'] as num?)?.toDouble() ?? 0.0,
+      readyToAssign: (json['readyToAssign'] as num?)?.toDouble() ?? 0.0,
+      totalAssigned: (json['totalAssigned'] as num?)?.toDouble() ?? 0.0,
+      totalSaved: (json['totalSaved'] as num?)?.toDouble() ?? 0.0,
       period: PeriodStats.fromJson(json['period'] as Map<String, dynamic>),
       budget: json['budget'] != null
           ? BudgetInfo.fromJson(json['budget'] as Map<String, dynamic>)

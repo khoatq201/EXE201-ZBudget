@@ -19,6 +19,7 @@ import mongoose from "mongoose";
 import { FinancialSummaryService } from "../services/financialSummaryService.js";
 import { toNumber } from "../utils/currencyHelper.js";
 import { clearUserCache } from "../services/aiFinancialAnalysisService.js";
+import NotificationService from "../services/notificationService.js";
 /**
  * @desc    Tạo chi tiêu mới
  * @route   POST /api/expenses
@@ -67,10 +68,24 @@ export const createExpense = async (req, res) => {
     await expense.save();
     // Update user financial summary
     try {
-      await FinancialSummaryService.addExpense(userId, amount); // ✅ Using FinancialSummaryService
+      const hasBudget = !!budgetId;
+      await FinancialSummaryService.addExpense(userId, amount, hasBudget); // ✅ Pass hasBudget flag
     } catch (summaryError) {
       console.error(
         "⚠️ Financial summary update failed:",
+        summaryError.message
+      );
+      // If it's readyToAssign validation error, delete the expense and return error
+      if (summaryError.message.includes("Ready to Assign")) {
+        await Expense.findByIdAndDelete(expense._id);
+        return res.status(400).json({
+          success: false,
+          error: summaryError.message,
+        });
+      }
+      // For other summary errors, continue but log
+      console.warn(
+        "⚠️ Continuing despite summary error:",
         summaryError.message
       );
     }
@@ -120,6 +135,52 @@ export const createExpense = async (req, res) => {
       console.error(
         "⚠️ AI cache invalidation failed (non-critical):",
         cacheError.message
+      );
+    }
+
+    // ✅ NEW: Notification triggers
+    try {
+      // ✅ ADD: Normal expense notification for all expenses
+      await NotificationService.triggerExpenseNotification(userId, {
+        expenseId: expense._id,
+        expenseAmount: expense.amount,
+        category: expense.category,
+        description: expense.description,
+      });
+
+      // Check for budget alerts
+      if (budgetId) {
+        const budget = await Budget.findById(budgetId);
+        if (budget && budget.status) {
+          const spentPercentage = budget.status.spentPercentage;
+
+          if (spentPercentage >= 80) {
+            await NotificationService.triggerBudgetAlert(userId, {
+              budgetId: budget._id,
+              budgetName: budget.name,
+              category: budget.categoryAllocations?.[0]?.category || "general",
+              spentPercentage,
+              remainingAmount:
+                budget.status.totalBudget - budget.status.totalSpent,
+            });
+          }
+        }
+      }
+
+      // Check for anomaly (chi tiêu bất thường)
+      if (expense.amount > 2000000) {
+        // Ngưỡng 2 triệu
+        await NotificationService.triggerAnomalyAlert(userId, {
+          expenseId: expense._id,
+          expenseAmount: expense.amount,
+          category: expense.category,
+          description: expense.description,
+        });
+      }
+    } catch (notificationError) {
+      console.error(
+        "⚠️ Notification trigger failed (non-critical):",
+        notificationError.message
       );
     }
 
@@ -296,6 +357,10 @@ export const updateExpense = async (req, res) => {
   try {
     const oldAmount = expense.amount;
     const oldCategory = expense.category;
+    const oldBudgetId = expense.budgetId;
+    const newBudgetId =
+      req.body.budgetId !== undefined ? req.body.budgetId : expense.budgetId;
+
     // Handle receipt update
     if (receiptFile || req.file) {
       // Delete old receipt if exists
@@ -330,7 +395,23 @@ export const updateExpense = async (req, res) => {
     if (paymentMethod !== undefined) expense.paymentMethod = paymentMethod;
     if (location !== undefined) expense.location = location;
     if (tags !== undefined) expense.tags = tags;
+    if (req.body.budgetId !== undefined) expense.budgetId = newBudgetId;
     await expense.save({ session });
+
+    // Update financial summary if amount or budget changed
+    if (amount !== undefined || req.body.budgetId !== undefined) {
+      const newAmount = amount !== undefined ? amount : oldAmount;
+      const oldHasBudget = !!oldBudgetId;
+      const newHasBudget = !!newBudgetId;
+
+      await FinancialSummaryService.updateExpense(
+        userId,
+        oldAmount,
+        newAmount,
+        oldHasBudget,
+        newHasBudget
+      );
+    }
     // Update budget if amount or category changed
     if (expense.budgetId && (amount !== undefined || category !== undefined)) {
       const budget = await Budget.findById(expense.budgetId).session(session);
@@ -412,6 +493,15 @@ export const deleteExpense = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
+    const hasBudget = !!expense.budgetId;
+
+    // Update financial summary - return money if no budget
+    await FinancialSummaryService.removeExpense(
+      userId,
+      expense.amount,
+      hasBudget
+    );
+
     // Update budget if expense was linked
     if (expense.budgetId) {
       const budget = await Budget.findById(expense.budgetId).session(session);

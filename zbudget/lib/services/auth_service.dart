@@ -1,30 +1,19 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
-import '../services/session_manager.dart';
 import '../utils/device_info_helper.dart';
+import '../utils/secure_storage_manager.dart';
+import '../config/api_config.dart';
 
 /// Service để xử lý authentication với backend API
 class AuthService extends ChangeNotifier {
-  // Sử dụng URL khác nhau cho web và mobile để tránh CORS
+  // Sử dụng ApiConfig để quản lý URL theo environment
   static String get baseUrl {
-    if (kIsWeb) {
-      // Cho Flutter web, sử dụng localhost
-      return 'http://localhost:3000/api/auth';
-    } else {
-      // Cho Android emulator, sử dụng 10.0.2.2 thay vì localhost
-      // 10.0.2.2 là địa chỉ đặc biệt trong Android emulator để truy cập host machine
-      return 'http://10.0.2.2:3000/api/auth';
-    }
+    return ApiConfig.baseUrl + '/auth';
   }
-
-  static const String _tokenKey = 'access_token';
-  static const String _refreshTokenKey = 'refresh_token';
-  static const String _userKey = 'user_data';
 
   String? _accessToken;
   String? _refreshToken;
@@ -49,12 +38,11 @@ class AuthService extends ChangeNotifier {
   /// Initialize auth service và check existing token
   Future<void> initialize() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      _accessToken = prefs.getString(_tokenKey);
-      _refreshToken = prefs.getString(_refreshTokenKey);
+      _accessToken = await SecureStorageManager.getToken();
+      _refreshToken = await SecureStorageManager.getRefreshToken();
 
       if (_accessToken != null) {
-        final userData = prefs.getString(_userKey);
+        final userData = await SecureStorageManager.getUserData();
         if (userData != null) {
           _currentUser = User.fromJson(jsonDecode(userData));
           _isAuthenticated = true;
@@ -72,7 +60,8 @@ class AuthService extends ChangeNotifier {
     required String email,
     required String phoneNumber,
     required String password,
-    DateTime? dateOfBirth,
+    required String confirmPassword,
+    String? dateOfBirth,
     String? gender,
   }) async {
     try {
@@ -86,10 +75,11 @@ class AuthService extends ChangeNotifier {
         'email': email,
         'phoneNumber': phoneNumber,
         'password': password,
+        'confirmPassword': confirmPassword,
       };
 
       if (dateOfBirth != null) {
-        requestBody['dateOfBirth'] = dateOfBirth.toIso8601String();
+        requestBody['dateOfBirth'] = dateOfBirth;
       }
 
       if (gender != null && gender.isNotEmpty) {
@@ -128,11 +118,10 @@ class AuthService extends ChangeNotifier {
           _currentUser = User.fromJson(userData);
           _isAuthenticated = true;
 
-          // Lưu vào SharedPreferences
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(_tokenKey, _accessToken!);
-          await prefs.setString(_refreshTokenKey, _refreshToken!);
-          await prefs.setString(_userKey, jsonEncode(userData));
+          // Lưu vào SecureStorage
+          await SecureStorageManager.setToken(_accessToken!);
+          await SecureStorageManager.setRefreshToken(_refreshToken!);
+          await SecureStorageManager.setUserData(jsonEncode(userData));
 
           notifyListeners();
           return {
@@ -195,13 +184,12 @@ class AuthService extends ChangeNotifier {
           _currentUser = User.fromJson(userData);
           _isAuthenticated = true;
 
-          // Lưu vào SharedPreferences
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(_tokenKey, _accessToken!);
+          // Lưu vào SecureStorage
+          await SecureStorageManager.setToken(_accessToken!);
           if (_refreshToken != null) {
-            await prefs.setString(_refreshTokenKey, _refreshToken!);
+            await SecureStorageManager.setRefreshToken(_refreshToken!);
           }
-          await prefs.setString(_userKey, jsonEncode(userData));
+          await SecureStorageManager.setUserData(jsonEncode(userData));
 
           notifyListeners();
           debugPrint('✅ Login successful with device tracking, tokens saved');
@@ -270,11 +258,10 @@ class AuthService extends ChangeNotifier {
         _currentUser = User.fromJson(userData);
         _isAuthenticated = true;
 
-        // Lưu vào SharedPreferences
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_tokenKey, _accessToken!);
-        await prefs.setString(_refreshTokenKey, _refreshToken!);
-        await prefs.setString(_userKey, jsonEncode(userData));
+        // Lưu vào SecureStorage
+        await SecureStorageManager.setToken(_accessToken!);
+        await SecureStorageManager.setRefreshToken(_refreshToken!);
+        await SecureStorageManager.setUserData(jsonEncode(userData));
 
         notifyListeners();
         return {
@@ -349,11 +336,11 @@ class AuthService extends ChangeNotifier {
       _currentUser = null;
       _isAuthenticated = false;
 
-      // Xóa khỏi SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_tokenKey);
-      await prefs.remove(_refreshTokenKey);
-      await prefs.remove(_userKey);
+      // Xóa khỏi SecureStorage
+      await SecureStorageManager.clearAll();
+
+      // Clear profile data from SharedPreferences
+      await _clearProfileData();
 
       debugPrint('✅ Local logout cleanup completed');
       notifyListeners();
@@ -396,9 +383,8 @@ class AuthService extends ChangeNotifier {
         _refreshToken = responseData['refreshToken'];
 
         // Lưu token mới
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_tokenKey, _accessToken!);
-        await prefs.setString(_refreshTokenKey, _refreshToken!);
+        await SecureStorageManager.setToken(_accessToken!);
+        await SecureStorageManager.setRefreshToken(_refreshToken!);
 
         return true;
       } else {
@@ -419,6 +405,46 @@ class AuthService extends ChangeNotifier {
       'Content-Type': 'application/json',
       if (_accessToken != null) 'Authorization': 'Bearer $_accessToken',
     };
+  }
+
+  /// Gửi lại OTP cho đăng ký
+  Future<Map<String, dynamic>> resendOTP({required String email}) async {
+    try {
+      debugPrint('🔄 Resending OTP for email: $email');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/resend-otp'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'email': email}),
+      );
+
+      debugPrint('📥 Resend OTP response status: ${response.statusCode}');
+      debugPrint('📥 Resend OTP response body: ${response.body}');
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Mã OTP mới đã được gửi',
+          'data': responseData['data'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Không thể gửi lại mã OTP',
+        };
+      }
+    } catch (e) {
+      debugPrint('Error during resend OTP: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi kết nối. Vui lòng thử lại sau.',
+      };
+    }
   }
 
   /// Xác thực OTP reset password
@@ -539,129 +565,11 @@ class AuthService extends ChangeNotifier {
 
   /// Google Sign-In method
   Future<Map<String, dynamic>> signInWithGoogle() async {
-    /// 🚀 DEVELOPMENT WORKAROUND: Test backend Google Sign-In without Google Services
-    Future<Map<String, dynamic>> signInWithGoogleDev() async {
-      try {
-        _setLoading(true);
-        debugPrint('🔧 DEV MODE: Testing backend Google Sign-In directly');
-
-        // Send mock request to backend to test integration
-        final response = await http
-            .post(
-              Uri.parse('$baseUrl/google-signin'),
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-              },
-              body: jsonEncode({
-                'idToken':
-                    'mock_dev_id_token_${DateTime.now().millisecondsSinceEpoch}',
-                'accessToken': 'mock_dev_access_token',
-                'email': 'developer@test.com',
-                'displayName': 'Test Developer',
-                'photoUrl': 'https://via.placeholder.com/150',
-              }),
-            )
-            .timeout(
-              Duration(seconds: 10),
-              onTimeout: () {
-                throw Exception(
-                  'Backend timeout - vui lòng kiểm tra kết nối mạng',
-                );
-              },
-            );
-
-        debugPrint('📦 DEV Backend response: ${response.statusCode}');
-        debugPrint('📦 DEV Response body: ${response.body}');
-
-        if (response.statusCode == 200) {
-          final responseData = jsonDecode(response.body);
-
-          if (responseData['success'] == true) {
-            // Save tokens and user info
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setString(_tokenKey, responseData['accessToken']);
-            await prefs.setString(
-              _refreshTokenKey,
-              responseData['refreshToken'] ?? '',
-            );
-            await prefs.setString(_userKey, jsonEncode(responseData['user']));
-
-            _accessToken = responseData['accessToken'];
-            _refreshToken = responseData['refreshToken'];
-            _currentUser = User.fromJson(responseData['user']);
-            _isAuthenticated = true;
-
-            debugPrint('✅ DEV Google Sign-In completed successfully');
-            _setLoading(false);
-            return {
-              'success': true,
-              'message':
-                  responseData['message'] ??
-                  'Google Sign-In thành công (DEV MODE)',
-              'user': _currentUser?.toJson(),
-            };
-          } else {
-            _setLoading(false);
-            return {
-              'success': false,
-              'message':
-                  responseData['message'] ??
-                  'Backend từ chối request (DEV MODE)',
-            };
-          }
-        } else {
-          _setLoading(false);
-          return {
-            'success': false,
-            'message': 'Backend error ${response.statusCode} (DEV MODE)',
-          };
-        }
-      } catch (e) {
-        _setLoading(false);
-        debugPrint('❌ DEV Google Sign-In Error: $e');
-        return {
-          'success': false,
-          'message': 'DEV MODE: Backend connection error - $e',
-        };
-      }
-    }
-
     try {
       _setLoading(true);
-      debugPrint('🚀 Starting Google Sign-In process');
+      debugPrint('🔧 DEV MODE: Testing backend Google Sign-In directly');
 
-      // Pre-check if Google Services are available to fail fast
-      final bool isAvailable = await _googleSignIn.isSignedIn();
-      debugPrint('📱 Google Services available: $isAvailable');
-
-      // Trigger Google Sign-In flow
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-
-      if (googleUser == null) {
-        debugPrint('❌ User cancelled Google Sign-In');
-        _setLoading(false);
-        return {'success': false, 'message': 'Đăng nhập đã bị hủy'};
-      }
-
-      debugPrint('✅ Google user obtained: ${googleUser.email}');
-
-      // Get authentication details
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      if (googleAuth.idToken == null) {
-        debugPrint('❌ No ID token received');
-        _setLoading(false);
-        return {
-          'success': false,
-          'message': 'Không thể lấy token từ Google. Vui lòng thử lại.',
-        };
-      }
-
-      debugPrint('� Sending to backend for verification');
-
-      // Send to backend for verification
+      // Send mock request to backend to test integration
       final response = await http
           .post(
             Uri.parse('$baseUrl/google-signin'),
@@ -670,14 +578,16 @@ class AuthService extends ChangeNotifier {
               'Accept': 'application/json',
             },
             body: jsonEncode({
-              'idToken': googleAuth.idToken,
-              'email': googleUser.email,
-              'displayName': googleUser.displayName,
-              'photoUrl': googleUser.photoUrl,
+              'idToken':
+                  'mock_dev_id_token_${DateTime.now().millisecondsSinceEpoch}',
+              'accessToken': 'mock_dev_access_token',
+              'email': 'developer@test.com',
+              'displayName': 'Test Developer',
+              'photoUrl': 'https://via.placeholder.com/150',
             }),
           )
           .timeout(
-            Duration(seconds: 10), // Add timeout for backend calls
+            Duration(seconds: 10),
             onTimeout: () {
               throw Exception(
                 'Backend timeout - vui lòng kiểm tra kết nối mạng',
@@ -685,60 +595,58 @@ class AuthService extends ChangeNotifier {
             },
           );
 
-      debugPrint('📥 Backend response: ${response.statusCode}');
+      debugPrint('📦 DEV Backend response: ${response.statusCode}');
+      debugPrint('📦 DEV Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
 
         if (responseData['success'] == true) {
           // Save tokens and user info
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(_tokenKey, responseData['accessToken']);
-          await prefs.setString(
-            _refreshTokenKey,
+          await SecureStorageManager.setToken(responseData['accessToken']);
+          await SecureStorageManager.setRefreshToken(
             responseData['refreshToken'] ?? '',
           );
-          await prefs.setString(_userKey, jsonEncode(responseData['user']));
+          await SecureStorageManager.setUserData(
+            jsonEncode(responseData['user']),
+          );
 
           _accessToken = responseData['accessToken'];
           _refreshToken = responseData['refreshToken'];
           _currentUser = User.fromJson(responseData['user']);
           _isAuthenticated = true;
 
-          debugPrint('✅ Google Sign-In completed successfully');
+          debugPrint('✅ DEV Google Sign-In completed successfully');
           _setLoading(false);
           return {
             'success': true,
-            'message': responseData['message'] ?? 'Đăng nhập Google thành công',
+            'message':
+                responseData['message'] ??
+                'Google Sign-In thành công (DEV MODE)',
             'user': _currentUser?.toJson(),
           };
         } else {
           _setLoading(false);
           return {
             'success': false,
-            'message': responseData['message'] ?? 'Đăng nhập Google thất bại',
+            'message':
+                responseData['message'] ?? 'Backend từ chối request (DEV MODE)',
           };
         }
       } else {
         _setLoading(false);
-        return {'success': false, 'message': 'Lỗi server. Vui lòng thử lại.'};
+        return {
+          'success': false,
+          'message': 'Backend error ${response.statusCode} (DEV MODE)',
+        };
       }
     } catch (e) {
       _setLoading(false);
-      debugPrint('❌ Google Sign-In Error: $e');
-
-      // Provide specific error messages
-      String errorMessage = 'Không thể đăng nhập với Google.';
-      if (e.toString().contains('network_error') ||
-          e.toString().contains('ApiException: 7')) {
-        errorMessage = 'Lỗi kết nối. Vui lòng kiểm tra mạng và thử lại.';
-      } else if (e.toString().contains('timeout')) {
-        errorMessage = 'Quá thời gian chờ. Vui lòng thử lại.';
-      } else if (e.toString().contains('ApiException: 10')) {
-        errorMessage = 'Lỗi cấu hình Google Sign-In.';
-      }
-
-      return {'success': false, 'message': errorMessage};
+      debugPrint('❌ DEV Google Sign-In Error: $e');
+      return {
+        'success': false,
+        'message': 'DEV MODE: Backend connection error - $e',
+      };
     }
   }
 
@@ -831,9 +739,10 @@ class AuthService extends ChangeNotifier {
         // Update current user data
         if (responseData['user'] != null) {
           _currentUser = User.fromJson(responseData['user']);
-          // Lưu vào SharedPreferences
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(_userKey, jsonEncode(responseData['user']));
+          // Lưu vào SecureStorage
+          await SecureStorageManager.setUserData(
+            jsonEncode(responseData['user']),
+          );
         }
 
         notifyListeners();
@@ -858,6 +767,22 @@ class AuthService extends ChangeNotifier {
       };
     } finally {
       _setLoading(false);
+    }
+  }
+
+  /// Clear profile data from SharedPreferences
+  Future<void> _clearProfileData() async {
+    try {
+      print('🧹 AuthService._clearProfileData() called');
+      final prefs = await SharedPreferences.getInstance();
+
+      // Clear profile-related keys
+      await prefs.remove('user_profile');
+      await prefs.remove('profile_last_sync');
+
+      print('✅ AuthService._clearProfileData() completed');
+    } catch (e) {
+      print('❌ Error clearing profile data: $e');
     }
   }
 }

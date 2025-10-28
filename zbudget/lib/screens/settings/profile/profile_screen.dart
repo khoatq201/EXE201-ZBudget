@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../services/profile_service.dart';
+import '../../../services/auth_service.dart';
 import '../../../services/image_upload_service.dart';
 import '../../../models/settings/user_profile.dart';
 import '../../../services/profile_share_service.dart';
@@ -42,10 +43,28 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
     _animationController.forward();
 
-    // Debug profile status and force sync
+    // Listen to auth changes and debug profile status
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupAuthListener();
       _debugProfileStatus();
     });
+  }
+
+  void _setupAuthListener() {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    authService.addListener(_onAuthChanged);
+  }
+
+  void _onAuthChanged() {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    if (!authService.isAuthenticated) {
+      // User logged out, clear profile
+      final profileService = Provider.of<ProfileService>(
+        context,
+        listen: false,
+      );
+      profileService.clearProfile();
+    }
   }
 
   void _debugProfileStatus() async {
@@ -69,6 +88,9 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   void dispose() {
     _animationController.dispose();
+    // Remove auth listener
+    final authService = Provider.of<AuthService>(context, listen: false);
+    authService.removeListener(_onAuthChanged);
     super.dispose();
   }
 
@@ -124,7 +146,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       floating: false,
       pinned: true,
       backgroundColor: context.headerGradientStart,
-      foregroundColor: context.colorScheme.onPrimary,
+      foregroundColor: context.headerTextColor,
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: BoxDecoration(

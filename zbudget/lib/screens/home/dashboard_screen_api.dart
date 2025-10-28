@@ -6,11 +6,13 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../services/dashboard_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/budget_service.dart';
+import '../../services/notification_sync_service.dart';
 import '../../models/dashboard.dart';
 import '../../models/budget.dart';
 import '../../constants/typography.dart';
 import '../../utils/formatters.dart';
 import '../../utils/theme_extensions.dart';
+import '../../widgets/common_header.dart';
 import '../../widgets/floating_ai_button.dart';
 
 class DashboardScreenApi extends StatefulWidget {
@@ -37,6 +39,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _loadActiveBudgets();
       await _loadDashboardData();
+      await _loadNotificationStats();
     });
   }
 
@@ -97,6 +100,19 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
 
   Future<void> _refreshDashboard() async {
     return _loadDashboardData();
+  }
+
+  /// Load notification stats for badge
+  Future<void> _loadNotificationStats() async {
+    try {
+      final notificationService = Provider.of<NotificationSyncService>(
+        context,
+        listen: false,
+      );
+      await notificationService.getNotificationStats();
+    } catch (e) {
+      debugPrint('Error loading notification stats: $e');
+    }
   }
 
   @override
@@ -171,9 +187,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
           _buildHeader(authService),
           _buildBalanceCard(data),
           _buildBudgetSelector(),
-          _buildInsights(data.insights),
           _buildBudgetCard(data.budget),
-          _buildQuickStats(data),
           const SizedBox(height: 20),
           _buildQuickActions(),
           const SizedBox(height: 20),
@@ -187,48 +201,77 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
   }
 
   Widget _buildHeader(AuthService authService) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [context.headerGradientStart, context.headerGradientEnd],
+    final email = authService.currentUser?.email ?? '';
+    final userName = email.isNotEmpty ? email.split('@').first : 'Bạn';
+
+    return CommonHeaderPresets.dashboard(
+      userName: userName,
+      subtitle: _getGreeting(),
+      trailing: GestureDetector(
+        onTap: _showNotifications,
+        child: Consumer<NotificationSyncService>(
+          builder: (context, notificationService, child) {
+            final unreadCount = notificationService.unreadCount;
+            return Stack(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.24),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.notifications_outlined,
+                    color: Colors.white,
+                  ),
+                ),
+                if (unreadCount > 0)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 20,
+                        minHeight: 20,
+                      ),
+                      child: Text(
+                        unreadCount > 99 ? '99+' : unreadCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Xin chào! 👋',
-                style: AppTypography.h3.copyWith(
-                  color: context.headerTextColor,
-                ),
-              ),
-              Text(
-                authService.currentUser?.email ?? '',
-                style: AppTypography.bodySmall.copyWith(
-                  color: context.headerSubtitleColor,
-                ),
-              ),
-            ],
-          ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: context.colorScheme.onPrimary.withOpacity(0.24),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              Icons.notifications_outlined,
-              color: context.colorScheme.onPrimary,
-            ),
-          ),
-        ],
-      ),
+    );
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Chào buổi sáng!';
+    if (hour < 18) return 'Chào buổi chiều!';
+    return 'Chào buổi tối!';
+  }
+
+  /// Show notifications in a simple bottom sheet
+  void _showNotifications() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _NotificationBottomSheet(),
     );
   }
 
@@ -248,7 +291,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: context.colorScheme.primary.withOpacity(0.3),
+            color: context.headerGradientStart.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -454,7 +497,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: context.colorScheme.primary.withValues(alpha: 0.1),
+            color: context.headerGradientStart.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -468,7 +511,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
               Icon(
                 Icons.account_balance_wallet,
                 size: 20,
-                color: context.colorScheme.primary,
+                color: context.headerGradientStart,
               ),
               const SizedBox(width: 8),
               Text(
@@ -518,7 +561,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                           Text(
                             budget.totalAmount.toVND(),
                             style: AppTypography.bodySmall.copyWith(
-                              color: context.colorScheme.primary,
+                              color: context.headerGradientStart,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -546,119 +589,6 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
         ],
       ),
     );
-  }
-
-  Widget _buildInsights(List<Insight> insights) {
-    if (insights.isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Thông tin chi tiêu', style: AppTypography.h3),
-          const SizedBox(height: 12),
-          ...insights.map((insight) => _buildInsightCard(insight)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInsightCard(Insight insight) {
-    Color bgColor;
-    Color textColor;
-
-    switch (insight.type) {
-      case 'success':
-        bgColor = context.infoRowBackground;
-        textColor = context.incomeColor.withOpacity(0.95);
-        break;
-      case 'warning':
-        bgColor = context.infoRowBackground;
-        textColor = context.colorScheme.secondary;
-        break;
-      case 'alert':
-        bgColor = context.infoRowBackground;
-        textColor = context.colorScheme.error;
-        break;
-      default:
-        bgColor = context.infoRowBackground;
-        textColor = context.colorScheme.primary;
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Text(insight.icon, style: const TextStyle(fontSize: 24)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      insight.title,
-                      style: AppTypography.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: textColor,
-                      ),
-                    ),
-                    Text(insight.message, style: AppTypography.bodySmall),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          if (insight.action != null) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => _handleInsightAction(insight.action!),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: textColor,
-                  foregroundColor: context.colorScheme.onPrimary,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text(
-                  insight.action!,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: context.colorScheme.onPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  void _handleInsightAction(String action) {
-    switch (action) {
-      case 'Giảm chi tiêu':
-      case 'Xem chi tiết':
-      case 'Điều chỉnh':
-        context.go('/budget');
-        break;
-      case 'Xem gợi ý':
-        context.go('/reports');
-        break;
-      default:
-        // Default action - go to budget page
-        context.go('/budget');
-    }
   }
 
   Widget _buildBudgetCard(BudgetInfo? budget) {
@@ -690,7 +620,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                 style: AppTypography.h3.copyWith(
                   color: budget.isOverBudget
                       ? context.colorScheme.error
-                      : context.colorScheme.primary,
+                      : context.headerGradientStart,
                 ),
               ),
             ],
@@ -702,7 +632,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
             valueColor: AlwaysStoppedAnimation<Color>(
               budget.isOverBudget
                   ? context.colorScheme.error
-                  : context.colorScheme.primary,
+                  : context.headerGradientStart,
             ),
             minHeight: 8,
             borderRadius: BorderRadius.circular(4),
@@ -718,7 +648,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
               Text(
                 'Còn lại: ${budget.remaining.toVND()}',
                 style: AppTypography.bodySmall.copyWith(
-                  color: context.colorScheme.primary,
+                  color: context.headerGradientStart,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -727,68 +657,6 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
           const SizedBox(height: 8),
           Text(
             'Ngân sách hàng ngày: ${budget.dailyBudget.toVND()}',
-            style: AppTypography.bodySmall.copyWith(
-              color: context.settingsItemSubtitleColor,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickStats(DashboardData data) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildStatCard(
-              'Level',
-              data.userStats.level.toString(),
-              Icons.star,
-              context.colorScheme.secondaryContainer, // accent for stat icon
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatCard(
-              'Streak',
-              '${data.userStats.currentStreak} ngày',
-              Icons.local_fire_department,
-              context.colorScheme.tertiaryContainer,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: context.cardBackground,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(context.isDarkTheme ? 0.25 : 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: 8),
-          Text(value, style: AppTypography.h3),
-          Text(
-            label,
             style: AppTypography.bodySmall.copyWith(
               color: context.settingsItemSubtitleColor,
             ),
@@ -960,7 +828,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
               Text(
                 '${category.percentage}%',
                 style: AppTypography.bodySmall.copyWith(
-                  color: context.colorScheme.primary,
+                  color: context.headerGradientStart,
                 ),
               ),
             ],
@@ -990,7 +858,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                 child: Text(
                   'Xem tất cả',
                   style: AppTypography.bodyMedium.copyWith(
-                    color: context.colorScheme.primary,
+                    color: context.headerGradientStart,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1079,7 +947,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                 child: _buildQuickActionButton(
                   'Thêm chi tiêu',
                   Icons.add,
-                  context.colorScheme.primary,
+                  context.headerGradientStart,
                   context.primaryTextColor,
                   () async {
                     final result = await context.push('/add-expense');
@@ -1105,7 +973,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
                 child: _buildQuickActionButton(
                   'Ngân sách',
                   Icons.pie_chart,
-                  context.colorScheme.primary,
+                  context.headerGradientStart,
                   context.primaryTextColor,
                   () => context.go('/budget'),
                 ),
@@ -1189,5 +1057,303 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
       'other': 'Khác',
     };
     return categoryNames[category] ?? category;
+  }
+}
+
+/// Separate widget for notification bottom sheet to avoid loading issues
+class _NotificationBottomSheet extends StatefulWidget {
+  @override
+  _NotificationBottomSheetState createState() =>
+      _NotificationBottomSheetState();
+}
+
+class _NotificationBottomSheetState extends State<_NotificationBottomSheet> {
+  bool _isLoading = true;
+  List<dynamic> _notifications = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    try {
+      final notificationService = Provider.of<NotificationSyncService>(
+        context,
+        listen: false,
+      );
+
+      await notificationService.fetchNotifications();
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _notifications = notificationService.notifications;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.7,
+      decoration: BoxDecoration(
+        color: context.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: context.colorScheme.onSurfaceVariant,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.notifications_outlined,
+                  color: context.headerGradientStart,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Thông báo',
+                  style: AppTypography.h3.copyWith(
+                    color: context.settingsItemTitleColor,
+                  ),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    context.go('/notifications');
+                  },
+                  child: Text(
+                    'Xem tất cả',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: context.headerGradientStart,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Notifications list
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _notifications.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.notifications_none_outlined,
+                          size: 64,
+                          color: context.settingsItemSubtitleColor,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Không có thông báo',
+                          style: AppTypography.h3.copyWith(
+                            color: context.settingsItemSubtitleColor,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Bạn sẽ nhận được thông báo khi có hoạt động mới',
+                          textAlign: TextAlign.center,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: context.settingsItemSubtitleColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: _notifications.length,
+                    itemBuilder: (context, index) {
+                      final notification = _notifications[index];
+                      return _buildNotificationItem(notification);
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build notification item widget
+  Widget _buildNotificationItem(dynamic notification) {
+    return GestureDetector(
+      onTap: () => _markNotificationAsRead(notification),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.cardBackground,
+          borderRadius: BorderRadius.circular(12),
+          border: notification.isRead == false
+              ? Border.all(
+                  color: context.headerGradientStart.withValues(alpha: 0.3),
+                  width: 1,
+                )
+              : null,
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _getNotificationColor(
+                  notification.type,
+                ).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                _getNotificationIcon(notification.type),
+                color: _getNotificationColor(notification.type),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    notification.title ?? 'Thông báo',
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontWeight: notification.isRead == false
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                      color: context.settingsItemTitleColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    notification.message ?? '',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: context.settingsItemSubtitleColor,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _formatNotificationTime(notification.createdAt),
+                    style: AppTypography.bodySmall.copyWith(
+                      color: context.settingsItemSubtitleColor,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (notification.isRead == false)
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: context.headerGradientStart,
+                  shape: BoxShape.circle,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Mark notification as read
+  Future<void> _markNotificationAsRead(dynamic notification) async {
+    try {
+      final notificationService = Provider.of<NotificationSyncService>(
+        context,
+        listen: false,
+      );
+
+      if (notification.isRead == false) {
+        await notificationService.markAsRead(notification.id);
+        // Refresh the list
+        await _loadNotifications();
+      }
+    } catch (e) {
+      debugPrint('Error marking notification as read: $e');
+    }
+  }
+
+  /// Get notification icon based on type
+  IconData _getNotificationIcon(String type) {
+    switch (type) {
+      case 'income_added':
+        return Icons.trending_up;
+      case 'expense_added':
+        return Icons.trending_down;
+      case 'budget_updated':
+        return Icons.account_balance_wallet;
+      case 'savings_goal_created':
+        return Icons.savings;
+      case 'large_expense_alert':
+        return Icons.warning;
+      default:
+        return Icons.notifications;
+    }
+  }
+
+  /// Get notification color based on type
+  Color _getNotificationColor(String type) {
+    switch (type) {
+      case 'income_added':
+        return context.incomeColor;
+      case 'expense_added':
+        return context.colorScheme.error;
+      case 'budget_updated':
+        return context.headerGradientStart;
+      case 'savings_goal_created':
+        return context.colorScheme.tertiary;
+      case 'large_expense_alert':
+        return context.colorScheme.secondary;
+      default:
+        return context.colorScheme.onSurfaceVariant;
+    }
+  }
+
+  /// Format notification time
+  String _formatNotificationTime(DateTime? createdAt) {
+    if (createdAt == null) return '';
+
+    final now = DateTime.now();
+    final difference = now.difference(createdAt);
+
+    if (difference.inMinutes < 1) {
+      return 'Vừa xong';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} phút trước';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} giờ trước';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} ngày trước';
+    } else {
+      return '${createdAt.day}/${createdAt.month}/${createdAt.year}';
+    }
   }
 }

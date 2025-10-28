@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/settings/notification_settings.dart';
 import '../services/notification_api_service.dart';
+import '../services/local_notification_service.dart';
 import '../utils/auth_utils.dart';
 
 class NotificationService extends ChangeNotifier {
@@ -18,7 +19,13 @@ class NotificationService extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Initialize local notification service
+      await LocalNotificationService().initialize();
+
       await _loadNotificationSettings();
+
+      // Schedule notifications based on settings
+      await _scheduleUserNotifications();
     } catch (e) {
       debugPrint('Error initializing NotificationService: $e');
     } finally {
@@ -188,6 +195,9 @@ class NotificationService extends ChangeNotifier {
           // Don't throw error for backend sync failure to prevent UI disruption
         }
       }
+
+      // Reschedule local notifications based on new settings
+      await _scheduleUserNotifications();
     } catch (e) {
       debugPrint('Error updating notification settings: $e');
       // Only reload on critical error
@@ -536,5 +546,178 @@ class NotificationService extends ChangeNotifier {
   // Format time for display
   String formatTime(TimeOfDay time) {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// Schedule local notifications based on user settings
+  Future<void> _scheduleUserNotifications() async {
+    try {
+      if (!_notificationSettings.isGlobalEnabled) {
+        // Cancel all notifications if global is disabled
+        await LocalNotificationService().cancelAllNotifications();
+        return;
+      }
+
+      // Cancel existing notifications first
+      await LocalNotificationService().cancelAllNotifications();
+
+      // Schedule based on individual notification settings
+      for (final setting in _notificationSettings.notificationSettings) {
+        if (!setting.isEnabled) continue;
+
+        switch (setting.type) {
+          case NotificationType.budget:
+            if (setting.frequency == NotificationFrequency.daily &&
+                setting.scheduledTime != null) {
+              await LocalNotificationService().scheduleDailyNotification(
+                id: 100,
+                time: setting.scheduledTime!,
+                title: '💰 Nhắc nhở ngân sách',
+                body: 'Kiểm tra ngân sách và chi tiêu hôm nay',
+                payload: '/budget',
+                channelId: 'finance_daily',
+              );
+            }
+            break;
+
+          case NotificationType.expense:
+            if (setting.frequency == NotificationFrequency.daily &&
+                setting.scheduledTime != null) {
+              await LocalNotificationService().scheduleDailyNotification(
+                id: 200,
+                time: setting.scheduledTime!,
+                title: '📝 Nhắc ghi chi tiêu',
+                body: 'Bạn đã ghi chi tiêu hôm nay chưa?',
+                payload: '/add-expense',
+                channelId: 'finance_daily',
+              );
+            }
+            break;
+
+          case NotificationType.reminder:
+            if (setting.frequency == NotificationFrequency.daily &&
+                setting.scheduledTime != null) {
+              await LocalNotificationService().scheduleDailyNotification(
+                id: 300,
+                time: setting.scheduledTime!,
+                title: '🔔 Nhắc nhở tài chính',
+                body: 'Đừng quên cập nhật tình hình tài chính',
+                payload: '/dashboard',
+                channelId: 'finance_daily',
+              );
+            }
+            break;
+
+          case NotificationType.challenge:
+            if (setting.frequency == NotificationFrequency.daily &&
+                setting.scheduledTime != null) {
+              await LocalNotificationService().scheduleDailyNotification(
+                id: 400,
+                time: setting.scheduledTime!,
+                title: '🏆 Thử thách tiết kiệm',
+                body: 'Tiếp tục thử thách tiết kiệm của bạn',
+                payload: '/challenges',
+                channelId: 'finance_savings',
+              );
+            }
+            break;
+
+          case NotificationType.achievement:
+            // Achievement notifications are usually triggered by events, not scheduled
+            break;
+
+          case NotificationType.security:
+            // Security notifications are usually triggered by events, not scheduled
+            break;
+
+          case NotificationType.system:
+            // System notifications are usually triggered by events, not scheduled
+            break;
+
+          case NotificationType.income:
+            if (setting.frequency == NotificationFrequency.daily &&
+                setting.scheduledTime != null) {
+              await LocalNotificationService().scheduleDailyNotification(
+                id: 600,
+                time: setting.scheduledTime!,
+                title: '💰 Nhắc nhập thu nhập',
+                body: 'Cập nhật thu nhập hôm nay',
+                payload: '/income',
+                channelId: 'finance_daily',
+              );
+            }
+            break;
+
+          case NotificationType.marketing:
+            if (setting.frequency == NotificationFrequency.weekly) {
+              await LocalNotificationService().scheduleWeeklyNotification(
+                id: 500,
+                weekday: 7, // Sunday
+                time: const TimeOfDay(hour: 9, minute: 0),
+                title: '📊 Báo cáo tuần',
+                body: 'Xem báo cáo tài chính tuần này',
+                payload: '/reports',
+                channelId: 'finance_insights',
+              );
+            }
+            break;
+        }
+      }
+
+      debugPrint('✅ User notifications scheduled based on settings');
+    } catch (e) {
+      debugPrint('❌ Failed to schedule user notifications: $e');
+    }
+  }
+
+  /// Show instant notification (for testing or immediate alerts)
+  Future<void> showInstantNotification({
+    required String title,
+    required String body,
+    String? payload,
+    String channelId = 'finance_daily',
+  }) async {
+    try {
+      await LocalNotificationService().showInstantNotification(
+        id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title: title,
+        body: body,
+        payload: payload,
+        channelId: channelId,
+      );
+    } catch (e) {
+      debugPrint('❌ Failed to show instant notification: $e');
+    }
+  }
+
+  /// Get pending notifications count
+  Future<int> getPendingNotificationsCount() async {
+    try {
+      final pending = await LocalNotificationService()
+          .getPendingNotifications();
+      return pending.length;
+    } catch (e) {
+      debugPrint('❌ Failed to get pending notifications count: $e');
+      return 0;
+    }
+  }
+
+  /// Check if notifications are enabled
+  Future<bool> areNotificationsEnabled() async {
+    try {
+      return await LocalNotificationService().hasPermission();
+    } catch (e) {
+      debugPrint('❌ Failed to check notification permission: $e');
+      return false;
+    }
+  }
+
+  /// Request notification permission
+  Future<bool> requestNotificationPermission() async {
+    try {
+      return await LocalNotificationService().requestPermission();
+    } catch (e) {
+      debugPrint('❌ Failed to request notification permission: $e');
+      return false;
+    }
   }
 }

@@ -1,4 +1,5 @@
 ﻿import 'package:go_router/go_router.dart';
+import '../main.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/signup_screen.dart';
 import '../screens/auth/otp_verification_screen.dart';
@@ -42,10 +43,12 @@ import '../screens/settings/help/help_screen.dart';
 import '../screens/settings/feedback/feedback_screen.dart';
 import '../screens/auth/result_screen.dart';
 import '../screens/auth/complete_profile_screen.dart';
+import '../screens/notifications/notifications_list_screen.dart';
 import '../utils/auth_guard.dart';
 import '../screens/initialization_wrapper.dart';
 
 final router = GoRouter(
+  navigatorKey: navigatorKey,
   initialLocation: '/',
   routes: [
     GoRoute(
@@ -137,6 +140,11 @@ final router = GoRouter(
         GoRoute(
           path: '/reports',
           builder: (context, state) => const ReportsScreen(),
+          redirect: AuthGuard.checkAuthentication, // ✅ Route protection
+        ),
+        GoRoute(
+          path: '/notifications',
+          builder: (context, state) => const NotificationsListScreen(),
           redirect: AuthGuard.checkAuthentication, // ✅ Route protection
         ),
         GoRoute(

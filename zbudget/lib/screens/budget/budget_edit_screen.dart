@@ -5,6 +5,7 @@ import '../../constants/typography.dart';
 import '../../models/budget_models.dart';
 import '../../models/expense.dart';
 import '../../utils/currency_input_formatter.dart';
+import '../../utils/currency_formatter.dart';
 
 class BudgetEditScreen extends StatefulWidget {
   final BudgetData budget;
@@ -185,7 +186,7 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          inputFormatters: [CurrencyInputFormatter()],
           decoration: const InputDecoration(
             labelText: 'Số tiền (VND)',
             border: OutlineInputBorder(),
@@ -198,7 +199,7 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
           ),
           TextButton(
             onPressed: () {
-              final amount = int.tryParse(controller.text) ?? 0;
+              final amount = CurrencyFormatter.parse(controller.text).round();
               setState(() {
                 _categories[index] = BudgetCategoryData(
                   category: _categories[index].category,
@@ -288,12 +289,12 @@ class _BudgetEditScreenState extends State<BudgetEditScreen>
     );
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
+      backgroundColor: context.scaffoldBackground,
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundPrimary,
+        backgroundColor: context.scaffoldBackground,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back, color: context.primaryTextColor),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(

@@ -15,6 +15,10 @@ import 'settings/theme/theme_screen.dart';
 import 'settings/language/language_screen.dart';
 import 'settings/premium/premium_screen.dart';
 import 'settings/chat_history_screen.dart';
+import 'settings/notifications/notification_settings_simple.dart';
+import 'settings/help/help_screen.dart';
+import 'settings/about/about_screen.dart';
+import 'settings/feedback/feedback_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -125,7 +129,12 @@ class SettingsScreen extends StatelessWidget {
                       title: 'Thông báo',
                       subtitle: 'Cài đặt thông báo',
                       onTap: () {
-                        _showNotificationSettings(context);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const NotificationSettingsSimple(),
+                          ),
+                        );
                       },
                     ),
                     _buildSettingItem(
@@ -134,7 +143,11 @@ class SettingsScreen extends StatelessWidget {
                       title: 'Trợ giúp',
                       subtitle: 'Hướng dẫn sử dụng',
                       onTap: () {
-                        _showHelpDialog(context);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const HelpScreen(),
+                          ),
+                        );
                       },
                     ),
                     _buildSettingItem(
@@ -143,7 +156,33 @@ class SettingsScreen extends StatelessWidget {
                       title: 'Giới thiệu',
                       subtitle: 'Thông tin ứng dụng',
                       onTap: () {
-                        _showAboutDialog(context);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const AboutScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildSettingItem(
+                      context: context,
+                      icon: Icons.feedback_outlined,
+                      title: 'Phản hồi',
+                      subtitle: 'Gửi ý kiến và báo lỗi',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const FeedbackScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildSettingItem(
+                      context: context,
+                      icon: Icons.notifications,
+                      title: 'Thông báo',
+                      subtitle: 'Xem tất cả thông báo',
+                      onTap: () {
+                        context.go('/notifications');
                       },
                     ),
 
@@ -233,61 +272,6 @@ class SettingsScreen extends StatelessWidget {
           color: context.settingsItemSubtitleColor,
         ),
         onTap: onTap,
-      ),
-    );
-  }
-
-  void _showNotificationSettings(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.8,
-        decoration: BoxDecoration(
-          color: context.cardBackground,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: const Center(child: Text('Cài đặt thông báo')),
-      ),
-    );
-  }
-
-  void _showHelpDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Trợ giúp'),
-        content: const Text(
-          'Đây là ứng dụng quản lý tài chính cá nhân ZBudget. '
-          'Bạn có thể thêm thu nhập, chi tiêu, tạo ngân sách và theo dõi tiết kiệm.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Đóng'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAboutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Giới thiệu'),
-        content: const Text(
-          'ZBudget v1.0.0\n'
-          'Ứng dụng quản lý tài chính cá nhân\n\n'
-          'Phát triển bởi ZBudget Team',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Đóng'),
-          ),
-        ],
       ),
     );
   }

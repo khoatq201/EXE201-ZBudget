@@ -9,44 +9,73 @@ export class FinancialSummaryService {
    * Add expense to user's financial summary
    * @param {string} userId - User ID
    * @param {number} amount - Expense amount
+   * @param {boolean} hasBudget - Whether expense is linked to a budget
    * @returns {Promise<User>} - Updated user document
    */
-  static async addExpense(userId, amount) {
-    const user = await User.findByIdAndUpdate(
-      userId,
-      {
-        $inc: {
-          'financialSummary.totalExpenses': amount,
-          'financialSummary.currentBalance': -amount,
-        },
-        'financialSummary.lastUpdated': new Date(),
+  static async addExpense(userId, amount, hasBudget = false) {
+    const updateFields = {
+      $inc: {
+        'financialSummary.totalExpenses': amount,
+        'financialSummary.currentBalance': -amount,
       },
+      'financialSummary.lastUpdated': new Date(),
+    };
+
+    // If expense has NO budget, subtract from readyToAssign
+    if (!hasBudget) {
+      // First check if user has enough readyToAssign
+      const user = await User.findById(userId).select('financialSummary');
+      if (!user) {
+        throw new NotFoundError("Không tìm thấy người dùng");
+      }
+
+      const readyToAssign = parseFloat(user.financialSummary?.readyToAssign?.toString() || '0');
+      if (readyToAssign < amount) {
+        throw new Error(
+          `Không đủ tiền Ready to Assign. Có sẵn: ${readyToAssign.toLocaleString('vi-VN')} đ, cần: ${amount.toLocaleString('vi-VN')} đ. Vui lòng gắn chi tiêu vào budget hoặc thêm thu nhập.`
+        );
+      }
+
+      updateFields.$inc['financialSummary.readyToAssign'] = -amount;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      updateFields,
       { new: true, runValidators: false }
     );
 
-    if (!user) {
+    if (!updatedUser) {
       throw new NotFoundError("Không tìm thấy người dùng");
     }
 
-    return user;
+    return updatedUser;
   }
 
   /**
    * Remove expense from user's financial summary (for deletion/cancellation)
    * @param {string} userId - User ID
    * @param {number} amount - Expense amount to remove
+   * @param {boolean} hasBudget - Whether expense was linked to a budget
    * @returns {Promise<User>} - Updated user document
    */
-  static async removeExpense(userId, amount) {
+  static async removeExpense(userId, amount, hasBudget = false) {
+    const updateFields = {
+      $inc: {
+        'financialSummary.totalExpenses': -amount,
+        'financialSummary.currentBalance': amount,
+      },
+      'financialSummary.lastUpdated': new Date(),
+    };
+
+    // If expense had NO budget, return money to readyToAssign
+    if (!hasBudget) {
+      updateFields.$inc['financialSummary.readyToAssign'] = amount;
+    }
+
     const user = await User.findByIdAndUpdate(
       userId,
-      {
-        $inc: {
-          'financialSummary.totalExpenses': -amount,
-          'financialSummary.currentBalance': amount,
-        },
-        'financialSummary.lastUpdated': new Date(),
-      },
+      updateFields,
       { new: true, runValidators: false }
     );
 
@@ -114,20 +143,56 @@ export class FinancialSummaryService {
    * @param {string} userId - User ID
    * @param {number} oldAmount - Previous expense amount
    * @param {number} newAmount - New expense amount
+   * @param {boolean} oldHasBudget - Whether old expense had budget
+   * @param {boolean} newHasBudget - Whether new expense has budget
    * @returns {Promise<User>} - Updated user document
    */
-  static async updateExpense(userId, oldAmount, newAmount) {
+  static async updateExpense(userId, oldAmount, newAmount, oldHasBudget = false, newHasBudget = false) {
     const difference = newAmount - oldAmount;
+
+    const updateFields = {
+      $inc: {
+        'financialSummary.totalExpenses': difference,
+        'financialSummary.currentBalance': -difference,
+      },
+      'financialSummary.lastUpdated': new Date(),
+    };
+
+    // Handle readyToAssign based on budget changes
+    // Case 1: Old had no budget, new has no budget -> adjust by difference
+    if (!oldHasBudget && !newHasBudget) {
+      // Check if user has enough readyToAssign for increase
+      if (difference > 0) {
+        const user = await User.findById(userId).select('financialSummary');
+        const readyToAssign = parseFloat(user.financialSummary?.readyToAssign?.toString() || '0');
+        if (readyToAssign < difference) {
+          throw new Error(
+            `Không đủ tiền Ready to Assign. Có sẵn: ${readyToAssign.toLocaleString('vi-VN')} đ, cần thêm: ${difference.toLocaleString('vi-VN')} đ.`
+          );
+        }
+      }
+      updateFields.$inc['financialSummary.readyToAssign'] = -difference;
+    }
+    // Case 2: Old had no budget, new has budget -> return oldAmount to readyToAssign
+    else if (!oldHasBudget && newHasBudget) {
+      updateFields.$inc['financialSummary.readyToAssign'] = oldAmount;
+    }
+    // Case 3: Old had budget, new has no budget -> subtract newAmount from readyToAssign
+    else if (oldHasBudget && !newHasBudget) {
+      const user = await User.findById(userId).select('financialSummary');
+      const readyToAssign = parseFloat(user.financialSummary?.readyToAssign?.toString() || '0');
+      if (readyToAssign < newAmount) {
+        throw new Error(
+          `Không đủ tiền Ready to Assign. Có sẵn: ${readyToAssign.toLocaleString('vi-VN')} đ, cần: ${newAmount.toLocaleString('vi-VN')} đ.`
+        );
+      }
+      updateFields.$inc['financialSummary.readyToAssign'] = -newAmount;
+    }
+    // Case 4: Old had budget, new has budget -> no readyToAssign change
 
     const user = await User.findByIdAndUpdate(
       userId,
-      {
-        $inc: {
-          'financialSummary.totalExpenses': difference,
-          'financialSummary.currentBalance': -difference,
-        },
-        'financialSummary.lastUpdated': new Date(),
-      },
+      updateFields,
       { new: true, runValidators: false }
     );
 

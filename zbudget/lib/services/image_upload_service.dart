@@ -1,14 +1,13 @@
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../config/api_config.dart';
+import '../utils/secure_storage_manager.dart';
 
 class ImageUploadService {
   static Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('access_token'); // Fix: Use correct token key
+    return await SecureStorageManager.getToken();
   }
 
   /// Upload avatar image

@@ -84,7 +84,7 @@ class _PremiumScreenState extends State<PremiumScreen>
       floating: false,
       pinned: true,
       backgroundColor: context.headerGradientStart,
-      foregroundColor: context.colorScheme.onPrimary,
+      foregroundColor: context.headerTextColor,
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: BoxDecoration(
@@ -625,7 +625,7 @@ class _PremiumScreenState extends State<PremiumScreen>
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: context.colorScheme.primary,
-              foregroundColor: context.colorScheme.onPrimary,
+              foregroundColor: context.headerTextColor,
             ),
             child: Text(
               isFree ? 'Bắt đầu miễn phí' : 'Đăng ký ngay',

@@ -1,18 +1,18 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../models/income.dart';
 import '../utils/date_formatter.dart';
+import '../utils/secure_storage_manager.dart';
+import 'notification_sync_service.dart';
+import '../main.dart';
+import '../config/api_config.dart';
 
 class IncomeService extends ChangeNotifier {
-  // Base URL - different for web and mobile
+  // Base URL - sử dụng ApiConfig để quản lý theo environment
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000/api/income';
-    } else {
-      return 'http://10.0.2.2:3000/api/income';
-    }
+    return ApiConfig.baseUrl + '/income';
   }
 
   List<Income> _incomes = [];
@@ -28,8 +28,7 @@ class IncomeService extends ChangeNotifier {
 
   /// Get authorization header
   Future<Map<String, String>> _getHeaders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('access_token');
+    final token = await SecureStorageManager.getToken();
 
     if (token == null) {
       throw Exception('No access token found. Please login again.');
@@ -69,7 +68,8 @@ class IncomeService extends ChangeNotifier {
       if (category != null) queryParams['category'] = category;
       if (startDate != null) queryParams['startDate'] = startDate;
       if (endDate != null) queryParams['endDate'] = endDate;
-      if (isRecurring != null) queryParams['isRecurring'] = isRecurring.toString();
+      if (isRecurring != null)
+        queryParams['isRecurring'] = isRecurring.toString();
 
       final uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
       debugPrint('📥 Fetching incomes from: $uri');
@@ -80,7 +80,9 @@ class IncomeService extends ChangeNotifier {
         final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
 
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
-          final incomeListResponse = IncomeListResponse.fromJson(jsonResponse['data']);
+          final incomeListResponse = IncomeListResponse.fromJson(
+            jsonResponse['data'],
+          );
           _incomes = incomeListResponse.incomes;
           _pagination = incomeListResponse.pagination;
           _error = null;
@@ -150,11 +152,7 @@ class IncomeService extends ChangeNotifier {
     try {
       final headers = await _getHeaders();
 
-      final body = {
-        'title': title,
-        'amount': amount,
-        'category': category,
-      };
+      final body = {'title': title, 'amount': amount, 'category': category};
 
       if (description != null) body['description'] = description;
       if (date != null) {
@@ -181,6 +179,10 @@ class IncomeService extends ChangeNotifier {
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
           final newIncome = Income.fromJson(jsonResponse['data']);
           _incomes.insert(0, newIncome); // Add to beginning
+
+          // ✅ KEY: Trigger notification refresh after successful creation
+          await _refreshNotificationsAfterAction();
+
           debugPrint('✅ Income created: ${newIncome.id}');
           notifyListeners();
           return newIncome;
@@ -302,7 +304,9 @@ class IncomeService extends ChangeNotifier {
       if (startDate != null) queryParams['startDate'] = startDate;
       if (endDate != null) queryParams['endDate'] = endDate;
 
-      final uri = Uri.parse('$baseUrl/stats').replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/stats',
+      ).replace(queryParameters: queryParams);
       debugPrint('📊 Fetching income stats');
 
       final response = await http.get(uri, headers: headers);
@@ -336,5 +340,23 @@ class IncomeService extends ChangeNotifier {
     _error = null;
     _isLoading = false;
     notifyListeners();
+  }
+
+  /// ✅ NEW: Refresh notifications after action
+  Future<void> _refreshNotificationsAfterAction() async {
+    try {
+      // Get notification service from context
+      final notificationService = Provider.of<NotificationSyncService>(
+        navigatorKey.currentContext!,
+        listen: false,
+      );
+
+      // Refresh notifications
+      await notificationService.fetchNotifications();
+
+      debugPrint('🔄 Notifications refreshed after income creation');
+    } catch (error) {
+      debugPrint('❌ Failed to refresh notifications: $error');
+    }
   }
 }

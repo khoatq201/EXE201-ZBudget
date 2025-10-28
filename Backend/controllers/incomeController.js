@@ -9,6 +9,7 @@ import {
 } from "../middleware/errorHandler.js";
 import mongoose from "mongoose";
 import { clearUserCache } from "../services/aiFinancialAnalysisService.js";
+import NotificationService from "../services/notificationService.js";
 /**
  * @desc    Create new income with YNAB-style allocations
  * @route   POST /api/income
@@ -31,6 +32,22 @@ export const createIncome = async (req, res) => {
   } = req.body;
 
   try {
+    // ✅ FIX: Convert string source to object format
+    let sourceObject = null;
+    if (source) {
+      if (typeof source === "string") {
+        // Frontend sends string, convert to object
+        sourceObject = {
+          name: source,
+          contactInfo: null,
+          taxId: null,
+        };
+      } else if (typeof source === "object" && source !== null) {
+        // Frontend already sends object
+        sourceObject = source;
+      }
+    }
+
     // Create income with allocations
     const income = new Income({
       userId,
@@ -40,7 +57,7 @@ export const createIncome = async (req, res) => {
       category,
       date: date ? new Date(date) : new Date(),
       paymentMethod: paymentMethod || "banking",
-      source,
+      source: sourceObject, // ✅ Use converted object
       isRecurring: isRecurring || false,
       recurringDetails,
       taxInfo,
@@ -121,7 +138,7 @@ export const createIncome = async (req, res) => {
       category: income.category,
       date: income.date,
       paymentMethod: income.paymentMethod,
-      source: income.source,
+      source: income.source?.name || income.source, // ✅ FIX: Extract name from object or return as-is if string
       isConfirmed: income.isConfirmed,
       isRecurring: income.isRecurring,
       recurringDetails: income.recurringDetails,
@@ -149,6 +166,22 @@ export const createIncome = async (req, res) => {
       console.error(
         "⚠️ AI cache invalidation failed (non-critical):",
         cacheError.message
+      );
+    }
+
+    // ✅ NEW: Notification triggers for income
+    try {
+      await NotificationService.triggerIncomeNotification(userId, {
+        incomeId: income._id,
+        incomeAmount: income.amount,
+        category: income.category,
+        source: income.source, // ✅ FIX: Pass the full source object, service will extract name
+        isRecurring: income.isRecurring,
+      });
+    } catch (notificationError) {
+      console.error(
+        "⚠️ Income notification trigger failed (non-critical):",
+        notificationError.message
       );
     }
 
@@ -194,10 +227,11 @@ export const getIncomes = async (req, res) => {
       Income.find(query).sort(sort).skip(skip).limit(parseInt(limit)).lean(),
       Income.countDocuments(query),
     ]);
-    // Convert Decimal128 to numbers
+    // Convert Decimal128 to numbers and format source
     const formattedIncomes = incomes.map((income) => ({
       ...income,
       amount: parseFloat(income.amount.toString()),
+      source: income.source?.name || income.source, // ✅ FIX: Extract name from object or return as-is if string
     }));
     res.status(200).json({
       success: true,
@@ -236,6 +270,7 @@ export const getIncomeById = async (req, res) => {
     const formattedIncome = {
       ...income.toObject(),
       amount: parseFloat(income.amount.toString()),
+      source: income.source?.name || income.source, // ✅ FIX: Extract name from object or return as-is if string
     };
     res.status(200).json({
       success: true,
@@ -300,6 +335,7 @@ export const updateIncome = async (req, res) => {
     const formattedIncome = {
       ...income.toObject(),
       amount: parseFloat(income.amount.toString()),
+      source: income.source?.name || income.source, // ✅ FIX: Extract name from object or return as-is if string
     };
     res.status(200).json({
       success: true,

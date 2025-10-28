@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../constants/colors.dart';
 import '../../constants/typography.dart';
 import '../../services/budget_service.dart';
 import '../../models/budget.dart' as budget_model;
 import '../../utils/currency_input_formatter.dart';
 import '../../utils/currency_formatter.dart';
+import '../../utils/theme_extensions.dart';
 
 enum BudgetPeriod { daily, weekly, monthly, yearly }
 
@@ -613,10 +613,11 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
       if (!mounted) return;
 
       if (result['success']) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tạo ngân sách thành công!'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('Tạo ngân sách thành công!'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
           ),
         );
         Navigator.pop(context, true); // Return true to indicate success
@@ -680,7 +681,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
+      backgroundColor: context.scaffoldBackground,
       body: SafeArea(
         child: Column(
           children: [
@@ -721,13 +722,13 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primary500, AppColors.primary400],
+          colors: [context.headerGradientStart, context.headerGradientEnd],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary500.withValues(alpha: 0.3),
+            color: context.headerGradientStart.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -737,7 +738,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: Icon(Icons.arrow_back, color: context.headerTextColor),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -747,14 +748,14 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                 Text(
                   'Tạo ngân sách mới',
                   style: AppTypography.h2.copyWith(
-                    color: Colors.white,
+                    color: context.headerTextColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
                   'Lập kế hoạch chi tiêu thông minh',
                   style: AppTypography.body.copyWith(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: context.headerSubtitleColor,
                   ),
                 ),
               ],
@@ -781,7 +782,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -797,7 +798,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
           Text(
             'Thông tin cơ bản',
             style: AppTypography.h4.copyWith(
-              color: AppColors.textPrimary,
+              color: context.primaryTextColor,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -807,7 +808,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
           Text(
             'Tên ngân sách',
             style: AppTypography.body.copyWith(
-              color: AppColors.textSecondary,
+              color: context.secondaryTextColor,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -818,14 +819,14 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
               hintText: 'VD: Ngân sách tháng 12',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: AppColors.dark300),
+                borderSide: BorderSide(color: context.cardBorder),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: AppColors.primary500),
+                borderSide: BorderSide(color: context.colorScheme.primary),
               ),
               filled: true,
-              fillColor: AppColors.backgroundSecondary,
+              fillColor: context.scaffoldBackground,
             ),
           ),
           const SizedBox(height: 16),
@@ -834,7 +835,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
           Text(
             'Tổng ngân sách',
             style: AppTypography.body.copyWith(
-              color: AppColors.textSecondary,
+              color: context.secondaryTextColor,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -849,14 +850,14 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
               suffixText: 'VND',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: AppColors.dark300),
+                borderSide: BorderSide(color: context.cardBorder),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: AppColors.primary500),
+                borderSide: BorderSide(color: context.colorScheme.primary),
               ),
               filled: true,
-              fillColor: AppColors.backgroundSecondary,
+              fillColor: context.scaffoldBackground,
             ),
           ),
           const SizedBox(height: 16),
@@ -865,7 +866,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
           Text(
             'Chu kỳ ngân sách',
             style: AppTypography.body.copyWith(
-              color: AppColors.textSecondary,
+              color: context.secondaryTextColor,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -886,13 +887,13 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? AppColors.primary500
-                          : AppColors.backgroundSecondary,
+                          ? context.colorScheme.primary
+                          : context.cardBackground,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: isSelected
-                            ? AppColors.primary500
-                            : AppColors.dark300,
+                            ? context.colorScheme.primary
+                            : context.cardBorder,
                       ),
                     ),
                     child: Text(
@@ -901,7 +902,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                       style: AppTypography.caption.copyWith(
                         color: isSelected
                             ? Colors.white
-                            : AppColors.textSecondary,
+                            : context.secondaryTextColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -917,7 +918,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
             Text(
               'Chọn năm',
               style: AppTypography.body.copyWith(
-                color: AppColors.textSecondary,
+                color: context.secondaryTextColor,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -955,27 +956,27 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.backgroundSecondary,
+                  color: context.cardBackground,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.dark300),
+                  border: Border.all(color: context.cardBorder),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       Icons.calendar_today,
                       size: 16,
-                      color: AppColors.textSecondary,
+                      color: context.secondaryTextColor,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Năm $_selectedYear',
                       style: AppTypography.body.copyWith(
-                        color: AppColors.textPrimary,
+                        color: context.primaryTextColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const Spacer(),
-                    Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
+                    Icon(Icons.arrow_drop_down, color: context.secondaryTextColor),
                   ],
                 ),
               ),
@@ -997,13 +998,13 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
                       color: _useCustomDates
-                          ? AppColors.primary500
-                          : AppColors.backgroundSecondary,
+                          ? context.colorScheme.primary
+                          : context.cardBackground,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: _useCustomDates
-                            ? AppColors.primary500
-                            : AppColors.dark300,
+                            ? context.colorScheme.primary
+                            : context.cardBorder,
                       ),
                     ),
                     child: Row(
@@ -1014,7 +1015,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                           size: 16,
                           color: _useCustomDates
                               ? Colors.white
-                              : AppColors.textSecondary,
+                              : context.secondaryTextColor,
                         ),
                         const SizedBox(width: 8),
                         Text(
@@ -1022,7 +1023,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                           style: AppTypography.caption.copyWith(
                             color: _useCustomDates
                                 ? Colors.white
-                                : AppColors.textSecondary,
+                                : context.secondaryTextColor,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1046,7 +1047,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                       Text(
                         'Ngày bắt đầu',
                         style: AppTypography.caption.copyWith(
-                          color: AppColors.textSecondary,
+                          color: context.secondaryTextColor,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1075,16 +1076,16 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                             vertical: 12,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.backgroundSecondary,
+                            color: context.cardBackground,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.dark300),
+                            border: Border.all(color: context.cardBorder),
                           ),
                           child: Row(
                             children: [
                               Icon(
                                 Icons.calendar_today,
                                 size: 16,
-                                color: AppColors.textSecondary,
+                                color: context.secondaryTextColor,
                               ),
                               const SizedBox(width: 8),
                               Expanded(
@@ -1094,8 +1095,8 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                                       : 'Chọn ngày bắt đầu',
                                   style: AppTypography.body.copyWith(
                                     color: _customStartDate != null
-                                        ? AppColors.textPrimary
-                                        : AppColors.textSecondary,
+                                        ? context.primaryTextColor
+                                        : context.secondaryTextColor,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -1115,7 +1116,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                       Text(
                         'Ngày kết thúc',
                         style: AppTypography.caption.copyWith(
-                          color: AppColors.textSecondary,
+                          color: context.secondaryTextColor,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1146,16 +1147,16 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                             vertical: 12,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.backgroundSecondary,
+                            color: context.cardBackground,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.dark300),
+                            border: Border.all(color: context.cardBorder),
                           ),
                           child: Row(
                             children: [
                               Icon(
                                 Icons.calendar_today,
                                 size: 16,
-                                color: AppColors.textSecondary,
+                                color: context.secondaryTextColor,
                               ),
                               const SizedBox(width: 8),
                               Expanded(
@@ -1165,8 +1166,8 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                                       : 'Chọn ngày kết thúc',
                                   style: AppTypography.body.copyWith(
                                     color: _customEndDate != null
-                                        ? AppColors.textPrimary
-                                        : AppColors.textSecondary,
+                                        ? context.primaryTextColor
+                                        : context.secondaryTextColor,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -1190,7 +1191,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -1205,12 +1206,12 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
         children: [
           Row(
             children: [
-              Icon(Icons.description_outlined, color: AppColors.primary500),
+              Icon(Icons.description_outlined, color: context.colorScheme.primary),
               const SizedBox(width: 8),
               Text(
                 'Mẫu ngân sách Việt Nam',
                 style: AppTypography.h4.copyWith(
-                  color: AppColors.textPrimary,
+                  color: context.primaryTextColor,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1219,7 +1220,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
           const SizedBox(height: 8),
           Text(
             'Chọn mẫu phù hợp với hoàn cảnh của bạn',
-            style: AppTypography.body.copyWith(color: AppColors.textSecondary),
+            style: AppTypography.body.copyWith(color: context.secondaryTextColor),
           ),
           const SizedBox(height: 16),
           Column(
@@ -1233,13 +1234,13 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? AppColors.primary500.withValues(alpha: 0.1)
-                          : AppColors.backgroundSecondary,
+                          ? context.colorScheme.primary.withValues(alpha: 0.1)
+                          : context.cardBackground,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isSelected
-                            ? AppColors.primary500
-                            : AppColors.dark300,
+                            ? context.colorScheme.primary
+                            : context.cardBorder,
                         width: isSelected ? 2 : 1,
                       ),
                     ),
@@ -1249,8 +1250,8 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? AppColors.primary500
-                                : AppColors.dark300,
+                                ? context.colorScheme.primary
+                                : context.cardBorder,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -1266,7 +1267,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                               Text(
                                 template.name,
                                 style: AppTypography.h5.copyWith(
-                                  color: AppColors.textPrimary,
+                                  color: context.primaryTextColor,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -1274,14 +1275,14 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                               Text(
                                 template.description,
                                 style: AppTypography.caption.copyWith(
-                                  color: AppColors.textSecondary,
+                                  color: context.secondaryTextColor,
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 formatCurrency(template.totalAmount),
                                 style: AppTypography.body.copyWith(
-                                  color: AppColors.primary500,
+                                  color: context.colorScheme.primary,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -1291,7 +1292,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                         if (isSelected)
                           Icon(
                             Icons.check_circle,
-                            color: AppColors.primary500,
+                            color: context.colorScheme.primary,
                             size: 24,
                           ),
                       ],
@@ -1310,7 +1311,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -1325,12 +1326,12 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
         children: [
           Row(
             children: [
-              Icon(Icons.category_outlined, color: AppColors.primary500),
+              Icon(Icons.category_outlined, color: context.colorScheme.primary),
               const SizedBox(width: 8),
               Text(
                 'Danh mục chi tiêu',
                 style: AppTypography.h4.copyWith(
-                  color: AppColors.textPrimary,
+                  color: context.primaryTextColor,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1339,7 +1340,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
           const SizedBox(height: 8),
           Text(
             'Chọn và phân bổ ngân sách cho từng danh mục',
-            style: AppTypography.body.copyWith(color: AppColors.textSecondary),
+            style: AppTypography.body.copyWith(color: context.secondaryTextColor),
           ),
           const SizedBox(height: 8),
           // Total percentage display
@@ -1355,7 +1356,9 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: isValid ? Colors.green.shade50 : Colors.red.shade50,
+                  color: isValid
+                      ? Colors.green.withValues(alpha: 0.1)
+                      : Colors.red.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: isValid ? Colors.green : Colors.red,
@@ -1375,8 +1378,8 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                       'Tổng: ${totalPercentage.toStringAsFixed(0)}%',
                       style: AppTypography.caption.copyWith(
                         color: isValid
-                            ? Colors.green.shade900
-                            : Colors.red.shade900,
+                            ? Colors.green.shade700
+                            : Colors.red.shade700,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -1385,7 +1388,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                       Text(
                         '(Vượt quá 100%)',
                         style: AppTypography.caption.copyWith(
-                          color: Colors.red.shade900,
+                          color: Colors.red.shade700,
                         ),
                       ),
                     ],
@@ -1419,12 +1422,12 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                   decoration: BoxDecoration(
                     color: category.isSelected
                         ? category.color.withValues(alpha: 0.1)
-                        : AppColors.backgroundSecondary,
+                        : context.cardBackground,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: category.isSelected
                           ? category.color
-                          : AppColors.dark300,
+                          : context.cardBorder,
                       width: category.isSelected ? 2 : 1,
                     ),
                   ),
@@ -1450,7 +1453,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                       Text(
                         category.name,
                         style: AppTypography.caption.copyWith(
-                          color: AppColors.textPrimary,
+                          color: context.primaryTextColor,
                           fontWeight: FontWeight.w600,
                         ),
                         maxLines: 1,
@@ -1462,6 +1465,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                           height: 40,
                           child: TextField(
                             keyboardType: TextInputType.number,
+                            inputFormatters: [PercentageInputFormatter()],
                             decoration: InputDecoration(
                               labelText: '%',
                               isDense: true,
@@ -1509,7 +1513,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -1524,12 +1528,12 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
         children: [
           Row(
             children: [
-              Icon(Icons.settings_outlined, color: AppColors.primary500),
+              Icon(Icons.settings_outlined, color: context.colorScheme.primary),
               const SizedBox(width: 8),
               Text(
                 'Cài đặt nâng cao',
                 style: AppTypography.h4.copyWith(
-                  color: AppColors.textPrimary,
+                  color: context.primaryTextColor,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1586,7 +1590,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                 Text(
                   title,
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textPrimary,
+                    color: context.primaryTextColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1594,7 +1598,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                 Text(
                   subtitle,
                   style: AppTypography.caption.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.secondaryTextColor,
                   ),
                 ),
               ],
@@ -1603,7 +1607,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
           Switch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: AppColors.primary500,
+            activeTrackColor: context.colorScheme.primary,
           ),
         ],
       ),
@@ -1616,7 +1620,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
       child: ElevatedButton(
         onPressed: _isLoading ? null : _saveBudget,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary500,
+          backgroundColor: context.colorScheme.primary,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),

@@ -5,6 +5,8 @@ import '../../services/group_budget_service.dart';
 import '../../constants/typography.dart';
 import '../../constants/spacing.dart';
 import '../../utils/theme_extensions.dart';
+import '../../utils/snackbar_utils.dart';
+import '../../utils/currency_input_formatter.dart';
 
 class JoinByCodeScreen extends StatefulWidget {
   const JoinByCodeScreen({super.key});
@@ -45,29 +47,20 @@ class _JoinByCodeScreenState extends State<JoinByCodeScreen> {
 
       if (result['success'] == true) {
         final budget = result['budget'];
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Đã tham gia "${budget?.name ?? 'ngân sách'}" thành công!'),
-            backgroundColor: Colors.green,
-          ),
+        SnackBarUtils.showSuccess(
+          context,
+          'Đã tham gia "${budget?.name ?? 'ngân sách'}" thành công!',
         );
         context.go('/group-budgets');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Có lỗi xảy ra'),
-            backgroundColor: Colors.red,
-          ),
+        SnackBarUtils.showError(
+          context,
+          result['message'] ?? 'Có lỗi xảy ra',
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Lỗi: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      SnackBarUtils.showError(context, 'Lỗi: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -80,8 +73,8 @@ class _JoinByCodeScreenState extends State<JoinByCodeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tham gia ngân sách'),
-        backgroundColor: context.colorScheme.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: context.headerGradientStart,
+        foregroundColor: context.headerTextColor,
       ),
       body: Form(
         key: _formKey,
@@ -167,6 +160,7 @@ class _JoinByCodeScreenState extends State<JoinByCodeScreen> {
                           prefixIcon: Icon(Icons.percent),
                         ),
                         keyboardType: TextInputType.number,
+                        inputFormatters: [PercentageInputFormatter()],
                         validator: (value) {
                           if (_showPercentage) {
                             if (value == null || value.trim().isEmpty) {

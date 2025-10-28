@@ -120,8 +120,7 @@ export const register = async (req, res) => {
         } else {
           userData.profile.dateOfBirth = parsedDate; // ✅ Map to profile.dateOfBirth
         }
-      } catch (dateError) {
-      }
+      } catch (dateError) {}
     }
     if (gender) {
       userData.profile.gender = gender; // ✅ Map to profile.gender
@@ -769,7 +768,7 @@ export const deleteAccount = async (req, res) => {
 export const searchUsers = async (req, res) => {
   const { q } = req.query;
 
-  console.log('🔍 Search users query:', q);
+  console.log("🔍 Search users query:", q);
 
   if (!q || q.trim().length < 2) {
     throw new BadRequestError("Từ khóa tìm kiếm phải có ít nhất 2 ký tự");
@@ -777,27 +776,24 @@ export const searchUsers = async (req, res) => {
 
   // Search by name using regex (case insensitive)
   const users = await User.find({
-    'profile.name': { $regex: q.trim(), $options: 'i' },
+    "profile.name": { $regex: q.trim(), $options: "i" },
     isActive: true,
-    $or: [
-      { isDeleted: { $exists: false } },
-      { isDeleted: false }
-    ]
+    $or: [{ isDeleted: { $exists: false } }, { isDeleted: false }],
   })
-  .select('_id profile.name profile.avatar email')
-  .limit(20);
+    .select("_id profile.name profile.avatar email")
+    .limit(20);
 
-  console.log('📋 Found users:', users.length);
+  console.log("📋 Found users:", users.length);
 
   // Format response
-  const formattedUsers = users.map(user => ({
+  const formattedUsers = users.map((user) => ({
     id: user._id,
     name: user.profile?.name || user.email,
     avatar: user.profile?.avatar,
     email: user.email,
   }));
 
-  console.log('✅ Formatted users:', JSON.stringify(formattedUsers));
+  console.log("✅ Formatted users:", JSON.stringify(formattedUsers));
 
   return successResponse(res, "Tìm kiếm thành công", { users: formattedUsers });
 };

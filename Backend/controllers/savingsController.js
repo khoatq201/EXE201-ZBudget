@@ -6,6 +6,7 @@ import {
   successResponse,
 } from "../middleware/errorHandler.js";
 import mongoose from "mongoose";
+import NotificationService from "../services/notificationService.js";
 /**
  * @desc    Create new savings goal
  * @route   POST /api/savings
@@ -42,6 +43,24 @@ export const createSavingsGoal = async (req, res) => {
       notes,
     });
     await savingsGoal.save();
+
+    // ✅ NEW: Notification trigger for savings goal creation
+    try {
+      await NotificationService.triggerSavingsGoalNotification(userId, {
+        goalId: savingsGoal._id,
+        goalName: savingsGoal.name,
+        targetAmount: savingsGoal.targetAmount,
+        targetDate: savingsGoal.targetDate,
+        currentAmount: savingsGoal.currentAmount,
+        progressPercentage: savingsGoal.progressPercentage,
+      });
+    } catch (notificationError) {
+      console.error(
+        "⚠️ Savings goal notification trigger failed (non-critical):",
+        notificationError.message
+      );
+    }
+
     // Format response
     const formattedGoal = {
       ...savingsGoal.toObject({ virtuals: true }),
@@ -307,24 +326,67 @@ export const addContribution = async (req, res) => {
         throw new NotFoundError("Savings goal not found");
       }
       if (goal.status !== "active") {
-        throw new BadRequestError(
-          "Cannot contribute to inactive savings goal"
-        );
+        throw new BadRequestError("Cannot contribute to inactive savings goal");
       }
+
+      // Check if user has enough readyToAssign (unless from income_allocation)
+      if (source !== "income_allocation") {
+        const user = await User.findById(userId).select("financialSummary");
+        const readyToAssign = parseFloat(
+          user.financialSummary?.readyToAssign?.toString() || "0"
+        );
+
+        if (readyToAssign < parseFloat(amount)) {
+          throw new BadRequestError(
+            `Không đủ tiền Ready to Assign. Có sẵn: ${readyToAssign.toLocaleString(
+              "vi-VN"
+            )} đ, cần: ${parseFloat(amount).toLocaleString(
+              "vi-VN"
+            )} đ. Vui lòng thêm thu nhập hoặc phân bổ từ thu nhập.`
+          );
+        }
+      }
+
       // Add contribution
       goal.addContribution(parseFloat(amount), source, incomeId, note);
       await goal.save({ session });
-      // Update user's totalSaved
-      await User.findByIdAndUpdate(
-        userId,
-        {
-          $inc: {
-            "financialSummary.totalSaved": parseFloat(amount),
-          },
-          "financialSummary.lastUpdated": new Date(),
+
+      // Update user's financial summary
+      const updateFields = {
+        $inc: {
+          "financialSummary.totalSaved": parseFloat(amount),
         },
-        { session }
-      );
+        "financialSummary.lastUpdated": new Date(),
+      };
+
+      // If not from income_allocation, subtract from readyToAssign
+      if (source !== "income_allocation") {
+        updateFields.$inc["financialSummary.readyToAssign"] =
+          -parseFloat(amount);
+      }
+
+      await User.findByIdAndUpdate(userId, updateFields, { session });
+
+      // ✅ NEW: Notification trigger for savings contribution
+      try {
+        await NotificationService.triggerSavingsContributionNotification(
+          userId,
+          {
+            goalId: goal._id,
+            goalName: goal.name,
+            contributionAmount: parseFloat(amount),
+            currentAmount: goal.currentAmount,
+            targetAmount: goal.targetAmount,
+            progressPercentage: goal.progressPercentage,
+          }
+        );
+      } catch (notificationError) {
+        console.error(
+          "⚠️ Savings contribution notification trigger failed (non-critical):",
+          notificationError.message
+        );
+      }
+
       const formattedGoal = {
         ...goal.toObject({ virtuals: true }),
         targetAmount: parseFloat(goal.targetAmount.toString()),
@@ -373,12 +435,13 @@ export const withdrawFromSavings = async (req, res) => {
       // Withdraw
       goal.withdraw(parseFloat(amount), reason);
       await goal.save({ session });
-      // Update user's totalSaved
+      // Update user's totalSaved and return to readyToAssign
       await User.findByIdAndUpdate(
         userId,
         {
           $inc: {
             "financialSummary.totalSaved": -parseFloat(amount),
+            "financialSummary.readyToAssign": parseFloat(amount), // Return to readyToAssign
           },
           "financialSummary.lastUpdated": new Date(),
         },

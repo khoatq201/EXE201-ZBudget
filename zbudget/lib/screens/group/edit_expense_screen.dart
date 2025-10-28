@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../services/group_service.dart';
 import '../../models/group_models.dart';
 import '../../constants/colors.dart';
+import '../../utils/theme_extensions.dart';
 
 class EditExpenseScreen extends StatefulWidget {
   final Group group;
@@ -247,8 +248,8 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chỉnh sửa chi tiêu'),
-        backgroundColor: AppColors.primary500,
-        foregroundColor: Colors.white,
+        backgroundColor: context.headerGradientStart,
+        foregroundColor: context.headerTextColor,
         actions: [
           IconButton(
             onPressed: _deleteExpense,

@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/secure_storage_manager.dart';
+import '../config/api_config.dart';
 
 class BackendOCRService {
-  static const String _baseUrl = 'http://10.0.2.2:3000/api'; // Android emulator
+  static String get _baseUrl => ApiConfig.baseUrl;
 
   static Future<String?> _getAuthToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('access_token');
+    return await SecureStorageManager.getToken();
   }
 
   static Future<BackendOCRResult> processReceipt(String imagePath) async {

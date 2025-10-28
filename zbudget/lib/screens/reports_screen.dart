@@ -201,7 +201,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                               Text(
                                 'Báo cáo chi tiêu',
                                 style: AppTypography.h3.copyWith(
-                                  color: context.colorScheme.onPrimary,
+                                  color: Colors.white,
                                 ),
                               ),
                             ],
@@ -209,14 +209,14 @@ class _ReportsScreenState extends State<ReportsScreen>
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: context.colorScheme.onPrimary.withOpacity(
-                                0.24,
+                              color: Colors.white.withValues(
+                                alpha: 0.24,
                               ),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
                               Icons.notifications_outlined,
-                              color: context.colorScheme.onPrimary,
+                              color: Colors.white,
                             ),
                           ),
                         ],
@@ -392,7 +392,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isPositive
-              ? [context.colorScheme.primary, context.headerGradientEnd]
+              ? [context.headerGradientStart, context.headerGradientEnd]
               : [Colors.red.shade400, Colors.deepOrange.shade300],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -414,12 +414,12 @@ class _ReportsScreenState extends State<ReportsScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: context.colorScheme.onPrimary.withOpacity(0.18),
+                  color: Colors.white.withOpacity(0.18),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  isPositive ? Icons.trending_up : Icons.trending_down,
-                  color: context.colorScheme.onPrimary,
+                child: const Icon(
+                  Icons.trending_up,
+                  color: Colors.white,
                   size: 28,
                 ),
               ),
@@ -432,14 +432,14 @@ class _ReportsScreenState extends State<ReportsScreen>
                       children: [
                         Icon(
                           isPositive ? Icons.trending_up : Icons.warning,
-                          color: context.colorScheme.onPrimary,
+                          color: Colors.white,
                           size: 18,
                         ),
                         const SizedBox(width: 6),
                         Text(
                           isPositive ? 'Tài chính tích cực' : 'Cần chú ý',
-                          style: TextStyle(
-                            color: context.colorScheme.onPrimary,
+                          style: const TextStyle(
+                            color: Colors.white,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -450,7 +450,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     Text(
                       'Trong kỳ báo cáo này',
                       style: TextStyle(
-                        color: context.colorScheme.onPrimary.withOpacity(0.9),
+                        color: Colors.white.withOpacity(0.9),
                         fontSize: 12,
                       ),
                     ),
@@ -486,18 +486,14 @@ class _ReportsScreenState extends State<ReportsScreen>
                         children: [
                           Icon(
                             Icons.arrow_upward,
-                            color: context.colorScheme.onPrimary.withOpacity(
-                              0.9,
-                            ),
+                            color: Colors.white.withValues(alpha: 0.9),
                             size: 16,
                           ),
                           const SizedBox(width: 6),
                           Text(
                             'Tổng thu',
                             style: TextStyle(
-                              color: context.colorScheme.onPrimary.withOpacity(
-                                0.9,
-                              ),
+                              color: Colors.white.withValues(alpha: 0.9),
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -510,8 +506,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                         alignment: Alignment.centerLeft,
                         child: Text(
                           CurrencyFormatter.formatCompact(income),
-                          style: TextStyle(
-                            color: context.colorScheme.onPrimary,
+                          style: const TextStyle(
+                            color: Colors.white,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
@@ -544,18 +540,14 @@ class _ReportsScreenState extends State<ReportsScreen>
                         children: [
                           Icon(
                             Icons.arrow_downward,
-                            color: context.colorScheme.onPrimary.withOpacity(
-                              0.9,
-                            ),
+                            color: Colors.white.withValues(alpha: 0.9),
                             size: 16,
                           ),
                           const SizedBox(width: 6),
                           Text(
                             'Tổng chi',
                             style: TextStyle(
-                              color: context.colorScheme.onPrimary.withOpacity(
-                                0.9,
-                              ),
+                              color: Colors.white.withValues(alpha: 0.9),
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -568,8 +560,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                         alignment: Alignment.centerLeft,
                         child: Text(
                           CurrencyFormatter.formatCompact(expense),
-                          style: TextStyle(
-                            color: context.colorScheme.onPrimary,
+                          style: const TextStyle(
+                            color: Colors.white,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
@@ -606,16 +598,14 @@ class _ReportsScreenState extends State<ReportsScreen>
                       children: [
                         Icon(
                           Icons.account_balance_wallet,
-                          color: context.colorScheme.onPrimary.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           size: 16,
                         ),
                         const SizedBox(width: 6),
                         Text(
                           'Số dư',
                           style: TextStyle(
-                            color: context.colorScheme.onPrimary.withOpacity(
-                              0.9,
-                            ),
+                            color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -628,8 +618,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                       alignment: Alignment.centerLeft,
                       child: Text(
                         CurrencyFormatter.formatCompact(balance),
-                        style: TextStyle(
-                          color: context.colorScheme.onPrimary,
+                        style: const TextStyle(
+                          color: Colors.white,
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
                         ),
@@ -654,12 +644,12 @@ class _ReportsScreenState extends State<ReportsScreen>
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: context.colorScheme.onSurface.withOpacity(0.06),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.savings,
-                  color: context.colorScheme.onPrimary.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   size: 32,
                 ),
               ),
@@ -671,7 +661,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     Text(
                       'Tỷ lệ tiết kiệm',
                       style: TextStyle(
-                        color: context.colorScheme.onPrimary.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -682,9 +672,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                         Text(
                           '${savingsRate.toStringAsFixed(1)}%',
                           style: TextStyle(
-                            color: context.colorScheme.onPrimary.withOpacity(
-                              0.9,
-                            ),
+                            color: Colors.white.withValues(alpha: 0.95),
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
                           ),
@@ -713,7 +701,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                     ? Icons.thumb_up
                                     : Icons.warning,
                                 size: 12,
-                                color: context.colorScheme.onPrimary,
+                                color: Colors.white,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -723,7 +711,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                     ? 'Tốt'
                                     : 'Cần cải thiện',
                                 style: TextStyle(
-                                  color: context.colorScheme.onPrimary,
+                                  color: Colors.white,
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -741,7 +729,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                           ? 'Cố gắng tiết kiệm thêm một chút'
                           : 'Hãy cân nhắc giảm chi tiêu không cần thiết',
                       style: TextStyle(
-                        color: context.colorScheme.onPrimary.withAlpha(180),
+                        color: Colors.white.withValues(alpha: 0.85),
                         fontSize: 11,
                       ),
                     ),
@@ -1989,12 +1977,6 @@ class _ReportsScreenState extends State<ReportsScreen>
           _buildPatternsSection(patterns),
           const SizedBox(height: 16),
         ],
-
-        // Forecast second (prediction comes after current habits)
-        if (forecast != null) ...[
-          _buildForecastSection(forecast),
-          const SizedBox(height: 16),
-        ],
       ],
     );
   }
@@ -2146,168 +2128,6 @@ class _ReportsScreenState extends State<ReportsScreen>
               fontWeight: FontWeight.bold,
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildForecastSection(ForecastReportData forecast) {
-    // Helper to format month label
-    String formatMonthLabel(String month) {
-      final parts = month.split('-');
-      if (parts.length == 2) {
-        final months = [
-          '',
-          'Tháng 1',
-          'Tháng 2',
-          'Tháng 3',
-          'Tháng 4',
-          'Tháng 5',
-          'Tháng 6',
-          'Tháng 7',
-          'Tháng 8',
-          'Tháng 9',
-          'Tháng 10',
-          'Tháng 11',
-          'Tháng 12',
-        ];
-        final monthIndex = int.tryParse(parts[1]) ?? 0;
-        if (monthIndex > 0 && monthIndex <= 12) {
-          return '${months[monthIndex]} ${parts[0]}';
-        }
-      }
-      return month;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: context.cardBackground,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-        border: Border.all(
-          color: context.headerGradientEnd.withOpacity(0.2),
-          width: 2,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: context.headerGradientEnd.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.auto_graph,
-                  color: context.headerGradientStart,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Dự báo tài chính', style: AppTypography.h3),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Thu: ${forecast.trends.incomeTrend == "increasing"
-                          ? "Tăng"
-                          : forecast.trends.incomeTrend == "decreasing"
-                          ? "Giảm"
-                          : "Ổn định"} • '
-                      'Chi: ${forecast.trends.expenseTrend == "increasing"
-                          ? "Tăng"
-                          : forecast.trends.expenseTrend == "decreasing"
-                          ? "Giảm"
-                          : "Ổn định"}',
-                      style: AppTypography.caption.copyWith(
-                        color: context.settingsItemSubtitleColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Divider(),
-          const SizedBox(height: 16),
-          ...forecast.forecast.map((f) {
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: context.infoRowBackground,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: context.cardBorder),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          formatMonthLabel(f.month),
-                          style: AppTypography.bodyMedium.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.analytics,
-                              size: 14,
-                              color: context.colorScheme.primary,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Độ tin cậy: ${f.confidence.toStringAsFixed(0)}%',
-                              style: AppTypography.caption.copyWith(
-                                color: context.settingsItemSubtitleColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        CurrencyFormatter.formatCompact(f.forecastBalance),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: f.forecastBalance >= 0
-                              ? Colors.green
-                              : Colors.red,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Dự kiến',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          }),
         ],
       ),
     );
