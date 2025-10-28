@@ -20,8 +20,8 @@ const createTransporter = () => {
       // Không cần rejectUnauthorized với Gmail (mặc định true)
       // Không cần ciphers vì Node sẽ tự chọn
     },
-    debug: false, // Set true để debug chi tiết
-    logger: false, // Set true để log transactions
+    debug: true, // Set true để debug chi tiết SMTP handshake
+    logger: console.log, // Log tất cả SMTP transactions
   });
 };
 // Email templates
@@ -268,13 +268,32 @@ const sendEmail = async (to, template) => {
     console.log("🔌 Verifying email connection...");
 
     try {
+      console.log("⏳ Starting connection verification (timeout: 60s)...");
       await transporter.verify();
       console.log("✅ Email server ready");
     } catch (verifyError) {
-      console.error("❌ Email verification failed:", verifyError.message);
+      console.error("❌ Email verification FAILED");
+      console.error("Error message:", verifyError.message);
+      console.error("Error code:", verifyError.code);
+      console.error("Error command:", verifyError.command);
+      console.error("Error response:", verifyError.response);
+      console.error("Error responseCode:", verifyError.responseCode);
+      console.error(
+        "Error responseCodeDetails:",
+        verifyError.responseCodeDetails
+      );
+      console.error("Error errno:", verifyError.errno);
+      console.error("Error syscall:", verifyError.syscall);
+      console.error("Error address:", verifyError.address);
+      console.error("Error port:", verifyError.port);
+      console.error(
+        "Full error object:",
+        JSON.stringify(verifyError, Object.getOwnPropertyNames(verifyError))
+      );
+
       return {
         success: false,
-        error: `Connection failed: ${verifyError.message}`,
+        error: `Connection failed: ${verifyError.message} (code: ${verifyError.code})`,
       };
     }
 
@@ -297,8 +316,17 @@ const sendEmail = async (to, template) => {
       command: error.command,
       response: error.response,
       responseCode: error.responseCode,
-      stack: error.stack,
+      responseCodeDetails: error.responseCodeDetails,
+      errno: error.errno,
+      syscall: error.syscall,
+      address: error.address,
+      port: error.port,
     });
+    console.error("Full error stack:", error.stack);
+    console.error(
+      "Full error object:",
+      JSON.stringify(error, Object.getOwnPropertyNames(error))
+    );
     return { success: false, error: error.message };
   }
 };
