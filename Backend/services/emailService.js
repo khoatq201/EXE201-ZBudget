@@ -1,29 +1,27 @@
 import nodemailer from "nodemailer";
-// Tạo transporter với cấu hình cho Gmail trên Render
+// Tạo transporter với cấu hình đúng cho Gmail
+// Sử dụng port 465 với SSL (không STARTTLS) - ổn định nhất trên Render
 const createTransporter = () => {
-  // Try port 465 first (SSL), fallback to 587 (TLS) if needed
-  // Many cloud providers block port 587
-  const useSSL = process.env.EMAIL_USE_SSL !== "false"; // Default to SSL
-
   return nodemailer.createTransport({
     host: "smtp.gmail.com",
-    port: useSSL ? 465 : 587,
-    secure: useSSL, // true for 465, false for 587
+    port: 465,
+    secure: true, // SSL connection cho port 465
     auth: {
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS, // Sử dụng App Password
+      pass: process.env.EMAIL_PASS, // Sử dụng Gmail App Password
     },
-    // Thêm timeout và security options cho Render
-    connectionTimeout: 60000, // 60s timeout
-    greetingTimeout: 30000, // 30s greeting timeout
-    socketTimeout: 60000, // ützen socket timeout
-    requireTLS: !useSSL, // Only require TLS for non-SSL connections
+    // Timeout settings
+    connectionTimeout: 60000, // 60s
+    greetingTimeout: 30000, // 30s
+    socketTimeout: 60000, // 60s
+    // TLS configuration đúng cách
     tls: {
-      rejectUnauthorized: false, // Cho phép self-signed certificates
-      ciphers: "SSLv3",
+      minVersion: "TLSv1.2", // Yêu cầu TLS 1.2 minimum
+      // Không cần rejectUnauthorized với Gmail (mặc định true)
+      // Không cần ciphers vì Node sẽ tự chọn
     },
-    debug: false, // Set true để debug
-    logger: false, // Set true để log
+    debug: false, // Set true để debug chi tiết
+    logger: false, // Set true để log transactions
   });
 };
 // Email templates
