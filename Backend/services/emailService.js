@@ -1,7 +1,13 @@
-import { Resend } from "resend";
+import * as brevo from "@getbrevo/brevo";
 
-// Khởi tạo Resend client
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Khởi tạo Brevo client
+const brevoApi = new brevo.TransactionalEmailsApi();
+if (process.env.BREVO_API_KEY) {
+  brevoApi.setApiKey(
+    brevo.TransactionalEmailsApiApiKeys.apiKey,
+    process.env.BREVO_API_KEY
+  );
+}
 // Email templates
 const emailTemplates = {
   verification: (name, token) => ({
@@ -223,33 +229,29 @@ const emailTemplates = {
     `,
   }),
 };
-// Send email function sử dụng Resend API
+// Send email function sử dụng Brevo API
 const sendEmail = async (to, template) => {
   try {
-    // Kiểm tra Resend API key
-    if (!process.env.RESEND_API_KEY) {
-      console.warn("⚠️ Resend API key not configured");
+    // Kiểm tra Brevo API key
+    if (!process.env.BREVO_API_KEY) {
+      console.warn("⚠️ Brevo API key not configured");
       return { success: false, error: "Email service not configured" };
     }
 
-    // Gửi email qua Resend API
-    const fromEmail =
-      process.env.RESEND_FROM_EMAIL || "ZBudget <onboarding@resend.dev>";
+    // Gửi email qua Brevo API
+    const fromEmail = process.env.BREVO_FROM_EMAIL || "noreply@brevo.com";
+    const fromName = "ZBudget";
 
-    const { data, error } = await resend.emails.send({
-      from: fromEmail,
-      to: [to],
-      subject: template.subject,
-      html: template.html,
-      text: template.text, // Plain text version if available
-    });
+    const sendSmtpEmail = new brevo.SendSmtpEmail();
+    sendSmtpEmail.sender = { name: fromName, email: fromEmail };
+    sendSmtpEmail.to = [{ email: to }];
+    sendSmtpEmail.subject = template.subject;
+    sendSmtpEmail.htmlContent = template.html;
+    sendSmtpEmail.textContent = template.text || "";
 
-    if (error) {
-      console.warn("⚠️ Resend API error:", error);
-      return { success: false, error: error.message || "Failed to send email" };
-    }
+    const data = await brevoApi.sendTransacEmail(sendSmtpEmail);
 
-    return { success: true, messageId: data.id };
+    return { success: true, messageId: data.messageId };
   } catch (error) {
     console.warn("⚠️ Email send error:", error.message);
     return { success: false, error: error.message };
@@ -412,29 +414,30 @@ export const sendBulkEmail = async (recipients, template, data = {}) => {
   }
   return results;
 };
-// Test email configuration với Resend
+// Test email configuration với Brevo
 export const testEmailService = async () => {
   try {
-    if (!process.env.RESEND_API_KEY) {
-      return { success: false, error: "Resend API key not configured" };
+    if (!process.env.BREVO_API_KEY) {
+      return { success: false, error: "Brevo API key not configured" };
     }
+
     // Test bằng cách gửi email test đến chính mình
-    const fromEmail =
-      process.env.RESEND_FROM_EMAIL || "ZBudget <onboarding@resend.dev>";
+    const fromEmail = process.env.BREVO_FROM_EMAIL || "noreply@brevo.com";
     const testEmail = process.env.TEST_EMAIL || "test@example.com";
 
-    const { data, error } = await resend.emails.send({
-      from: fromEmail,
-      to: [testEmail],
-      subject: "ZBudget Email Test",
-      html: "<p>Email service is working correctly!</p>",
-    });
+    const sendSmtpEmail = new brevo.SendSmtpEmail();
+    sendSmtpEmail.sender = { name: "ZBudget", email: fromEmail };
+    sendSmtpEmail.to = [{ email: testEmail }];
+    sendSmtpEmail.subject = "ZBudget Email Test";
+    sendSmtpEmail.htmlContent = "<p>Email service is working correctly!</p>";
 
-    if (error) {
-      return { success: false, error: error.message };
-    }
+    const data = await brevoApi.sendTransacEmail(sendSmtpEmail);
 
-    return { success: true, message: "Email service ready", emailId: data.id };
+    return {
+      success: true,
+      message: "Email service ready",
+      emailId: data.messageId,
+    };
   } catch (error) {
     return { success: false, error: error.message };
   }
