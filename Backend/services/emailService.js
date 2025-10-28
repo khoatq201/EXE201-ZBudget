@@ -1,23 +1,26 @@
 import nodemailer from "nodemailer";
 // Tạo transporter với cấu hình cho Gmail trên Render
 const createTransporter = () => {
+  // Sử dụng direct SMTP config thay vì service để tránh issues trên Render
   return nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false, // true for 465, false for other ports
     auth: {
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS, // Nên sử dụng App Password
+      pass: process.env.EMAIL_PASS, // Sử dụng App Password
     },
     // Thêm timeout và security options cho Render
     connectionTimeout: 60000, // 60s timeout
     greetingTimeout: 30000, // 30s greeting timeout
     socketTimeout: 60000, // 60s socket timeout
-    secure: true, // Sử dụng TLS
+    requireTLS: true, // Upgrade connection to TLS
     tls: {
       rejectUnauthorized: false, // Cho phép self-signed certificates
+      ciphers: "SSLv3",
     },
-    pool: true, // Sử dụng connection pooling để tăng hiệu quả
-    maxConnections: 2,
-    maxMessages: 10,
+    debug: false, // Set true để debug
+    logger: false, // Set true để log
   });
 };
 // Email templates
@@ -241,25 +244,53 @@ const emailTemplates = {
     `,
   }),
 };
-// Send email function - đơn giản và hiệu quả
+// Send email function với debug logging tốt hơn
 const sendEmail = async (to, template) => {
   try {
     // Kiểm tra email credentials
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.warn("Email credentials not configured");
+      console.warn("⚠️ Email credentials not configured");
       return { success: false, error: "Email not configured" };
     }
+
+    console.log(`📧 Attempting to send email to: ${to}`);
+
+    // Test connection first
     const transporter = createTransporter();
+    console.log("🔌 Verifying email connection...");
+
+    try {
+      await transporter.verify();
+      console.log("✅ Email server ready");
+    } catch (verifyError) {
+      console.error("❌ Email verification failed:", verifyError.message);
+      return {
+        success: false,
+        error: `Connection failed: ${verifyError.message}`,
+      };
+    }
+
     const mailOptions = {
       from: `"ZBudget" <${process.env.EMAIL_USER}>`,
       to,
       subject: template.subject,
       html: template.html,
     };
+
+    console.log("📤 Sending email...");
     const result = await transporter.sendMail(mailOptions);
+    console.log(`✅ Email sent successfully. Message ID: ${result.messageId}`);
+
     return { success: true, messageId: result.messageId };
   } catch (error) {
-    console.error("Email send error:", error.message);
+    console.error("❌ Email send error:", error.message);
+    console.error("📋 Error details:", {
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode,
+      stack: error.stack,
+    });
     return { success: false, error: error.message };
   }
 };
