@@ -26,9 +26,9 @@ export const config = {
   // Email config - Old Gmail SMTP (kept for reference)
   EMAIL_USER: process.env.EMAIL_USER,
   EMAIL_PASS: process.env.EMAIL_PASS,
-  // Brevo Email Service (free tier, no domain verification required)
-  BREVO_API_KEY: process.env.BREVO_API_KEY,
-  BREVO_FROM_EMAIL: process.env.BREVO_FROM_EMAIL,
+  // SendGrid Email Service
+  SENDGRID_API_KEY: process.env.SENDGRID_API_KEY,
+  SENDGRID_FROM_EMAIL: process.env.SENDGRID_FROM_EMAIL,
   // Gemini AI OCR
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
   // Groq AI Configuration

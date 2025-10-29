@@ -225,39 +225,35 @@ const emailTemplates = {
     `,
   }),
 };
-// Send email function sử dụng Brevo API
+// Send email function sử dụng SendGrid API
 const sendEmail = async (to, template) => {
   try {
     // Kiểm tra Brevo API key
-    if (!process.env.BREVO_API_KEY) {
-      console.warn("⚠️ Brevo API key not configured");
+    if (!process.env.SENDGRID_API_KEY) {
+      console.warn("⚠️ SendGrid API key not configured");
       return { success: false, error: "Email service not configured" };
     }
 
-    // Lấy Brevo API instance
-    const api = getBrevoApi();
-    if (!api) {
-      return { success: false, error: "Brevo API not initialized" };
-    }
-
-    // Gửi email qua Brevo API
-    const fromEmail = process.env.BREVO_FROM_EMAIL || "noreply@brevo.com";
+    // Gửi email qua SendGrid API
+    const fromEmail = process.env.SENDGRID_FROM_EMAIL || "noreply@sendgrid.net";
     const fromName = "ZBudget";
 
-    const sendSmtpEmail = new brevo.SendSmtpEmail();
-    sendSmtpEmail.sender = { name: fromName, email: fromEmail };
-    sendSmtpEmail.to = [{ email: to }];
-    sendSmtpEmail.subject = template.subject;
-    sendSmtpEmail.htmlContent = template.html;
-    sendSmtpEmail.textContent = template.text || "";
+    const msg = {
+      to,
+      from: `${fromName} <${fromEmail}>`,
+      subject: template.subject,
+      html: template.html,
+      text: template.text || "",
+    };
 
-    console.log("🔍 Brevo API Key exists:", !!process.env.BREVO_API_KEY);
     console.log("🔍 Sending email to:", to);
-    console.log("🔍 From:", fromEmail);
 
-    const data = await api.sendTransacEmail(sendSmtpEmail);
+    const response = await sgMail.send(msg);
 
-    return { success: true, messageId: data.messageId };
+    return {
+      success: true,
+      messageId: response[0]?.headers?.["x-message-id"] || "sent",
+    };
   } catch (error) {
     console.warn("⚠️ Email send error:", error.message);
     if (error.response) {
@@ -424,35 +420,29 @@ export const sendBulkEmail = async (recipients, template, data = {}) => {
   }
   return results;
 };
-// Test email configuration với Brevo
+// Test email configuration với SendGrid
 export const testEmailService = async () => {
   try {
-    if (!process.env.BREVO_API_KEY) {
-      return { success: false, error: "Brevo API key not configured" };
+    if (!process.env.SENDGRID_API_KEY) {
+      return { success: false, error: "SendGrid API key not configured" };
     }
 
-    // Lấy Brevo API instance
-    const api = getBrevoApi();
-    if (!api) {
-      return { success: false, error: "Brevo API not initialized" };
-    }
-
-    // Test bằng cách gửi email test đến chính mình
-    const fromEmail = process.env.BREVO_FROM_EMAIL || "noreply@brevo.com";
+    const fromEmail = process.env.SENDGRID_FROM_EMAIL || "noreply@sendgrid.net";
     const testEmail = process.env.TEST_EMAIL || "test@example.com";
 
-    const sendSmtpEmail = new brevo.SendSmtpEmail();
-    sendSmtpEmail.sender = { name: "ZBudget", email: fromEmail };
-    sendSmtpEmail.to = [{ email: testEmail }];
-    sendSmtpEmail.subject = "ZBudget Email Test";
-    sendSmtpEmail.htmlContent = "<p>Email service is working correctly!</p>";
+    const msg = {
+      to: testEmail,
+      from: `ZBudget <${fromEmail}>`,
+      subject: "ZBudget Email Test",
+      html: "<p>Email service is working correctly!</p>",
+    };
 
-    const data = await api.sendTransacEmail(sendSmtpEmail);
+    const response = await sgMail.send(msg);
 
     return {
       success: true,
       message: "Email service ready",
-      emailId: data.messageId,
+      emailId: response[0]?.headers?.["x-message-id"] || "sent",
     };
   } catch (error) {
     console.warn("⚠️ Test email error:", error.message);
