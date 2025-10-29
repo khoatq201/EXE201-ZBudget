@@ -1,4 +1,4 @@
-import Groq from "groq-sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import config from "../config/env.js";
 import ChatSession from "../models/ChatSession.js";
 import { v4 as uuidv4 } from "uuid";
@@ -10,10 +10,51 @@ import SavingsGoal from "../models/SavingsGoal.js";
 import Challenge from "../models/Challenge.js";
 import UserChallenge from "../models/UserChallenge.js";
 
-// Initialize Groq client
-const groq = new Groq({
-  apiKey: config.GROQ_API_KEY,
-});
+// Initialize Gemini client
+const genAI = new GoogleGenerativeAI(config.GEMINI_API_KEY);
+
+/**
+ * Fix common Vietnamese spelling errors from AI response
+ * @param {string} text - Text to fix
+ * @returns {string} - Fixed text
+ */
+function fixVietnameseSpelling(text) {
+  if (!text) return text;
+
+  // Common misspellings map
+  const fixes = [
+    // AI misspellings
+    { from: /\bAl\b/g, to: "AI" },
+    { from: /\bAl\s/g, to: "AI " },
+    { from: /\sAl\b/g, to: " AI" },
+    // ZBudget misspellings
+    { from: /\bZBdget\b/g, to: "ZBudget" },
+    { from: /\bZbudget\b/g, to: "ZBudget" },
+    { from: /\bzbudget\b/g, to: "ZBudget" },
+    // Tài chính misspellings
+    { from: /\bài chính\b/g, to: "tài chính" },
+    { from: /\btà chính\b/g, to: "tài chính" },
+    // Một misspellings
+    { from: /\bmt\b/g, to: "một" },
+    { from: /\bmt\s/g, to: "một " },
+    // Hướng dẫn misspellings - Missing spaces
+    { from: /\bhướng dẫnsử\b/g, to: "hướng dẫn sử" },
+    { from: /\bsửdụng\b/g, to: "sử dụng" },
+    { from: /\bdẫnsử dụng\b/g, to: "dẫn sử dụng" },
+    // Phân tích misspellings - Missing 'h'
+    { from: /\bphân tíc\b/g, to: "phân tích" },
+    { from: /\bphân tíc\s/g, to: "phân tích " },
+    // Hôm nay misspellings - Missing space
+    { from: /\bhômnay\b/g, to: "hôm nay" },
+  ];
+
+  let fixedText = text;
+  fixes.forEach(({ from, to }) => {
+    fixedText = fixedText.replace(from, to);
+  });
+
+  return fixedText;
+}
 
 /**
  * Build Vietnamese financial context for AI
@@ -243,7 +284,15 @@ export async function createChatSession(userId) {
     const context = await buildFinancialContext(userId);
 
     // System message không lưu vào messages array
-    const systemMessage = `Bạn là trợ lý AI chuyên nghiệp của ZBudget - ứng dụng quản lý tài chính cá nhân.
+    const systemMessage = `⚠️ QUAN TRỌNG - KIỂM TRA CHÍNH TẢ BẮT BUỘC:
+- "AI" (chữ I hoa), KHÔNG phải "Al" hay "AL"
+- "ZBudget" (B,D hoa), KHÔNG phải "ZBdget" hay "Zbudget"  
+- "tài chính" đầy đủ, KHÔNG phải "ài chính"
+- "một" đầy đủ, KHÔNG viết tắt "mt"
+- "hướng dẫn sử dụng" có khoảng trắng, KHÔNG "dẫnsử"
+- Sửa tất cả lỗi chính tả trước khi trả lời
+
+Bạn là trợ lý AI chuyên nghiệp của ZBudget - ứng dụng quản lý tài chính cá nhân.
 
 CHỨC NĂNG CHÍNH:
 1. TƯ VẤN TÀI CHÍNH: Phân tích chi tiêu, ngân sách, tiết kiệm, đầu tư
@@ -371,13 +420,18 @@ export async function* sendMessageStream(sessionId, userMessage, userId) {
     session.messageCount += 1;
     await session.save();
 
-    // Prepare messages for Groq - thêm system message từ field riêng
-    const messages = [
-      {
-        role: "system",
-        content:
-          session.systemMessage ||
-          `Bạn là trợ lý AI chuyên nghiệp của ZBudget - ứng dụng quản lý tài chính cá nhân.
+    // Get system message
+    const systemPrompt =
+      session.systemMessage ||
+      `⚠️ QUAN TRỌNG - KIỂM TRA CHÍNH TẢ BẮT BUỘC:
+- "AI" (chữ I hoa), KHÔNG phải "Al" hay "AL"
+- "ZBudget" (B,D hoa), KHÔNG phải "ZBdget" hay "Zbudget"  
+- "tài chính" đầy đủ, KHÔNG phải "ài chính"
+- "một" đầy đủ, KHÔNG viết tắt "mt"
+- "hướng dẫn sử dụng" có khoảng trắng, KHÔNG "dẫnsử"
+- Sửa tất cả lỗi chính tả trước khi trả lời
+
+Bạn là trợ lý AI chuyên nghiệp của ZBudget - ứng dụng quản lý tài chính cá nhân.
 
 CHỨC NĂNG CHÍNH:
 1. TƯ VẤN TÀI CHÍNH: Phân tích chi tiêu, ngân sách, tiết kiệm, đầu tư
@@ -462,40 +516,51 @@ VÍ DỤ XỬ LÝ CÂU HỎI:
 ❌ MƠ HỒ: "Giúp tôi" → "Bạn muốn tư vấn về tài chính hay cần hướng dẫn sử dụng ZBudget?"
 
 Thông tin tài chính người dùng:
-${await buildFinancialContext(userId)}`,
-      },
-      ...session.messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-    ];
+${await buildFinancialContext(userId)}`;
 
-    // Call Groq API with streaming
-    const stream = await groq.chat.completions.create({
-      messages,
-      model: config.GROQ_MODEL,
-      temperature: 0.3, // Giảm temperature để câu trả lời tập trung hơn
-      max_tokens: 300, // Giảm max_tokens để câu trả lời ngắn gọn
-      stream: true,
+    // Call Gemini API with streaming
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash-lite",
+      systemInstruction: systemPrompt, // Gemini hỗ trợ systemInstruction riêng
+      generationConfig: {
+        temperature: 0.3, // Gemini xử lý tốt hơn với temperature 0.3
+        maxOutputTokens: 1000, // Tăng lên vì Gemini tốt hơn với response dài hơn
+      },
     });
+
+    // Convert messages to Gemini format
+    const history = session.messages.slice(0, -1).map((msg) => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }],
+    }));
+
+    const chat = model.startChat({ history });
+
+    const lastMessage = session.messages[session.messages.length - 1].content;
+    const result = await chat.sendMessageStream(lastMessage);
 
     let fullResponse = "";
     let tokensUsed = 0;
 
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content || "";
-      if (content) {
-        fullResponse += content;
-        tokensUsed += content.length;
+    for await (const chunk of result.stream) {
+      const chunkText = chunk.text();
+      if (chunkText) {
+        fullResponse += chunkText;
+        tokensUsed += chunkText.length;
 
-        // Character-by-character streaming
-        for (const char of content) {
+        // Split chunk into individual characters for typing effect
+        // This creates the typing animation effect like before
+        const characters = chunkText.split("");
+        for (const char of characters) {
           yield char;
-          // Small delay for smooth streaming
-          await new Promise((resolve) => setTimeout(resolve, 20));
+          // Delay for typing effect (30ms per character)
+          await new Promise((resolve) => setTimeout(resolve, 30));
         }
       }
     }
+
+    // Apply spelling fix to the full response
+    fullResponse = fixVietnameseSpelling(fullResponse);
 
     // No remaining content to yield
 

@@ -135,11 +135,10 @@ class AiChatService {
                 if (content.isNotEmpty) {
                   fullResponse += content;
 
-                  // Character-by-character streaming từ backend
-                  for (final char in content.split('')) {
-                    yield char;
-                    await Future.delayed(const Duration(milliseconds: 20));
-                  }
+                  // Yield chunk directly - backend already handles streaming
+                  // Don't split to prevent Vietnamese encoding issues
+                  yield content;
+                  await Future.delayed(const Duration(milliseconds: 50));
                 }
               }
             } catch (e) {
