@@ -44,21 +44,36 @@ export const register = async (req, res) => {
     const { fullName, email, password, phoneNumber, dateOfBirth, gender } =
       req.body;
     // Step 2: Check existing user
-    const existingQuery = [{ email: email.toLowerCase() }];
-    if (phoneNumber) {
-      existingQuery.push({ phoneNumber: phoneNumber });
-    }
     const dbStartTime = Date.now();
-    const existingUser = await User.findOne({
-      $or: existingQuery,
+
+    // Check email first
+    const existingUserByEmail = await User.findOne({
+      email: email.toLowerCase(),
     });
     const dbDuration = Date.now() - dbStartTime;
-    if (existingUser) {
-      if (existingUser.email === email.toLowerCase()) {
-        throw new ConflictError("Email đã được sử dụng");
-      }
-      if (existingUser.phoneNumber === phoneNumber) {
-        throw new ConflictError("Số điện thoại đã được sử dụng");
+
+    if (existingUserByEmail) {
+      securityLogger("REGISTRATION_ATTEMPT_DUPLICATE_EMAIL", req, {
+        email: email.toLowerCase(),
+      });
+      throw new ConflictError(
+        `Email '${email}' đã được sử dụng. Vui lòng sử dụng email khác hoặc đăng nhập.`
+      );
+    }
+
+    // Check phone number if provided
+    if (phoneNumber) {
+      const existingUserByPhone = await User.findOne({
+        "profile.phone": phoneNumber,
+      });
+
+      if (existingUserByPhone) {
+        securityLogger("REGISTRATION_ATTEMPT_DUPLICATE_PHONE", req, {
+          phoneNumber,
+        });
+        throw new ConflictError(
+          `Số điện thoại '${phoneNumber}' đã được sử dụng. Vui lòng sử dụng số điện thoại khác.`
+        );
       }
     }
     // Step 3: Hash password
@@ -146,31 +161,48 @@ export const register = async (req, res) => {
         expiresIn: 600, // 10 minutes in seconds
       },
     };
-    // Step 9: Send response IMMEDIATELY
+    // Step 9: Send verification email SYNCHRONOUSLY
+    const emailStartTime = Date.now();
+    try {
+      const emailResult = await sendVerificationEmail(
+        email.toLowerCase(),
+        fullName,
+        emailVerificationOTP
+      );
+      const emailDuration = Date.now() - emailStartTime;
+
+      if (emailResult.success) {
+        console.log(
+          `✅ DEBUG: Verification email sent successfully in ${emailDuration}ms`
+        );
+      } else {
+        console.error(
+          `❌ DEBUG: Failed to send verification email in ${emailDuration}ms:`,
+          emailResult.error
+        );
+        // Delete temp user data if email failed
+        global.tempUsers.delete(tempUserKey);
+        throw new BadRequestError(
+          "Không thể gửi email xác thực. Vui lòng thử lại sau."
+        );
+      }
+    } catch (emailError) {
+      const emailDuration = Date.now() - emailStartTime;
+      console.error(
+        `❌ DEBUG: Failed to send verification email in ${emailDuration}ms:`,
+        emailError
+      );
+      // Delete temp user data if email failed
+      global.tempUsers.delete(tempUserKey);
+      throw new BadRequestError(
+        "Không thể gửi email xác thực. Vui lòng thử lại sau."
+      );
+    }
+
+    // Step 10: Send response ONLY AFTER email is sent successfully
     const responseStartTime = Date.now();
     res.status(201).json(responseData);
     const responseDuration = Date.now() - responseStartTime;
-    // Step 10: Send verification email ASYNCHRONOUSLY (non-blocking)
-    setImmediate(async () => {
-      const emailStartTime = Date.now();
-      try {
-        const emailResult = await sendVerificationEmail(
-          email.toLowerCase(),
-          fullName,
-          emailVerificationOTP
-        );
-        const emailDuration = Date.now() - emailStartTime;
-        if (emailResult.success) {
-        } else {
-        }
-      } catch (emailError) {
-        const emailDuration = Date.now() - emailStartTime;
-        console.error(
-          `❌ DEBUG: Failed to send verification email in ${emailDuration}ms (async):`,
-          emailError
-        );
-      }
-    });
     const totalDuration = Date.now() - startTime;
   } catch (error) {
     const errorDuration = Date.now() - startTime;

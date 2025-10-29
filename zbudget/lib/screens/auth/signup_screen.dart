@@ -141,10 +141,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
       }
     } catch (error) {
       if (mounted) {
+        // Parse error message nếu là exception
+        String errorMessage = 'Lỗi kết nối. Vui lòng thử lại sau.';
+        if (error.toString().contains('Exception:')) {
+          errorMessage = error.toString().split('Exception:')[1].trim();
+        } else {
+          errorMessage = error.toString();
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Đăng ký thất bại: $error'),
+            content: Text(errorMessage),
             backgroundColor: context.errorColor,
+            duration: Duration(seconds: 5), // Hiển thị lâu hơn để user đọc
           ),
         );
       }

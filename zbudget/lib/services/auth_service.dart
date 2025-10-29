@@ -137,10 +137,13 @@ class AuthService extends ChangeNotifier {
           };
         }
       } else {
-        // Đăng ký thất bại
+        // Đăng ký thất bại - đọc error hoặc message
         return {
           'success': false,
-          'message': responseData['message'] ?? 'Đăng ký thất bại',
+          'message':
+              responseData['error'] ??
+              responseData['message'] ??
+              'Đăng ký thất bại',
         };
       }
     } catch (e) {
