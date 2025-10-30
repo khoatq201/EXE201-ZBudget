@@ -108,7 +108,7 @@ class ZBudgetApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AppProvider()),
         // ThemeManager quản lý theme đơn giản
         ChangeNotifierProvider(create: (_) => ThemeManager()..initialize()),
-        ChangeNotifierProvider(create: (_) => AuthService()),
+        ChangeNotifierProvider(create: (_) => AuthService()..initialize()),
         ChangeNotifierProvider(create: (_) => ExpenseService()),
         ChangeNotifierProvider(create: (_) => SavingsService()),
         ChangeNotifierProvider(create: (_) => BudgetService()),

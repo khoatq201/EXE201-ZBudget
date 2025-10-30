@@ -108,7 +108,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             );
 
             // Navigate to OTP verification screen with email
-            context.go(
+            context.push(
               '/verify-otp',
               extra: {
                 'email': _emailController.text.trim().toLowerCase(),

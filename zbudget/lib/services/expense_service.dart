@@ -47,6 +47,26 @@ class ExpenseService extends ChangeNotifier {
     };
   }
 
+  /// Safely decode JSON response body
+  /// Returns null if body is empty or invalid JSON (e.g., HTML error page)
+  Map<String, dynamic>? _safeJsonDecode(String body) {
+    if (body.isEmpty) {
+      if (kDebugMode) {
+        debugPrint('⚠️ Response body is empty');
+      }
+      return null;
+    }
+    try {
+      return json.decode(body) as Map<String, dynamic>;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ JSON decode error: $e');
+        debugPrint('Response body: ${body.substring(0, body.length > 200 ? 200 : body.length)}...');
+      }
+      return null;
+    }
+  }
+
   /// Get all expenses with filters
   Future<void> getExpenses({
     String? category,
@@ -97,9 +117,12 @@ class ExpenseService extends ChangeNotifier {
 
       final response = await http.get(uri, headers: headers);
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
+      final jsonResponse = _safeJsonDecode(response.body);
+      if (jsonResponse == null) {
+        throw Exception('Invalid response from server');
+      }
 
+      if (response.statusCode == 200) {
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
           final expenseListResponse = ExpenseListResponse.fromJson(
             jsonResponse['data'],
@@ -112,8 +135,7 @@ class ExpenseService extends ChangeNotifier {
           throw Exception(jsonResponse['message'] ?? 'Failed to load expenses');
         }
       } else {
-        final errorBody = jsonDecode(response.body);
-        throw Exception(errorBody['error'] ?? 'Failed to load expenses');
+        throw Exception(jsonResponse['error'] ?? 'Failed to load expenses');
       }
     } catch (e) {
       _error = e.toString();
@@ -136,9 +158,12 @@ class ExpenseService extends ChangeNotifier {
         headers: headers,
       );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
+      final jsonResponse = _safeJsonDecode(response.body);
+      if (jsonResponse == null) {
+        throw Exception('Invalid response from server');
+      }
 
+      if (response.statusCode == 200) {
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
           return Expense.fromJson(jsonResponse['data']['expense']);
         } else {
@@ -202,8 +227,12 @@ class ExpenseService extends ChangeNotifier {
         body: jsonEncode(body),
       );
 
+      final jsonResponse = _safeJsonDecode(response.body);
+      if (jsonResponse == null) {
+        throw Exception('Invalid response from server');
+      }
+
       if (response.statusCode == 201) {
-        final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
 
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
           final newExpense = Expense.fromJson(jsonResponse['data']['expense']);
@@ -221,11 +250,10 @@ class ExpenseService extends ChangeNotifier {
           );
         }
       } else {
-        final errorBody = jsonDecode(response.body);
         // Parse error message - could be 'error' or 'message' field
         final errorMessage =
-            errorBody['error'] ??
-            errorBody['message'] ??
+            jsonResponse['error'] ??
+            jsonResponse['message'] ??
             'Failed to create expense';
         debugPrint('❌ Create expense failed: $errorMessage');
         throw Exception(errorMessage);
@@ -278,9 +306,12 @@ class ExpenseService extends ChangeNotifier {
         body: jsonEncode(body),
       );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
+      final jsonResponse = _safeJsonDecode(response.body);
+      if (jsonResponse == null) {
+        throw Exception('Invalid response from server');
+      }
 
+      if (response.statusCode == 200) {
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
           final updatedExpense = Expense.fromJson(
             jsonResponse['data']['expense'],
@@ -301,8 +332,7 @@ class ExpenseService extends ChangeNotifier {
           );
         }
       } else {
-        final errorBody = jsonDecode(response.body);
-        throw Exception(errorBody['error'] ?? 'Failed to update expense');
+        throw Exception(jsonResponse['error'] ?? 'Failed to update expense');
       }
     } catch (e) {
       debugPrint('❌ Update expense error: $e');
@@ -327,8 +357,8 @@ class ExpenseService extends ChangeNotifier {
         notifyListeners();
         debugPrint('✅ Expense deleted: $id');
       } else {
-        final errorBody = jsonDecode(response.body);
-        throw Exception(errorBody['error'] ?? 'Failed to delete expense');
+        final errorBody = _safeJsonDecode(response.body);
+        throw Exception(errorBody?['error'] ?? 'Failed to delete expense');
       }
     } catch (e) {
       debugPrint('❌ Delete expense error: $e');
@@ -359,9 +389,12 @@ class ExpenseService extends ChangeNotifier {
 
       final response = await http.get(uri, headers: headers);
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
+      final jsonResponse = _safeJsonDecode(response.body);
+      if (jsonResponse == null) {
+        throw Exception('Invalid response from server');
+      }
 
+      if (response.statusCode == 200) {
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
           return ExpenseStats.fromJson(jsonResponse['data']);
         } else {

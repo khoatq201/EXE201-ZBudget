@@ -112,7 +112,7 @@ class _PasswordResetOTPScreenState extends State<PasswordResetOTPScreen> {
           );
 
           // Navigate to reset password screen
-          context.go(
+          context.push(
             '/reset-password',
             extra: {'email': widget.email, 'otp': _otpCode},
           );

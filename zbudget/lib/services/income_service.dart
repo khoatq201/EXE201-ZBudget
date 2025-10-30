@@ -41,6 +41,26 @@ class IncomeService extends ChangeNotifier {
     };
   }
 
+  /// Safely decode JSON response body
+  /// Returns null if body is empty or invalid JSON (e.g., HTML error page)
+  Map<String, dynamic>? _safeJsonDecode(String body) {
+    if (body.isEmpty) {
+      if (kDebugMode) {
+        debugPrint('⚠️ Response body is empty');
+      }
+      return null;
+    }
+    try {
+      return json.decode(body) as Map<String, dynamic>;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ JSON decode error: $e');
+        debugPrint('Response body: ${body.substring(0, body.length > 200 ? 200 : body.length)}...');
+      }
+      return null;
+    }
+  }
+
   /// Get all incomes with filters
   Future<void> getIncomes({
     String? category,

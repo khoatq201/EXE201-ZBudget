@@ -52,7 +52,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           );
 
           // Navigate to password reset OTP screen
-          context.go(
+          context.push(
             '/password-reset-otp',
             extra: {'email': _emailController.text.trim()},
           );

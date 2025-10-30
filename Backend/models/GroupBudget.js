@@ -665,6 +665,7 @@ GroupBudgetSchema.methods.getSettlementPlan = function() {
             from: member.userId,
             fromName: member.name,
             to: debt.toUserId,
+            toUserId: debt.toUserId,  // ✅ Add toUserId for Flutter compatibility
             toName: toMember?.name,
             amount: parseFloat(debt.amount.toString()),
           });
