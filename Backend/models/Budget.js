@@ -422,7 +422,6 @@ BudgetSchema.methods.addExpense = function (amount, category) {
     throw new Error(`Không tìm thấy phân bổ cho danh mục: ${category}`);
   }
   // Update category allocation
-  const amountDecimal = mongoose.Types.Decimal128.fromString(amount.toFixed(2));
   categoryAllocation.spent = mongoose.Types.Decimal128.fromString(
     (parseFloat(categoryAllocation.spent.toString()) + amount).toFixed(2)
   );
@@ -436,6 +435,35 @@ BudgetSchema.methods.addExpense = function (amount, category) {
     (
       parseFloat(categoryAllocation.allocated.toString()) -
       parseFloat(categoryAllocation.spent.toString())
+    ).toFixed(2)
+  );
+  categoryAllocation.lastUpdated = new Date();
+  // Update overall status
+  this.updateStatus();
+  return categoryAllocation;
+};
+BudgetSchema.methods.removeExpense = function (amount, category) {
+  // Find category allocation
+  const categoryAllocation = this.categoryAllocations.find(
+    (cat) => cat.category === category
+  );
+  if (!categoryAllocation) {
+    throw new Error(`Không tìm thấy phân bổ cho danh mục: ${category}`);
+  }
+  // Update category allocation - subtract expense
+  const currentSpent = parseFloat(categoryAllocation.spent.toString());
+  const newSpent = Math.max(0, currentSpent - amount);
+  categoryAllocation.spent = mongoose.Types.Decimal128.fromString(
+    newSpent.toFixed(2)
+  );
+  // Update available (YNAB: funded - spent)
+  const funded = parseFloat(categoryAllocation.funded?.toString() || "0");
+  categoryAllocation.available = mongoose.Types.Decimal128.fromString(
+    (funded - newSpent).toFixed(2)
+  );
+  categoryAllocation.remaining = mongoose.Types.Decimal128.fromString(
+    (
+      parseFloat(categoryAllocation.allocated.toString()) - newSpent
     ).toFixed(2)
   );
   categoryAllocation.lastUpdated = new Date();

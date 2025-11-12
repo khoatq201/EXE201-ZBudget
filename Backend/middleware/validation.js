@@ -49,7 +49,20 @@ const commonSchemas = {
   },
   // Vietnamese phone number
   vietnamesePhone: Joi.string()
-    .pattern(/^(\+84|84|0)[3|5|7|8|9]([0-9]{8})$/)
+    .optional() // Make it optional
+    .allow("") // Allow empty string
+    .custom((value, helpers) => {
+      // If empty or null, allow it
+      if (!value || value.trim() === "") {
+        return value;
+      }
+      // If not empty, validate pattern
+      const pattern = /^(\+84|84|0)(3|5|7|8|9)[0-9]{8}$/;
+      if (!pattern.test(value)) {
+        return helpers.error("string.pattern.base");
+      }
+      return value;
+    })
     .message("Số điện thoại phải là số điện thoại Việt Nam hợp lệ")
     .label("Số điện thoại"),
   // Currency amount (VND)
@@ -127,6 +140,9 @@ export const userSchemas = {
         "string.length": "Mã OTP phải có đúng 6 số",
         "string.pattern.base": "Mã OTP chỉ được chứa các chữ số",
       }),
+  }).messages(vietnameseMessages),
+  resendOTP: Joi.object({
+    email: Joi.string().email().required().label("Email"),
   }).messages(vietnameseMessages),
   updateProfile: Joi.object({
     fullName: Joi.string().min(2).max(50).optional().label("Họ tên"),
@@ -671,8 +687,8 @@ export const validate = (schema, property = "body") => {
       property === "query"
         ? req.query
         : property === "params"
-          ? req.params
-          : req.body;
+        ? req.params
+        : req.body;
     try {
       const { error, value } = schema.validate(dataToValidate, {
         abortEarly: false,

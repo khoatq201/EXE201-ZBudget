@@ -1,17 +1,17 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../models/savings_models.dart';
+import '../utils/secure_storage_manager.dart';
+import 'notification_sync_service.dart';
+import '../main.dart';
+import '../config/api_config.dart';
 
 class SavingsService extends ChangeNotifier {
-  // Base URL - different for web and mobile
+  // Base URL - sử dụng ApiConfig để quản lý theo environment
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000/api/savings';
-    } else {
-      return 'http://10.0.2.2:3000/api/savings';
-    }
+    return ApiConfig.baseUrl + '/savings';
   }
 
   List<SavingsGoal> _savingsGoals = [];
@@ -21,8 +21,9 @@ class SavingsService extends ChangeNotifier {
 
   // Getters
   List<SavingsGoal> get savingsGoals => List.unmodifiable(_savingsGoals);
-  List<SavingsGoal> get activeSavingsGoals =>
-      _savingsGoals.where((goal) => goal.status == SavingsStatus.active).toList();
+  List<SavingsGoal> get activeSavingsGoals => _savingsGoals
+      .where((goal) => goal.status == SavingsStatus.active)
+      .toList();
   bool get isLoading => _isLoading;
   String? get error => _error;
   SavingsStats? get stats => _stats;
@@ -36,8 +37,7 @@ class SavingsService extends ChangeNotifier {
 
   /// Get authorization header
   Future<Map<String, String>> _getHeaders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('access_token');
+    final token = await SecureStorageManager.getToken();
 
     if (token == null) {
       throw Exception('No access token found. Please login again.');
@@ -48,6 +48,26 @@ class SavingsService extends ChangeNotifier {
       'Accept': 'application/json',
       'Authorization': 'Bearer $token',
     };
+  }
+
+  /// Safely decode JSON response body
+  /// Returns null if body is empty or invalid JSON
+  Map<String, dynamic>? _safeJsonDecode(String body) {
+    if (body.isEmpty) {
+      if (kDebugMode) {
+        print('⚠️ Response body is empty');
+      }
+      return null;
+    }
+    try {
+      return json.decode(body) as Map<String, dynamic>;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ JSON decode error: $e');
+        print('Response body: $body');
+      }
+      return null;
+    }
   }
 
   /// Get all savings goals with filters
@@ -82,17 +102,19 @@ class SavingsService extends ChangeNotifier {
       final response = await http.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
+        final data = _safeJsonDecode(response.body);
+        if (data != null && data['success'] == true) {
           final goalsData = data['data']['goals'] as List;
-          _savingsGoals = goalsData.map((g) => SavingsGoal.fromJson(g)).toList();
+          _savingsGoals = goalsData
+              .map((g) => SavingsGoal.fromJson(g))
+              .toList();
           _error = null;
         } else {
-          _error = data['message'] ?? 'Failed to load savings goals';
+          _error = data?['message'] ?? 'Failed to load savings goals';
         }
       } else {
-        final data = json.decode(response.body);
-        _error = data['message'] ?? 'Failed to load savings goals';
+        final data = _safeJsonDecode(response.body);
+        _error = data?['message'] ?? 'Failed to load savings goals';
       }
     } catch (e) {
       _error = e.toString();
@@ -113,8 +135,8 @@ class SavingsService extends ChangeNotifier {
       final response = await http.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
+        final data = _safeJsonDecode(response.body);
+        if (data != null && data['success'] == true) {
           return SavingsGoal.fromJson(data['data']);
         }
       }
@@ -165,15 +187,25 @@ class SavingsService extends ChangeNotifier {
         body: json.encode(body),
       );
 
-      final data = json.decode(response.body);
+      final data = _safeJsonDecode(response.body);
 
-      if (response.statusCode == 201 && data['success'] == true) {
+      if (response.statusCode == 201 && data != null && data['success'] == true) {
         final newGoal = SavingsGoal.fromJson(data['data']);
         _savingsGoals.add(newGoal);
+
+        // ✅ KEY: Trigger notification refresh after successful creation
+        await _refreshNotificationsAfterAction();
+
         notifyListeners();
-        return {'success': true, 'message': 'Savings goal created successfully'};
+        return {
+          'success': true,
+          'message': 'Savings goal created successfully',
+        };
       } else {
-        return {'success': false, 'message': data['message'] ?? 'Failed to create savings goal'};
+        return {
+          'success': false,
+          'message': data?['message'] ?? 'Failed to create savings goal',
+        };
       }
     } catch (e) {
       if (kDebugMode) {
@@ -223,18 +255,24 @@ class SavingsService extends ChangeNotifier {
         body: json.encode(body),
       );
 
-      final data = json.decode(response.body);
+      final data = _safeJsonDecode(response.body);
 
-      if (response.statusCode == 200 && data['success'] == true) {
+      if (response.statusCode == 200 && data != null && data['success'] == true) {
         final updatedGoal = SavingsGoal.fromJson(data['data']);
         final index = _savingsGoals.indexWhere((g) => g.id == id);
         if (index != -1) {
           _savingsGoals[index] = updatedGoal;
           notifyListeners();
         }
-        return {'success': true, 'message': 'Savings goal updated successfully'};
+        return {
+          'success': true,
+          'message': 'Savings goal updated successfully',
+        };
       } else {
-        return {'success': false, 'message': data['message'] ?? 'Failed to update savings goal'};
+        return {
+          'success': false,
+          'message': data?['message'] ?? 'Failed to update savings goal',
+        };
       }
     } catch (e) {
       if (kDebugMode) {
@@ -251,14 +289,20 @@ class SavingsService extends ChangeNotifier {
       final uri = Uri.parse('$baseUrl/$id');
 
       final response = await http.delete(uri, headers: headers);
-      final data = json.decode(response.body);
+      final data = _safeJsonDecode(response.body);
 
-      if (response.statusCode == 200 && data['success'] == true) {
+      if (response.statusCode == 200 && data != null && data['success'] == true) {
         _savingsGoals.removeWhere((g) => g.id == id);
         notifyListeners();
-        return {'success': true, 'message': 'Savings goal deleted successfully'};
+        return {
+          'success': true,
+          'message': 'Savings goal deleted successfully',
+        };
       } else {
-        return {'success': false, 'message': data['message'] ?? 'Failed to delete savings goal'};
+        return {
+          'success': false,
+          'message': data?['message'] ?? 'Failed to delete savings goal',
+        };
       }
     } catch (e) {
       if (kDebugMode) {
@@ -293,9 +337,9 @@ class SavingsService extends ChangeNotifier {
         body: json.encode(body),
       );
 
-      final data = json.decode(response.body);
+      final data = _safeJsonDecode(response.body);
 
-      if (response.statusCode == 200 && data['success'] == true) {
+      if (response.statusCode == 200 && data != null && data['success'] == true) {
         final updatedGoal = SavingsGoal.fromJson(data['data']);
         final index = _savingsGoals.indexWhere((g) => g.id == goalId);
         if (index != -1) {
@@ -304,7 +348,13 @@ class SavingsService extends ChangeNotifier {
         }
         return {'success': true, 'message': 'Contribution added successfully'};
       } else {
-        return {'success': false, 'message': data['message'] ?? 'Failed to add contribution'};
+        // Parse error - could be 'message' or 'error' field
+        final errorMsg =
+            data?['message'] ?? data?['error'] ?? 'Failed to add contribution';
+        if (kDebugMode) {
+          print('❌ Add contribution failed: $errorMsg');
+        }
+        return {'success': false, 'message': errorMsg};
       }
     } catch (e) {
       if (kDebugMode) {
@@ -324,10 +374,7 @@ class SavingsService extends ChangeNotifier {
       final headers = await _getHeaders();
       final uri = Uri.parse('$baseUrl/$goalId/withdraw');
 
-      final body = {
-        'amount': amount,
-        if (reason != null) 'reason': reason,
-      };
+      final body = {'amount': amount, if (reason != null) 'reason': reason};
 
       final response = await http.post(
         uri,
@@ -335,9 +382,9 @@ class SavingsService extends ChangeNotifier {
         body: json.encode(body),
       );
 
-      final data = json.decode(response.body);
+      final data = _safeJsonDecode(response.body);
 
-      if (response.statusCode == 200 && data['success'] == true) {
+      if (response.statusCode == 200 && data != null && data['success'] == true) {
         final updatedGoal = SavingsGoal.fromJson(data['data']);
         final index = _savingsGoals.indexWhere((g) => g.id == goalId);
         if (index != -1) {
@@ -346,7 +393,13 @@ class SavingsService extends ChangeNotifier {
         }
         return {'success': true, 'message': 'Withdrawal successful'};
       } else {
-        return {'success': false, 'message': data['message'] ?? 'Failed to withdraw'};
+        // Parse error - could be 'message' or 'error' field
+        final errorMsg =
+            data?['message'] ?? data?['error'] ?? 'Failed to withdraw';
+        if (kDebugMode) {
+          print('❌ Withdraw failed: $errorMsg');
+        }
+        return {'success': false, 'message': errorMsg};
       }
     } catch (e) {
       if (kDebugMode) {
@@ -365,8 +418,8 @@ class SavingsService extends ChangeNotifier {
       final response = await http.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
+        final data = _safeJsonDecode(response.body);
+        if (data != null && data['success'] == true) {
           _stats = SavingsStats.fromJson(data['data']);
           notifyListeners();
         }
@@ -408,5 +461,20 @@ class SavingsService extends ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  /// ✅ NEW: Refresh notifications after action
+  Future<void> _refreshNotificationsAfterAction() async {
+    try {
+      final notificationService = Provider.of<NotificationSyncService>(
+        navigatorKey.currentContext!,
+        listen: false,
+      );
+
+      await notificationService.fetchNotifications();
+      debugPrint('🔄 Notifications refreshed after savings goal creation');
+    } catch (error) {
+      debugPrint('❌ Failed to refresh notifications: $error');
+    }
   }
 }

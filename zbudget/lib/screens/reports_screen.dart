@@ -1,10 +1,13 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../utils/theme_extensions.dart';
 import '../constants/typography.dart';
 import '../services/report_service.dart';
 import '../utils/formatters.dart';
+import '../widgets/floating_ai_button.dart';
+import '../services/ai_analysis_service.dart';
+import '../models/ai_analysis_models.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -19,162 +22,288 @@ class _ReportsScreenState extends State<ReportsScreen>
   String selectedTab = 'overview'; // overview, categories, trends
   late TabController _tabController;
 
+  // Progress animation controllers for each period
+  Map<String, AnimationController> _progressControllers = {};
+  Map<String, Animation<double>> _progressAnimations = {};
+
+  // Smart cache for AI analysis - cache by period
+  Map<String, Map<String, dynamic>> _aiAnalysisCache =
+      <String, Map<String, dynamic>>{};
+  Map<String, DateTime> _cacheTimestamps = <String, DateTime>{};
+  static const Duration _cacheValidityDuration = Duration(
+    hours: 2,
+  ); // Tăng cache lên 2 giờ
+
+  // Cache for each tab - cache by tab and period
+  Map<String, Map<String, dynamic>> _overviewCache =
+      <String, Map<String, dynamic>>{};
+  Map<String, Map<String, dynamic>> _categoriesCache =
+      <String, Map<String, dynamic>>{};
+  Map<String, Map<String, dynamic>> _trendsCache =
+      <String, Map<String, dynamic>>{};
+  Map<String, DateTime> _tabCacheTimestamps = <String, DateTime>{};
+
+  // Getters to ensure maps are never null
+  Map<String, Map<String, dynamic>> get aiAnalysisCache => _aiAnalysisCache;
+  Map<String, DateTime> get cacheTimestamps => _cacheTimestamps;
+
+  // Rate limit protection
+  DateTime? _lastApiCallTime;
+  static const Duration _minApiCallInterval = Duration(
+    seconds: 5, // Giảm xuống 5 giây để cho phép gọi API thường xuyên hơn
+  );
+  bool _isApiCallInProgress = false;
+
+  // Progress tracking for AI analysis
+  Map<String, double> _analysisProgress = <String, double>{};
+  Map<String, String> _analysisStatus = <String, String>{};
+  Map<String, List<String>> _analysisSteps = <String, List<String>>{};
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
+
+    // Listen to tab changes
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        _onTabChanged();
+      }
+    });
 
     // Fetch initial data
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadReports();
+      // Disable background preloading to avoid API spam
+      // _preloadOtherPeriods();
     });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    // Dispose all progress animation controllers
+    for (var controller in _progressControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
   Future<void> _loadReports() async {
-    final reportService = Provider.of<ReportService>(context, listen: false);
-    await reportService.refreshAllReports(period: selectedPeriod);
+    // Only load data for current tab
+    _loadTabData(selectedTab);
+  }
+
+  // Handle tab changes
+  void _onTabChanged() {
+    final currentIndex = _tabController.index;
+    String tabName;
+
+    switch (currentIndex) {
+      case 0:
+        tabName = 'overview';
+        break;
+      case 1:
+        tabName = 'categories';
+        break;
+      case 2:
+        tabName = 'trends';
+        break;
+      case 3:
+        tabName = 'ai_analysis';
+        // Reset AI cache when switching to AI tab to ensure fresh data
+        _clearAIAnalysisCache();
+        break;
+      default:
+        tabName = 'overview';
+    }
+
+    selectedTab = tabName;
+    print('🔄 Tab changed to: $tabName');
+
+    // Load data for specific tab
+    _loadTabData(tabName);
+  }
+
+  // Load data for specific tab
+  Future<void> _loadTabData(String tabName) async {
+    final cacheKey = '${tabName}_$selectedPeriod';
+    final now = DateTime.now();
+
+    // Check cache first
+    if (_isTabDataCached(tabName, selectedPeriod)) {
+      print('✅ Using cached data for $tabName - $selectedPeriod');
+      return;
+    }
+
+    print('🔄 Loading fresh data for $tabName - $selectedPeriod');
+
+    try {
+      final reportService = Provider.of<ReportService>(context, listen: false);
+
+      switch (tabName) {
+        case 'overview':
+          await _loadOverviewData(reportService);
+          break;
+        case 'categories':
+          await _loadCategoriesData(reportService);
+          break;
+        case 'trends':
+          await _loadTrendsData(reportService);
+          break;
+        case 'ai_analysis':
+          // AI analysis is handled separately
+          break;
+      }
+
+      // Cache the data
+      _cacheTabData(tabName, selectedPeriod, now);
+    } catch (e) {
+      print('❌ Error loading $tabName data: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: _loadReports,
-        child: CustomScrollView(
-          slivers: [
-            // App Bar (use same header style as Dashboard)
-            SliverAppBar(
-              expandedHeight: 100,
-              floating: false,
-              pinned: true,
-              flexibleSpace: FlexibleSpaceBar(
-                titlePadding: EdgeInsets.zero,
-                title: null,
-                background: Container(
-                  padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        context.headerGradientStart,
-                        context.headerGradientEnd,
-                      ],
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Stack(
+        children: [
+          RefreshIndicator(
+            onRefresh: _loadReports,
+            child: CustomScrollView(
+              slivers: [
+                // App Bar (use same header style as Dashboard)
+                SliverAppBar(
+                  expandedHeight: 100,
+                  floating: false,
+                  pinned: true,
+                  flexibleSpace: FlexibleSpaceBar(
+                    titlePadding: EdgeInsets.zero,
+                    title: null,
+                    background: Container(
+                      padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            context.headerGradientStart,
+                            context.headerGradientEnd,
+                          ],
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Báo cáo chi tiêu',
-                            style: AppTypography.h3.copyWith(
-                              color: context.colorScheme.onPrimary,
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Báo cáo chi tiêu',
+                                style: AppTypography.h3.copyWith(
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(
+                                alpha: 0.24,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.notifications_outlined,
+                              color: Colors.white,
                             ),
                           ),
                         ],
                       ),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: context.colorScheme.onPrimary.withOpacity(
-                            0.24,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          Icons.notifications_outlined,
-                          color: context.colorScheme.onPrimary,
-                        ),
-                      ),
+                    ),
+                  ),
+                ),
+
+                // Period Selector
+                SliverToBoxAdapter(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        _buildPeriodButton('Tuần', 'week'),
+                        const SizedBox(width: 8),
+                        _buildPeriodButton('Tháng', 'month'),
+                        const SizedBox(width: 8),
+                        _buildPeriodButton('Năm', 'year'),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Tab Bar
+                SliverToBoxAdapter(
+                  child: TabBar(
+                    controller: _tabController,
+                    labelColor: context.colorScheme.primary,
+                    unselectedLabelColor: context.settingsItemSubtitleColor,
+                    indicatorColor: context.colorScheme.primary,
+                    tabs: const [
+                      Tab(text: 'Tổng quan'),
+                      Tab(text: 'Danh mục'),
+                      Tab(text: 'Xu hướng'),
+                      Tab(text: 'AI Phân tích'),
                     ],
                   ),
                 ),
-              ),
-            ),
 
-            // Period Selector
-            SliverToBoxAdapter(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    _buildPeriodButton('Tuần', 'week'),
-                    const SizedBox(width: 8),
-                    _buildPeriodButton('Tháng', 'month'),
-                    const SizedBox(width: 8),
-                    _buildPeriodButton('Năm', 'year'),
-                  ],
-                ),
-              ),
-            ),
+                // Tab Content
+                SliverFillRemaining(
+                  child: Consumer<ReportService>(
+                    builder: (context, reportService, child) {
+                      if (reportService.isLoading) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-            // Tab Bar
-            SliverToBoxAdapter(
-              child: TabBar(
-                controller: _tabController,
-                labelColor: context.colorScheme.primary,
-                unselectedLabelColor: context.settingsItemSubtitleColor,
-                indicatorColor: context.colorScheme.primary,
-                tabs: const [
-                  Tab(text: 'Tổng quan'),
-                  Tab(text: 'Danh mục'),
-                  Tab(text: 'Xu hướng'),
-                ],
-              ),
-            ),
+                      if (reportService.error != null) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                size: 48,
+                                color: Colors.red,
+                              ),
+                              const SizedBox(height: 16),
+                              Text('Lỗi: ${reportService.error}'),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: _loadReports,
+                                child: const Text('Thử lại'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
 
-            // Tab Content
-            SliverFillRemaining(
-              child: Consumer<ReportService>(
-                builder: (context, reportService, child) {
-                  if (reportService.isLoading) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (reportService.error != null) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      return TabBarView(
+                        controller: _tabController,
                         children: [
-                          const Icon(
-                            Icons.error_outline,
-                            size: 48,
-                            color: Colors.red,
-                          ),
-                          const SizedBox(height: 16),
-                          Text('Lỗi: ${reportService.error}'),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _loadReports,
-                            child: const Text('Thử lại'),
-                          ),
+                          _buildOverviewTab(reportService),
+                          _buildCategoriesTab(reportService),
+                          _buildTrendsTab(reportService),
+                          _buildAIAnalysisTab(reportService),
                         ],
-                      ),
-                    );
-                  }
-
-                  return TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildOverviewTab(reportService),
-                      _buildCategoriesTab(reportService),
-                      _buildTrendsTab(reportService),
-                    ],
-                  );
-                },
-              ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          const FloatingAiButton(),
+        ],
       ),
     );
   }
@@ -186,6 +315,18 @@ class _ReportsScreenState extends State<ReportsScreen>
         onPressed: () {
           setState(() {
             selectedPeriod = period;
+            // Clear tab cache when period changes
+            _overviewCache.clear();
+            _categoriesCache.clear();
+            _trendsCache.clear();
+            _tabCacheTimestamps.clear();
+            // Clear AI analysis cache when period changes
+            if (aiAnalysisCache.isNotEmpty) aiAnalysisCache.clear();
+            if (cacheTimestamps.isNotEmpty) cacheTimestamps.clear();
+            // Clear progress tracking for current period
+            if (_analysisProgress.isNotEmpty) _analysisProgress.clear();
+            if (_analysisStatus.isNotEmpty) _analysisStatus.clear();
+            if (_analysisSteps.isNotEmpty) _analysisSteps.clear();
           });
           _loadReports();
         },
@@ -251,7 +392,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isPositive
-              ? [context.colorScheme.primary, context.headerGradientEnd]
+              ? [context.headerGradientStart, context.headerGradientEnd]
               : [Colors.red.shade400, Colors.deepOrange.shade300],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -273,12 +414,12 @@ class _ReportsScreenState extends State<ReportsScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: context.colorScheme.onPrimary.withOpacity(0.18),
+                  color: Colors.white.withOpacity(0.18),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  isPositive ? Icons.trending_up : Icons.trending_down,
-                  color: context.colorScheme.onPrimary,
+                child: const Icon(
+                  Icons.trending_up,
+                  color: Colors.white,
                   size: 28,
                 ),
               ),
@@ -291,14 +432,14 @@ class _ReportsScreenState extends State<ReportsScreen>
                       children: [
                         Icon(
                           isPositive ? Icons.trending_up : Icons.warning,
-                          color: context.colorScheme.onPrimary,
+                          color: Colors.white,
                           size: 18,
                         ),
                         const SizedBox(width: 6),
                         Text(
                           isPositive ? 'Tài chính tích cực' : 'Cần chú ý',
-                          style: TextStyle(
-                            color: context.colorScheme.onPrimary,
+                          style: const TextStyle(
+                            color: Colors.white,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -309,7 +450,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     Text(
                       'Trong kỳ báo cáo này',
                       style: TextStyle(
-                        color: context.colorScheme.onPrimary.withOpacity(0.9),
+                        color: Colors.white.withOpacity(0.9),
                         fontSize: 12,
                       ),
                     ),
@@ -345,18 +486,14 @@ class _ReportsScreenState extends State<ReportsScreen>
                         children: [
                           Icon(
                             Icons.arrow_upward,
-                            color: context.colorScheme.onPrimary.withOpacity(
-                              0.9,
-                            ),
+                            color: Colors.white.withValues(alpha: 0.9),
                             size: 16,
                           ),
                           const SizedBox(width: 6),
                           Text(
                             'Tổng thu',
                             style: TextStyle(
-                              color: context.colorScheme.onPrimary.withOpacity(
-                                0.9,
-                              ),
+                              color: Colors.white.withValues(alpha: 0.9),
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -369,8 +506,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                         alignment: Alignment.centerLeft,
                         child: Text(
                           CurrencyFormatter.formatCompact(income),
-                          style: TextStyle(
-                            color: context.colorScheme.onPrimary,
+                          style: const TextStyle(
+                            color: Colors.white,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
@@ -403,18 +540,14 @@ class _ReportsScreenState extends State<ReportsScreen>
                         children: [
                           Icon(
                             Icons.arrow_downward,
-                            color: context.colorScheme.onPrimary.withOpacity(
-                              0.9,
-                            ),
+                            color: Colors.white.withValues(alpha: 0.9),
                             size: 16,
                           ),
                           const SizedBox(width: 6),
                           Text(
                             'Tổng chi',
                             style: TextStyle(
-                              color: context.colorScheme.onPrimary.withOpacity(
-                                0.9,
-                              ),
+                              color: Colors.white.withValues(alpha: 0.9),
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -427,8 +560,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                         alignment: Alignment.centerLeft,
                         child: Text(
                           CurrencyFormatter.formatCompact(expense),
-                          style: TextStyle(
-                            color: context.colorScheme.onPrimary,
+                          style: const TextStyle(
+                            color: Colors.white,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
@@ -465,18 +598,14 @@ class _ReportsScreenState extends State<ReportsScreen>
                       children: [
                         Icon(
                           Icons.account_balance_wallet,
-                          color: context.settingsItemTitleColor.withOpacity(
-                            0.9,
-                          ),
+                          color: Colors.white.withValues(alpha: 0.9),
                           size: 16,
                         ),
                         const SizedBox(width: 6),
                         Text(
                           'Số dư',
                           style: TextStyle(
-                            color: context.settingsItemTitleColor.withOpacity(
-                              0.9,
-                            ),
+                            color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -489,8 +618,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                       alignment: Alignment.centerLeft,
                       child: Text(
                         CurrencyFormatter.formatCompact(balance),
-                        style: TextStyle(
-                          color: context.settingsItemTitleColor,
+                        style: const TextStyle(
+                          color: Colors.white,
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
                         ),
@@ -515,12 +644,12 @@ class _ReportsScreenState extends State<ReportsScreen>
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: context.colorScheme.onSurface.withOpacity(0.06),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.savings,
-                  color: context.settingsItemTitleColor,
+                  color: Colors.white.withValues(alpha: 0.9),
                   size: 32,
                 ),
               ),
@@ -532,7 +661,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     Text(
                       'Tỷ lệ tiết kiệm',
                       style: TextStyle(
-                        color: context.settingsItemSubtitleColor,
+                        color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -543,7 +672,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                         Text(
                           '${savingsRate.toStringAsFixed(1)}%',
                           style: TextStyle(
-                            color: context.settingsItemTitleColor,
+                            color: Colors.white.withValues(alpha: 0.95),
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
                           ),
@@ -572,7 +701,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                     ? Icons.thumb_up
                                     : Icons.warning,
                                 size: 12,
-                                color: context.colorScheme.onPrimary,
+                                color: Colors.white,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -582,7 +711,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                     ? 'Tốt'
                                     : 'Cần cải thiện',
                                 style: TextStyle(
-                                  color: context.colorScheme.onPrimary,
+                                  color: Colors.white,
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -600,7 +729,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                           ? 'Cố gắng tiết kiệm thêm một chút'
                           : 'Hãy cân nhắc giảm chi tiêu không cần thiết',
                       style: TextStyle(
-                        color: context.colorScheme.onPrimary.withAlpha(180),
+                        color: Colors.white.withValues(alpha: 0.85),
                         fontSize: 11,
                       ),
                     ),
@@ -1848,12 +1977,6 @@ class _ReportsScreenState extends State<ReportsScreen>
           _buildPatternsSection(patterns),
           const SizedBox(height: 16),
         ],
-
-        // Forecast second (prediction comes after current habits)
-        if (forecast != null) ...[
-          _buildForecastSection(forecast),
-          const SizedBox(height: 16),
-        ],
       ],
     );
   }
@@ -1986,24 +2109,6 @@ class _ReportsScreenState extends State<ReportsScreen>
     );
   }
 
-  Widget _buildInsightRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: AppTypography.bodySmall),
-          Text(
-            value,
-            style: AppTypography.bodySmall.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildInsightRowWithIcon(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -2028,39 +2133,617 @@ class _ReportsScreenState extends State<ReportsScreen>
     );
   }
 
-  Widget _buildForecastSection(ForecastReportData forecast) {
-    // Helper to format month label
-    String formatMonthLabel(String month) {
-      final parts = month.split('-');
-      if (parts.length == 2) {
-        final months = [
-          '',
-          'Tháng 1',
-          'Tháng 2',
-          'Tháng 3',
-          'Tháng 4',
-          'Tháng 5',
-          'Tháng 6',
-          'Tháng 7',
-          'Tháng 8',
-          'Tháng 9',
-          'Tháng 10',
-          'Tháng 11',
-          'Tháng 12',
-        ];
-        final monthIndex = int.tryParse(parts[1]) ?? 0;
-        if (monthIndex > 0 && monthIndex <= 12) {
-          return '${months[monthIndex]} ${parts[0]}';
+  // ========== AI Analysis Tab ==========
+  Widget _buildAIAnalysisTab(ReportService reportService) {
+    // Always show AI analysis content - remove tab index check
+
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _loadAIAnalysis(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                // AI Analysis Header with Refresh Button
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Phân tích AI - ${_getPeriodLabel(selectedPeriod)}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: context.settingsItemTitleColor,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          _clearAIAnalysisCache();
+                          setState(() {});
+                        },
+                        icon: const Icon(Icons.refresh),
+                        tooltip: 'Làm mới phân tích',
+                      ),
+                    ],
+                  ),
+                ),
+                // Progress bar
+                _buildAnalysisProgressBar(selectedPeriod),
+                // Loading shimmer effect
+                _buildLoadingShimmer(),
+              ],
+            ),
+          );
         }
-      }
-      return month;
+
+        if (snapshot.hasError) {
+          // Check if it's a rate limit error
+          final errorMessage = snapshot.error.toString();
+          final isRateLimited =
+              errorMessage.contains('Rate limit') ||
+              errorMessage.contains('429') ||
+              errorMessage.contains('rate_limit_exceeded') ||
+              errorMessage.contains('Vui lòng chờ');
+
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  isRateLimited ? Icons.schedule : Icons.error_outline,
+                  size: 64,
+                  color: context.settingsItemSubtitleColor.withOpacity(0.6),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  isRateLimited
+                      ? 'AI đang quá tải. Vui lòng thử lại sau 10 phút.'
+                      : 'Lỗi: ${snapshot.error}',
+                  style: TextStyle(color: context.settingsItemSubtitleColor),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                if (isRateLimited) ...[
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.info, color: Colors.orange),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'AI đã đạt giới hạn sử dụng hôm nay.\nHãy thử lại vào ngày mai.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                ElevatedButton(
+                  onPressed: () {
+                    _clearAIAnalysisCache();
+                    setState(() {});
+                  },
+                  child: const Text('Thử lại'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final analysis = snapshot.data!;
+
+        // Process analysis data
+
+        // Safe type casting with fallback
+        final financialAnalysis =
+            analysis['financialAnalysis'] is FinancialAnalysis
+            ? analysis['financialAnalysis'] as FinancialAnalysis
+            : analysis['financialAnalysis'] is Map
+            ? FinancialAnalysis.fromJson(
+                analysis['financialAnalysis'] as Map<String, dynamic>,
+              )
+            : FinancialAnalysis(
+                healthScore: 'N/A',
+                strengths: [],
+                weaknesses: [],
+                risks: [],
+                opportunities: [],
+                recommendations: [],
+                summary: 'Dữ liệu tạm thời không khả dụng',
+              );
+
+        final forecast = analysis['forecast'] is AIForecast
+            ? analysis['forecast'] as AIForecast
+            : analysis['forecast'] is Map
+            ? AIForecast.fromJson(analysis['forecast'] as Map<String, dynamic>)
+            : AIForecast(
+                method: 'fallback',
+                forecast: [],
+                historicalData: null,
+                message: 'Dự báo tạm thời không khả dụng',
+              );
+
+        final anomalies = analysis['anomalies'] is List
+            ? (analysis['anomalies'] as List).map((a) {
+                if (a is Anomaly) {
+                  return a; // Already an Anomaly object
+                } else if (a is Map<String, dynamic>) {
+                  return Anomaly.fromJson(a); // Convert from Map
+                } else {
+                  return Anomaly(
+                    date: DateTime.now(),
+                    category: 'unknown',
+                    amount: 0,
+                    description: 'Unknown anomaly',
+                    expectedRange: 'N/A',
+                    severity: 'low',
+                  );
+                }
+              }).toList()
+            : <Anomaly>[];
+
+        final recommendations = analysis['recommendations'] is List
+            ? (analysis['recommendations'] as List).map((r) {
+                if (r is Recommendation) {
+                  return r; // Already a Recommendation object
+                } else if (r is Map<String, dynamic>) {
+                  return Recommendation.fromJson(r); // Convert from Map
+                } else {
+                  return Recommendation(
+                    title: 'Unknown',
+                    description: 'Unknown recommendation',
+                    priority: 'low',
+                    estimatedSavings: 0,
+                  );
+                }
+              }).toList()
+            : <Recommendation>[];
+
+        final quickInsights = analysis['quickInsights'] is QuickInsights
+            ? analysis['quickInsights'] as QuickInsights
+            : analysis['quickInsights'] is Map
+            ? QuickInsights.fromJson(
+                analysis['quickInsights'] as Map<String, dynamic>,
+              )
+            : QuickInsights(
+                healthScore: 'N/A',
+                summary: {'text': 'Dữ liệu tạm thời không khả dụng'},
+                alerts: 0,
+                topIssue: null,
+                strengths: [],
+                weaknesses: [],
+                opportunities: [],
+              );
+
+        return Column(
+          children: [
+            // AI Analysis Header with Refresh Button
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Phân tích AI - ${_getPeriodLabel(selectedPeriod)}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: context.settingsItemTitleColor,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      _clearAIAnalysisCache();
+                      setState(() {});
+                    },
+                    icon: const Icon(Icons.refresh),
+                    tooltip: 'Làm mới phân tích',
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  // Health Score Card
+                  _buildHealthScoreCard(financialAnalysis),
+                  const SizedBox(height: 16),
+
+                  // Quick Insights
+                  _buildQuickInsightsCardAI(quickInsights),
+                  const SizedBox(height: 16),
+
+                  // Strengths/Weaknesses
+                  _buildStrengthsWeaknessesCard(financialAnalysis),
+                  const SizedBox(height: 16),
+
+                  // Recommendations
+                  _buildRecommendationsCard(recommendations),
+                  const SizedBox(height: 16),
+
+                  // AI Forecast Chart
+                  _buildAIForecastChart(forecast),
+                  const SizedBox(height: 16),
+
+                  // Anomalies Alert
+                  if (anomalies.isNotEmpty) ...[
+                    _buildAnomaliesCard(anomalies),
+                    const SizedBox(height: 16),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> _loadAIAnalysis() async {
+    // Check if we have valid cache for this period
+    final now = DateTime.now();
+    final cacheKey = selectedPeriod;
+
+    // Check cache status - but allow fresh load for AI tab
+    // Only use cache if it's very recent (less than 1 minute) to ensure fresh data
+    final cacheValidityForAI = const Duration(minutes: 1);
+
+    // Null safety check
+    if (aiAnalysisCache.isNotEmpty &&
+        aiAnalysisCache.containsKey(cacheKey) &&
+        cacheTimestamps.isNotEmpty &&
+        cacheTimestamps.containsKey(cacheKey) &&
+        cacheTimestamps[cacheKey] != null &&
+        now.difference(cacheTimestamps[cacheKey]!) < cacheValidityForAI) {
+      return aiAnalysisCache[cacheKey]!;
     }
 
+    // Initialize progress tracking after build phase
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeProgressTracking(cacheKey);
+    });
+
+    // Rate limit protection - prevent too frequent API calls
+    if (_isApiCallInProgress) {
+      _updateProgress(cacheKey, 0.1, 'Đang chờ API call khác hoàn thành...');
+      // Wait for current call to complete
+      await Future.delayed(const Duration(seconds: 2));
+      if (aiAnalysisCache.containsKey(cacheKey)) {
+        return aiAnalysisCache[cacheKey]!;
+      }
+    }
+
+    if (_lastApiCallTime != null &&
+        now.difference(_lastApiCallTime!) < _minApiCallInterval) {
+      _updateProgress(cacheKey, 0.2, 'Đang chờ rate limit...');
+      // Return cached data if available, even if expired
+      if (aiAnalysisCache.containsKey(cacheKey)) {
+        return aiAnalysisCache[cacheKey]!;
+      }
+      // If no cache, wait a bit and try again instead of throwing error
+      await Future.delayed(const Duration(seconds: 2));
+      // Continue with API call after waiting
+    }
+
+    _isApiCallInProgress = true;
+    _lastApiCallTime = now;
+
+    try {
+      final aiService = AiAnalysisService();
+
+      // Simulate progress steps
+      await _simulateProgressSteps(cacheKey);
+
+      final result = await aiService.getComprehensiveAnalysis(
+        period: selectedPeriod,
+      );
+
+      // Cache the result with timestamp for this specific period
+      aiAnalysisCache[cacheKey] = result;
+      cacheTimestamps[cacheKey] = now;
+
+      return result;
+    } catch (e) {
+      // Return fallback data instead of throwing error
+      final fallbackData = _createFallbackAnalysis();
+      aiAnalysisCache[cacheKey] = fallbackData;
+      cacheTimestamps[cacheKey] = now;
+      return fallbackData;
+    } finally {
+      _isApiCallInProgress = false;
+    }
+  }
+
+  void _clearAIAnalysisCache() {
+    if (aiAnalysisCache.isNotEmpty) aiAnalysisCache.clear();
+    if (cacheTimestamps.isNotEmpty) cacheTimestamps.clear();
+    if (_analysisProgress.isNotEmpty) _analysisProgress.clear();
+    if (_analysisStatus.isNotEmpty) _analysisStatus.clear();
+    if (_analysisSteps.isNotEmpty) _analysisSteps.clear();
+  }
+
+  // Initialize progress tracking for a period
+  void _initializeProgressTracking(String period) {
+    // Ensure maps are initialized
+    if (_analysisProgress.isEmpty) _analysisProgress = <String, double>{};
+    if (_analysisStatus.isEmpty) _analysisStatus = <String, String>{};
+    if (_analysisSteps.isEmpty) _analysisSteps = <String, List<String>>{};
+
+    _analysisProgress[period] = 0.0;
+    _analysisStatus[period] = 'Đang chuẩn bị phân tích...';
+    _analysisSteps[period] = [];
+
+    // Create animation controller for this period if not exists
+    if (!_progressControllers.containsKey(period)) {
+      _progressControllers[period] = AnimationController(
+        duration: const Duration(milliseconds: 2000),
+        vsync: this,
+      );
+      _progressAnimations[period] = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: _progressControllers[period]!,
+          curve: Curves.easeInOut,
+        ),
+      );
+    } else {
+      // Reset existing animation
+      _progressControllers[period]!.reset();
+    }
+
+    // Don't call setState here - it's called during build phase
+  }
+
+  // Update progress for a period
+  void _updateProgress(
+    String period,
+    double progress,
+    String status, {
+    String? step,
+  }) {
+    // Ensure maps are initialized
+    if (_analysisProgress.isEmpty) _analysisProgress = <String, double>{};
+    if (_analysisStatus.isEmpty) _analysisStatus = <String, String>{};
+    if (_analysisSteps.isEmpty) _analysisSteps = <String, List<String>>{};
+
+    _analysisProgress[period] = progress;
+    _analysisStatus[period] = status;
+    if (step != null) {
+      _analysisSteps[period] = [...(_analysisSteps[period] ?? []), step];
+    }
+
+    // Update progress animation for this period
+    if (_progressControllers.containsKey(period)) {
+      _progressControllers[period]!.animateTo(progress);
+    }
+
+    // Don't call setState here - it's called during build phase
+  }
+
+  // Simulate progress steps for better UX
+  Future<void> _simulateProgressSteps(String period) async {
+    final steps = [
+      {
+        'progress': 0.1,
+        'status': 'Đang tải dữ liệu tài chính...',
+        'step': 'Thu thập dữ liệu giao dịch',
+      },
+      {
+        'progress': 0.2,
+        'status': 'Phân tích thu nhập và chi tiêu...',
+        'step': 'Phân tích thu nhập',
+      },
+      {
+        'progress': 0.3,
+        'status': 'Tính toán ngân sách...',
+        'step': 'Phân tích chi tiêu',
+      },
+      {
+        'progress': 0.4,
+        'status': 'Phát hiện bất thường...',
+        'step': 'Tính toán ngân sách',
+      },
+      {
+        'progress': 0.5,
+        'status': 'Tạo dự báo tài chính...',
+        'step': 'Phát hiện bất thường',
+      },
+      {
+        'progress': 0.6,
+        'status': 'Phân tích mẫu chi tiêu...',
+        'step': 'Tạo dự báo',
+      },
+      {
+        'progress': 0.7,
+        'status': 'Tạo khuyến nghị thông minh...',
+        'step': 'Phân tích mẫu',
+      },
+      {
+        'progress': 0.8,
+        'status': 'Tổng hợp kết quả...',
+        'step': 'Tạo khuyến nghị',
+      },
+      {
+        'progress': 0.9,
+        'status': 'Hoàn thiện phân tích...',
+        'step': 'Tổng hợp kết quả',
+      },
+      {'progress': 1.0, 'status': 'Hoàn thành!', 'step': 'Phân tích hoàn tất'},
+    ];
+
+    for (final step in steps) {
+      _updateProgress(
+        period,
+        step['progress'] as double,
+        step['status'] as String,
+        step: step['step'] as String,
+      );
+      // Vary delay for more realistic progress
+      final delay = step['progress'] as double < 0.5
+          ? const Duration(milliseconds: 600) // Faster at start
+          : const Duration(milliseconds: 1000); // Slower at end
+      await Future.delayed(delay);
+    }
+  }
+
+  // Preload cache for other periods in background
+  Future<void> _preloadOtherPeriods() async {
+    final periods = ['week', 'month', 'year'];
+    final currentPeriod = selectedPeriod;
+
+    for (final period in periods) {
+      if (period != currentPeriod && !aiAnalysisCache.containsKey(period)) {
+        // Preload in background without blocking UI
+        Future.delayed(const Duration(seconds: 2), () async {
+          try {
+            final aiService = AiAnalysisService();
+            final result = await aiService.getComprehensiveAnalysis(
+              period: period,
+            );
+
+            // Cache the result
+            aiAnalysisCache[period] = result;
+            cacheTimestamps[period] = DateTime.now();
+            print('✅ Preloaded cache for $period');
+          } catch (e) {
+            print('⚠️ Failed to preload cache for $period: $e');
+          }
+        });
+      }
+    }
+  }
+
+  String _getPeriodLabel(String period) {
+    switch (period) {
+      case 'week':
+        return 'Tuần';
+      case 'year':
+        return 'Năm';
+      case 'month':
+      default:
+        return 'Tháng';
+    }
+  }
+
+  // Check if tab data is cached
+  bool _isTabDataCached(String tabName, String period) {
+    final cacheKey = '${tabName}_$period';
+    final now = DateTime.now();
+
+    if (!_tabCacheTimestamps.containsKey(cacheKey)) return false;
+
+    final timestamp = _tabCacheTimestamps[cacheKey]!;
+    return now.difference(timestamp) < _cacheValidityDuration;
+  }
+
+  // Cache tab data
+  void _cacheTabData(String tabName, String period, DateTime timestamp) {
+    final cacheKey = '${tabName}_$period';
+    _tabCacheTimestamps[cacheKey] = timestamp;
+    print('💾 Cached $tabName data for $period');
+  }
+
+  // Load overview data
+  Future<void> _loadOverviewData(ReportService reportService) async {
+    await reportService.getTrendReport(period: selectedPeriod);
+    await reportService.getComparisonReport(period: selectedPeriod);
+  }
+
+  // Load categories data
+  Future<void> _loadCategoriesData(ReportService reportService) async {
+    await reportService.getCategoryReport(period: selectedPeriod);
+  }
+
+  // Load trends data
+  Future<void> _loadTrendsData(ReportService reportService) async {
+    await reportService.getTrendReport(period: selectedPeriod);
+    await reportService.getSpendingPatterns(period: selectedPeriod);
+    await reportService.getForecastReport();
+  }
+
+  // Create fallback data when API fails
+  Map<String, dynamic> _createFallbackAnalysis() {
+    return {
+      'financialAnalysis': {
+        'healthScore': 'Trung bình',
+        'strengths': ['Dữ liệu đang được cập nhật'],
+        'weaknesses': ['Không thể phân tích do lỗi API'],
+        'risks': ['API tạm thời không khả dụng'],
+        'opportunities': ['Thử lại sau ít phút'],
+        'recommendations': [
+          {
+            'title': 'Thử lại sau',
+            'description': 'API đang gặp sự cố, vui lòng thử lại sau',
+            'priority': 'low',
+            'estimatedSavings': 0,
+          },
+        ],
+        'summary': 'Phân tích tạm thời không khả dụng do lỗi API',
+      },
+      'forecast': {
+        'method': 'fallback',
+        'forecast': [],
+        'historicalData': [],
+        'message': 'Dự báo tạm thời không khả dụng',
+      },
+      'anomalies': [],
+      'recommendations': [
+        {
+          'title': 'Thử lại sau',
+          'description': 'API đang gặp sự cố, vui lòng thử lại sau',
+          'priority': 'low',
+          'estimatedSavings': 0,
+        },
+      ],
+      'quickInsights': {
+        'healthScore': 'Trung bình',
+        'summary': {'text': 'Phân tích tạm thời không khả dụng'},
+        'alerts': 0,
+        'topIssue': 'API tạm thời không khả dụng',
+        'strengths': ['Dữ liệu đang được cập nhật'],
+        'weaknesses': ['Không thể phân tích do lỗi API'],
+        'opportunities': ['Thử lại sau ít phút'],
+      },
+      'spendingPatterns': {
+        'weeklyPattern': {
+          'highestSpendingDay': 'Chủ nhật',
+          'distribution': [0, 0, 0, 0, 0, 0, 0],
+        },
+        'categoryPattern': {'topCategories': [], 'totalCategories': 0},
+        'amountPattern': {
+          'average': 0,
+          'median': 0,
+          'min': 0,
+          'max': 0,
+          'range': '0 - 0',
+        },
+      },
+      'generatedAt': DateTime.now(),
+    };
+  }
+
+  // Build progress bar for AI analysis
+  Widget _buildAnalysisProgressBar(String period) {
+    final progress = _analysisProgress[period] ?? 0.0;
+    final status = _analysisStatus[period] ?? 'Đang chuẩn bị...';
+    final steps = _analysisSteps[period] ?? [];
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: context.cardBackground,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.cardBorder),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -2068,9 +2751,1083 @@ class _ReportsScreenState extends State<ReportsScreen>
             offset: const Offset(0, 2),
           ),
         ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Animated AI icon
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(seconds: 2),
+                builder: (context, value, child) {
+                  return Transform.rotate(
+                    angle: value * 2 * 3.14159,
+                    child: Icon(
+                      Icons.analytics,
+                      color: context.colorScheme.primary,
+                      size: 24,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'AI Phân tích ${_getPeriodLabel(period)}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: context.settingsItemTitleColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    // Animated status text
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: Text(
+                        status,
+                        key: ValueKey(status),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: context.settingsItemSubtitleColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Animated percentage
+              _progressAnimations.containsKey(period)
+                  ? AnimatedBuilder(
+                      animation: _progressAnimations[period]!,
+                      builder: (context, child) {
+                        return Text(
+                          '${(_progressAnimations[period]!.value * 100).toInt()}%',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: context.colorScheme.primary,
+                          ),
+                        );
+                      },
+                    )
+                  : Text(
+                      '${(progress * 100).toInt()}%',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: context.colorScheme.primary,
+                      ),
+                    ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Animated progress bar with smooth animation
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: _progressAnimations.containsKey(period)
+                ? AnimatedBuilder(
+                    animation: _progressAnimations[period]!,
+                    builder: (context, child) {
+                      return LinearProgressIndicator(
+                        value: _progressAnimations[period]!.value,
+                        backgroundColor: context.settingsItemSubtitleColor
+                            .withOpacity(0.2),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          context.colorScheme.primary,
+                        ),
+                        minHeight: 8,
+                      );
+                    },
+                  )
+                : LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: context.settingsItemSubtitleColor
+                        .withOpacity(0.2),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      context.colorScheme.primary,
+                    ),
+                    minHeight: 8,
+                  ),
+          ),
+
+          if (steps.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            // Animated steps list
+            ...steps.asMap().entries.map((entry) {
+              final index = entry.key;
+              final step = entry.value;
+              return TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: Duration(milliseconds: 300 + (index * 100)),
+                builder: (context, value, child) {
+                  return Transform.translate(
+                    offset: Offset(0, (1 - value) * 20),
+                    child: Opacity(
+                      opacity: value,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              size: 16,
+                              color: context.colorScheme.primary.withOpacity(
+                                0.7,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                step,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: context.settingsItemSubtitleColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // Build loading shimmer effect
+  Widget _buildLoadingShimmer() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // Health Score Card Shimmer
+          _buildShimmerCard(
+            child: Column(
+              children: [
+                _buildShimmerLine(width: 0.6),
+                const SizedBox(height: 8),
+                _buildShimmerLine(width: 0.8),
+                const SizedBox(height: 6),
+                _buildShimmerLine(width: 0.4),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Quick Insights Card Shimmer
+          _buildShimmerCard(
+            child: Column(
+              children: [
+                _buildShimmerLine(width: 0.7),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _buildShimmerCircle(),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildShimmerLine(width: 0.5)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    _buildShimmerCircle(),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildShimmerLine(width: 0.6)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Forecast Chart Shimmer (smaller)
+          _buildShimmerCard(
+            child: Column(
+              children: [
+                _buildShimmerLine(width: 0.5),
+                const SizedBox(height: 12),
+                _buildShimmerBar(height: 80),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerCard({required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.cardBorder),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildShimmerLine({required double width}) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(seconds: 1),
+      builder: (context, value, child) {
+        return Container(
+          height: 12,
+          width: MediaQuery.of(context).size.width * width,
+          decoration: BoxDecoration(
+            color: context.settingsItemSubtitleColor.withOpacity(
+              0.1 + (value * 0.2),
+            ),
+            borderRadius: BorderRadius.circular(6),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildShimmerCircle() {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(seconds: 1),
+      builder: (context, value, child) {
+        return Container(
+          width: 16,
+          height: 16,
+          decoration: BoxDecoration(
+            color: context.settingsItemSubtitleColor.withOpacity(
+              0.1 + (value * 0.2),
+            ),
+            shape: BoxShape.circle,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildShimmerBar({required double height}) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(seconds: 1),
+      builder: (context, value, child) {
+        return Container(
+          height: height,
+          decoration: BoxDecoration(
+            color: context.settingsItemSubtitleColor.withOpacity(
+              0.1 + (value * 0.2),
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHealthScoreCard(FinancialAnalysis analysis) {
+    Color healthColor;
+    IconData healthIcon;
+
+    switch (analysis.healthScore.toLowerCase()) {
+      case 'tốt':
+        healthColor = Colors.green;
+        healthIcon = Icons.trending_up;
+        break;
+      case 'khá':
+        healthColor = Colors.blue;
+        healthIcon = Icons.trending_flat;
+        break;
+      case 'trung bình':
+        healthColor = Colors.orange;
+        healthIcon = Icons.trending_down;
+        break;
+      default:
+        healthColor = Colors.red;
+        healthIcon = Icons.warning;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(healthIcon, color: healthColor, size: 24),
+              const SizedBox(width: 8),
+              Text(
+                'Sức khỏe tài chính',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: context.settingsItemTitleColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            analysis.healthScore,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: healthColor,
+            ),
+          ),
+          if (analysis.summary.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              analysis.summary,
+              style: TextStyle(
+                fontSize: 14,
+                color: context.settingsItemSubtitleColor,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickInsightsCardAI(QuickInsights insights) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.insights,
+                color: context.colorScheme.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Thông tin nhanh',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: context.settingsItemTitleColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildInsightItem(
+                  'Cảnh báo',
+                  '${insights.alerts}',
+                  insights.alerts > 0 ? Colors.red : Colors.green,
+                  Icons.warning,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildInsightItem(
+                  'Điểm mạnh',
+                  '${insights.strengths.length}',
+                  Colors.green,
+                  Icons.check_circle,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInsightItem(
+    String label,
+    String value,
+    Color color,
+    IconData icon,
+  ) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: context.settingsItemSubtitleColor,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStrengthsWeaknessesCard(FinancialAnalysis analysis) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Điểm mạnh & Điểm yếu',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: context.settingsItemTitleColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (analysis.strengths.isNotEmpty) ...[
+            _buildStrengthsSection(analysis.strengths),
+            const SizedBox(height: 12),
+          ],
+          if (analysis.weaknesses.isNotEmpty) ...[
+            _buildWeaknessesSection(analysis.weaknesses),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStrengthsSection(List<String> strengths) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green, size: 16),
+            const SizedBox(width: 8),
+            Text(
+              'Điểm mạnh',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.green,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...strengths
+            .take(3)
+            .map(
+              (strength) => Padding(
+                padding: const EdgeInsets.only(left: 24, bottom: 4),
+                child: Text(
+                  '• $strength',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: context.settingsItemSubtitleColor,
+                  ),
+                ),
+              ),
+            ),
+      ],
+    );
+  }
+
+  Widget _buildWeaknessesSection(List<String> weaknesses) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.warning, color: Colors.orange, size: 16),
+            const SizedBox(width: 8),
+            Text(
+              'Cần cải thiện',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.orange,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...weaknesses
+            .take(3)
+            .map(
+              (weakness) => Padding(
+                padding: const EdgeInsets.only(left: 24, bottom: 4),
+                child: Text(
+                  '• $weakness',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: context.settingsItemSubtitleColor,
+                  ),
+                ),
+              ),
+            ),
+      ],
+    );
+  }
+
+  Widget _buildRecommendationsCard(List<Recommendation> recommendations) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.lightbulb,
+                color: context.colorScheme.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Khuyến nghị AI',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: context.settingsItemTitleColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...recommendations
+              .take(3)
+              .map((rec) => _buildRecommendationItem(rec)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecommendationItem(Recommendation rec) {
+    Color priorityColor;
+    switch (rec.priority.toLowerCase()) {
+      case 'high':
+        priorityColor = Colors.red;
+        break;
+      case 'medium':
+        priorityColor = Colors.orange;
+        break;
+      default:
+        priorityColor = Colors.blue;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.screenBackground,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: priorityColor.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  rec.title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: context.settingsItemTitleColor,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: priorityColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  rec.priority.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: priorityColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            rec.description,
+            style: TextStyle(
+              fontSize: 12,
+              color: context.settingsItemSubtitleColor,
+            ),
+          ),
+          if (rec.estimatedSavings > 0) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Tiết kiệm ước tính: ${CurrencyFormatter.format(rec.estimatedSavings)}',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.green,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAIForecastChart(AIForecast forecast) {
+    // Debug logging for forecast data
+    print('🔍 Forecast Debug:');
+    print('Method: ${forecast.method}');
+    print('Forecast length: ${forecast.forecast.length}');
+    print(
+      'Forecast data: ${forecast.forecast.map((f) => '${f.month}: ${f.predictedExpense}').join(', ')}',
+    );
+
+    if (forecast.forecast.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.cardBackground,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: context.cardBorder),
+        ),
+        child: Center(
+          child: Column(
+            children: [
+              Text(
+                'Không có dữ liệu dự báo',
+                style: TextStyle(color: context.settingsItemSubtitleColor),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Method: ${forecast.method}',
+                style: TextStyle(
+                  color: context.settingsItemSubtitleColor,
+                  fontSize: 12,
+                ),
+              ),
+              if (forecast.message != null)
+                Text(
+                  'Message: ${forecast.message}',
+                  style: TextStyle(
+                    color: context.settingsItemSubtitleColor,
+                    fontSize: 12,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Check if all values are the same (flat line issue)
+    final values = forecast.forecast.map((f) => f.predictedExpense).toList();
+    final isFlatLine =
+        values.isNotEmpty && values.every((v) => v == values.first);
+
+    if (isFlatLine) {
+      print('⚠️ Warning: All forecast values are the same: ${values.first}');
+    }
+
+    // Calculate chart bounds including confidence intervals
+    final allValues = <double>[];
+
+    // Add main forecast values
+    allValues.addAll(values);
+
+    // Add confidence interval bounds
+    for (final forecast in forecast.forecast) {
+      allValues.add(forecast.lower80);
+      allValues.add(forecast.upper80);
+    }
+
+    final maxValue = allValues.isNotEmpty
+        ? allValues.reduce((a, b) => a > b ? a : b)
+        : 0;
+    final minValue = allValues.isNotEmpty
+        ? allValues.reduce((a, b) => a < b ? a : b)
+        : 0;
+    final range = maxValue - minValue;
+
+    // Calculate Y-axis bounds with proper padding for confidence intervals
+    double yPadding;
+    double chartMinY;
+    double chartMaxY;
+
+    if (isFlatLine && maxValue > 0) {
+      // For flat lines, create a small range around the value
+      yPadding = maxValue * 0.1;
+      chartMinY = (maxValue - yPadding).clamp(0, double.infinity);
+      chartMaxY = maxValue + yPadding;
+    } else if (range > 0) {
+      yPadding = range * 0.15; // 15% padding
+      chartMinY = (minValue - yPadding).clamp(0, double.infinity);
+      chartMaxY = maxValue + yPadding;
+    } else {
+      // Fallback for edge cases
+      yPadding = maxValue * 0.1;
+      chartMinY = 0;
+      chartMaxY = maxValue + yPadding;
+    }
+
+    // Calculate interval for Y-axis labels
+    final yInterval = range > 0 ? range / 4 : (chartMaxY - chartMinY) / 4;
+
+    print(
+      '📊 Chart Debug - Min: ${minValue.toInt()}, Max: ${maxValue.toInt()}, Range: ${range.toInt()}, ChartMinY: ${chartMinY.toInt()}, ChartMaxY: ${chartMaxY.toInt()}, Y-Interval: ${yInterval.toInt()}',
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.trending_up,
+                color: context.colorScheme.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Dự báo AI (${forecast.method})',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: context.settingsItemTitleColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Add warning for flat line
+          if (isFlatLine)
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning, color: Colors.orange, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Dữ liệu dự báo có thể chưa chính xác (tất cả giá trị bằng nhau). Hãy thêm dữ liệu lịch sử để có dự báo tốt hơn.',
+                      style: TextStyle(fontSize: 12, color: Colors.orange[800]),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Container(
+            height: 250, // Tăng height để có thêm không gian
+            padding: const EdgeInsets.only(
+              left: 8,
+              right: 8,
+              top: 8,
+              bottom: 8,
+            ), // Thêm padding cho chart
+            decoration: BoxDecoration(
+              color: context.cardBackground.withOpacity(
+                0.3,
+              ), // Background nhẹ cho chart area
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: context.settingsItemSubtitleColor.withOpacity(0.1),
+                width: 1,
+              ),
+            ),
+            child: LineChart(
+              LineChartData(
+                minY: chartMinY.toDouble(),
+                maxY: chartMaxY.toDouble(),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: yInterval,
+                  getDrawingHorizontalLine: (value) {
+                    return FlLine(
+                      color: context.settingsItemSubtitleColor.withOpacity(0.1),
+                      strokeWidth: 1,
+                    );
+                  },
+                ),
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 120, // Tăng thêm để có đủ không gian
+                      interval: yInterval,
+                      getTitlesWidget: (value, meta) {
+                        return Container(
+                          width: 100, // Tăng width để tránh cắt
+                          padding: const EdgeInsets.only(
+                            right: 12,
+                            left: 8,
+                          ), // Thêm padding trái
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            CurrencyFormatter.formatCompact(value),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: context.settingsItemSubtitleColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.right,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 50, // Tăng reserved size
+                      getTitlesWidget: (value, meta) {
+                        if (value.toInt() < forecast.forecast.length) {
+                          final monthData = forecast.forecast[value.toInt()];
+                          final monthStr = monthData.month;
+                          // Extract month number and format properly
+                          final monthNum = monthStr.split('-')[1];
+                          return Padding(
+                            padding: const EdgeInsets.only(
+                              top: 12.0,
+                              left: 4,
+                              right: 4,
+                            ), // Thêm padding
+                            child: Text(
+                              monthNum,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: context.settingsItemSubtitleColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          );
+                        }
+                        return const Text('');
+                      },
+                    ),
+                  ),
+                  rightTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border.all(
+                    color: context.settingsItemSubtitleColor.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                lineBarsData: [
+                  // Confidence interval area (shaded) - only show if we have valid bounds
+                  if (range > 0)
+                    LineChartBarData(
+                      spots: [
+                        // Start with lower bound
+                        ...forecast.forecast.asMap().entries.map((e) {
+                          return FlSpot(e.key.toDouble(), e.value.lower80);
+                        }).toList(),
+                        // Then upper bound in reverse
+                        ...forecast.forecast
+                            .asMap()
+                            .entries
+                            .toList()
+                            .reversed
+                            .map((e) {
+                              return FlSpot(e.key.toDouble(), e.value.upper80);
+                            })
+                            .toList(),
+                      ],
+                      isCurved: false,
+                      color: context.colorScheme.primary.withOpacity(0.1),
+                      barWidth: 0,
+                      dotData: FlDotData(show: false),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        color: context.colorScheme.primary.withOpacity(0.1),
+                      ),
+                    ),
+                  // Main forecast line
+                  LineChartBarData(
+                    spots: forecast.forecast.asMap().entries.map((e) {
+                      return FlSpot(e.key.toDouble(), e.value.predictedExpense);
+                    }).toList(),
+                    isCurved: true,
+                    color: context.colorScheme.primary,
+                    barWidth: 3,
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) {
+                        return FlDotCirclePainter(
+                          radius: 5,
+                          color: context.colorScheme.primary,
+                          strokeWidth: 3,
+                          strokeColor: Colors.white,
+                        );
+                      },
+                    ),
+                    belowBarData: BarAreaData(show: false),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Add legend
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: context.cardBackground.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: context.settingsItemSubtitleColor.withOpacity(0.1),
+              ),
+            ),
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 24,
+              runSpacing: 12,
+              children: [
+                _buildLegendItem(
+                  'Dự báo chính',
+                  context.colorScheme.primary,
+                  Icons.trending_up,
+                ),
+                _buildLegendItem(
+                  'Khoảng tin cậy',
+                  context.colorScheme.primary.withOpacity(0.3),
+                  Icons.area_chart,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(String label, Color color, IconData icon) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: context.settingsItemSubtitleColor,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAnomaliesCard(List<Anomaly> anomalies) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.warning, color: Colors.red, size: 24),
+              const SizedBox(width: 8),
+              Text(
+                'Cảnh báo bất thường',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...anomalies.take(3).map((anomaly) => _buildAnomalyItem(anomaly)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnomalyItem(Anomaly anomaly) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.screenBackground,
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: context.headerGradientEnd.withOpacity(0.2),
-          width: 2,
+          color: anomaly.severity == 'high' ? Colors.red : Colors.orange,
         ),
       ),
       child: Column(
@@ -2078,113 +3835,42 @@ class _ReportsScreenState extends State<ReportsScreen>
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: context.headerGradientEnd.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.auto_graph,
-                  color: context.headerGradientStart,
-                  size: 24,
+              Expanded(
+                child: Text(
+                  anomaly.category,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: context.settingsItemTitleColor,
+                  ),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Dự báo tài chính', style: AppTypography.h3),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Thu: ${forecast.trends.incomeTrend == "increasing"
-                          ? "Tăng"
-                          : forecast.trends.incomeTrend == "decreasing"
-                          ? "Giảm"
-                          : "Ổn định"} • '
-                      'Chi: ${forecast.trends.expenseTrend == "increasing"
-                          ? "Tăng"
-                          : forecast.trends.expenseTrend == "decreasing"
-                          ? "Giảm"
-                          : "Ổn định"}',
-                      style: AppTypography.caption.copyWith(
-                        color: context.settingsItemSubtitleColor,
-                      ),
-                    ),
-                  ],
+              Text(
+                CurrencyFormatter.format(anomaly.amount),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          const Divider(),
-          const SizedBox(height: 16),
-          ...forecast.forecast.map((f) {
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: context.infoRowBackground,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: context.cardBorder),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          formatMonthLabel(f.month),
-                          style: AppTypography.bodyMedium.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.analytics,
-                              size: 14,
-                              color: context.colorScheme.primary,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Độ tin cậy: ${f.confidence.toStringAsFixed(0)}%',
-                              style: AppTypography.caption.copyWith(
-                                color: context.settingsItemSubtitleColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        CurrencyFormatter.formatCompact(f.forecastBalance),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: f.forecastBalance >= 0
-                              ? Colors.green
-                              : Colors.red,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Dự kiến',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          }),
+          const SizedBox(height: 4),
+          Text(
+            anomaly.description,
+            style: TextStyle(
+              fontSize: 12,
+              color: context.settingsItemSubtitleColor,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Khoảng dự kiến: ${anomaly.expectedRange}',
+            style: TextStyle(
+              fontSize: 10,
+              color: context.settingsItemSubtitleColor,
+            ),
+          ),
         ],
       ),
     );

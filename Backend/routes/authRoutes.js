@@ -189,6 +189,77 @@ router.post(
   auditAuthOperation("OTP_VERIFICATION"),
   catchAsync(verifyOTP)
 );
+
+/**
+ * @route   POST /api/auth/resend-otp
+ * @desc    Gửi lại OTP cho đăng ký
+ * @access  Public
+ * @body    { email }
+ */
+router.post(
+  "/resend-otp",
+  process.env.NODE_ENV === "development" ? bypassRateLimit : rateLimitAuth,
+  validate(userSchemas.resendOTP),
+  auditAuthOperation("RESEND_OTP"),
+  catchAsync(async (req, res) => {
+    const { email } = req.body;
+
+    // Get temporary user data
+    const tempUserKey = `temp_user_${email.toLowerCase()}`;
+    global.tempUsers = global.tempUsers || new Map();
+    const tempUserData = global.tempUsers.get(tempUserKey);
+
+    if (!tempUserData) {
+      return res.status(400).json({
+        success: false,
+        message: "Phiên đăng ký đã hết hạn. Vui lòng đăng ký lại.",
+      });
+    }
+
+    // Check if temporary data is expired
+    if (tempUserData.expiresAt < new Date()) {
+      global.tempUsers.delete(tempUserKey);
+      return res.status(400).json({
+        success: false,
+        message: "Phiên đăng ký đã hết hạn. Vui lòng đăng ký lại.",
+      });
+    }
+
+    // Generate new OTP
+    const newOTP = Math.floor(100000 + Math.random() * 900000).toString();
+    const newExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Update temporary data
+    tempUserData.emailVerificationOTP = newOTP;
+    tempUserData.emailVerificationExpires = newExpires;
+    global.tempUsers.set(tempUserKey, tempUserData);
+
+    // Send new OTP email
+    try {
+      await sendVerificationEmail(
+        email.toLowerCase(),
+        tempUserData.profile.name,
+        newOTP
+      );
+
+      res.json({
+        success: true,
+        message: "Mã OTP mới đã được gửi đến email của bạn.",
+        data: {
+          email: email.toLowerCase(),
+          otpSent: true,
+          expiresIn: 600, // 10 minutes in seconds
+        },
+      });
+    } catch (emailError) {
+      console.error("Failed to send resend OTP email:", emailError);
+      res.status(500).json({
+        success: false,
+        message: "Không thể gửi email. Vui lòng thử lại sau.",
+      });
+    }
+  })
+);
 /**
  * @route   POST /api/auth/resend-verification
  * @desc    Gửi lại email xác thực
@@ -408,9 +479,8 @@ router.post(
         await user.save();
       }
       // Generate JWT tokens
-      const { accessToken: jwtAccessToken, refreshToken } = generateTokens(
-        user._id
-      );
+      const { accessToken: jwtAccessToken, refreshToken } =
+        await generateTokens(user._id, req, "google");
       // Log successful Google sign-in
       auditLogger("google_signin_SUCCESS", req, {
         userId: user._id,
@@ -425,7 +495,8 @@ router.post(
         user: {
           id: user._id,
           email: user.email,
-          fullName: user.profile?.name,
+          name: user.profile?.name || user.profile?.fullName || "",
+          fullName: user.profile?.name || user.profile?.fullName || "",
           avatar: user.profile?.avatar,
           emailVerified: user.emailVerified,
           needsProfileCompletion:

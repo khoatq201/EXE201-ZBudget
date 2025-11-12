@@ -12,7 +12,7 @@ class HelpScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: context.headerGradientStart,
-        foregroundColor: context.colorScheme.onPrimary,
+        foregroundColor: context.headerTextColor,
         elevation: 0,
         title: const Text('Trợ giúp'),
       ),

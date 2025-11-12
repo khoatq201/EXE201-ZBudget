@@ -458,6 +458,9 @@ class _BudgetOverviewScreenState extends State<BudgetOverviewScreen>
 
                       // Refresh dữ liệu nếu có thay đổi
                       if (result == true && mounted) {
+                        // Refresh budget data từ server sau khi thêm expense
+                        final expenseService = context.read<ExpenseService>();
+                        expenseService.initializeSampleBudget();
                         setState(() {
                           // Widget sẽ rebuild và lấy dữ liệu mới từ ExpenseService
                         });

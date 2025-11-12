@@ -8,6 +8,8 @@ import '../../constants/typography.dart';
 import '../../constants/spacing.dart';
 import '../../utils/theme_extensions.dart';
 import '../../utils/currency_formatter.dart';
+import '../../utils/snackbar_utils.dart';
+import '../../widgets/common_header.dart';
 
 class GroupBudgetDetailScreen extends StatefulWidget {
   final String budgetId;
@@ -50,9 +52,7 @@ class _GroupBudgetDetailScreenState extends State<GroupBudgetDetailScreen>
 
   void _copyInviteCode(String code) {
     Clipboard.setData(ClipboardData(text: code));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Đã sao chép mã: $code')),
-    );
+    SnackBarUtils.showSuccess(context, 'Đã sao chép mã: $code');
   }
 
   @override
@@ -85,25 +85,21 @@ class _GroupBudgetDetailScreenState extends State<GroupBudgetDetailScreen>
 
           return RefreshIndicator(
             onRefresh: _refreshBudget,
-            child: NestedScrollView(
-              headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                _buildAppBar(budget),
-              ],
-              body: Column(
-                children: [
-                  _buildTabBar(),
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildOverviewTab(budget),
-                        _buildExpensesTab(budget),
-                        _buildMembersTab(budget),
-                      ],
-                    ),
+            child: Column(
+              children: [
+                _buildHeader(budget),
+                _buildTabBar(),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildOverviewTab(budget),
+                      _buildExpensesTab(budget),
+                      _buildMembersTab(budget),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           );
         },
@@ -116,96 +112,105 @@ class _GroupBudgetDetailScreenState extends State<GroupBudgetDetailScreen>
     );
   }
 
-  Widget _buildAppBar(GroupBudget budget) {
-    return SliverAppBar(
-      expandedHeight: 200,
-      pinned: true,
-      flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
-        title: Text(
-          budget.name,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        background: Container(
+  Widget _buildHeader(GroupBudget budget) {
+    return CommonHeader(
+      title: budget.name,
+      subtitle: budget.description ?? '${budget.members.length} thành viên',
+      variant: HeaderVariant.gradient,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        onPressed: () => context.pop(),
+      ),
+      trailing: GestureDetector(
+        onTap: () => _copyInviteCode(budget.inviteCode),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                context.headerGradientStart,
-                context.headerGradientEnd,
-              ],
-            ),
+            color: Colors.white.withValues(alpha: 0.24),
+            borderRadius: BorderRadius.circular(8),
           ),
-          padding: const EdgeInsets.fromLTRB(16, 80, 16, 60),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              if (budget.description != null)
-                Text(
-                  budget.description!,
-                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+              const Icon(Icons.copy, color: Colors.white, size: 16),
+              const SizedBox(width: 4),
+              Text(
+                budget.inviteCode,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontFamily: 'monospace',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
                 ),
-              const Spacer(),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        CurrencyFormatter.format(budget.remaining),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'Còn lại • Đã chi ${CurrencyFormatter.format(budget.totalSpent)}',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                  GestureDetector(
-                    onTap: () => _copyInviteCode(budget.inviteCode),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white24,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.copy, color: Colors.white, size: 16),
-                          const SizedBox(width: 4),
-                          Text(
-                            budget.inviteCode,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontFamily: 'monospace',
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ],
           ),
         ),
       ),
+      child: Container(
+        margin: const EdgeInsets.only(top: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildStatColumn(
+              'Tổng ngân sách',
+              CurrencyFormatter.format(budget.totalBudget),
+              Icons.account_balance_wallet,
+            ),
+            Container(
+              width: 1,
+              height: 40,
+              color: Colors.white.withValues(alpha: 0.3),
+            ),
+            _buildStatColumn(
+              'Đã chi',
+              CurrencyFormatter.format(budget.totalSpent),
+              Icons.trending_down,
+            ),
+            Container(
+              width: 1,
+              height: 40,
+              color: Colors.white.withValues(alpha: 0.3),
+            ),
+            _buildStatColumn(
+              'Còn lại',
+              CurrencyFormatter.format(budget.remaining),
+              Icons.savings,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatColumn(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.white, size: 20),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.85),
+            fontSize: 11,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 

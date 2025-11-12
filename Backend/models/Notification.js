@@ -25,6 +25,8 @@ const NotificationDataSchema = new mongoose.Schema(
       ref: "Expense",
     },
     expenseAmount: mongoose.Schema.Types.Decimal128,
+    expenseCategory: String,
+    expenseDescription: String,
     // Group related data
     groupId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -38,6 +40,23 @@ const NotificationDataSchema = new mongoose.Schema(
       ref: "User",
     },
     fromUserName: String,
+    // Income related data
+    incomeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Income",
+    },
+    incomeAmount: mongoose.Schema.Types.Decimal128,
+    incomeSource: String, // Store source name as string
+    incomeCategory: String,
+    // Savings related data
+    savingsGoalId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "SavingsGoal",
+    },
+    savingsGoalName: String, // Store goal name as string
+    contributionAmount: mongoose.Schema.Types.Decimal128,
+    progressPercentage: Number,
+    targetAmount: mongoose.Schema.Types.Decimal128,
     // Generic data for custom notifications
     customData: {
       type: mongoose.Schema.Types.Mixed,
@@ -63,6 +82,10 @@ const ActionButtonSchema = new mongoose.Schema(
         "reject_invite",
         "mark_read",
         "dismiss",
+        "add_expense",
+        "snooze",
+        "add_savings_contribution",
+        "view_savings_goal",
       ],
       required: true,
     },
@@ -98,12 +121,14 @@ const NotificationSchema = new mongoose.Schema(
         "budget_low_funds",
         "budget_category_exceeded",
         "monthly_budget_summary",
+        "budget_updated",
         // Expense notifications
         "expense_added",
         "expense_approved",
         "expense_rejected",
         "receipt_processed",
         "large_expense_alert",
+        "expense_updated",
         // Group notifications
         "group_invitation",
         "group_expense_added",
@@ -122,13 +147,41 @@ const NotificationSchema = new mongoose.Schema(
         "security_alert",
         "backup_completed",
         "sync_failed",
+        // Income notifications
+        "income_added",
+        "income_updated",
+        "large_income_alert",
+        // Savings notifications
+        "savings_goal_created",
+        "savings_goal_updated",
+        "savings_contribution",
+        "savings_goal_completed",
+        "savings_milestone_achieved",
+        // Reminder and Report notifications
+        "daily_expense_reminder",
+        "morning_summary",
+        "monthly_report",
+        "weekly_report",
+        "bill_reminder",
+        "savings_reminder",
       ],
       required: [true, "Loại thông báo là bắt buộc"],
       index: true,
     },
     category: {
       type: String,
-      enum: ["challenge", "budget", "expense", "group", "social", "system"],
+      enum: [
+        "challenge",
+        "budget",
+        "expense",
+        "group",
+        "social",
+        "system",
+        "income",
+        "savings",
+        "reminder",
+        "insights",
+      ],
       required: [true, "Danh mục thông báo là bắt buộc"],
       index: true,
     },
@@ -240,6 +293,18 @@ const NotificationSchema = new mongoose.Schema(
             ret.data.expenseAmount = parseFloat(
               ret.data.expenseAmount.toString()
             );
+          if (ret.data.incomeAmount)
+            ret.data.incomeAmount = parseFloat(
+              ret.data.incomeAmount.toString()
+            );
+          if (ret.data.contributionAmount)
+            ret.data.contributionAmount = parseFloat(
+              ret.data.contributionAmount.toString()
+            );
+          if (ret.data.targetAmount)
+            ret.data.targetAmount = parseFloat(
+              ret.data.targetAmount.toString()
+            );
         }
         return ret;
       },
@@ -332,13 +397,17 @@ NotificationSchema.methods.getCategoryDefaults = function () {
     group: { icon: "👥", color: "#1E90FF" },
     social: { icon: "❤️", color: "#FF69B4" },
     system: { icon: "⚙️", color: "#708090" },
+    income: { icon: "💵", color: "#00CED1" },
+    savings: { icon: "🐷", color: "#FFB6C1" },
+    reminder: { icon: "⏰", color: "#FFA500" },
+    insights: { icon: "📊", color: "#9370DB" },
   };
   return categoryDefaults[this.category] || categoryDefaults.system;
 };
 // Static Methods
 NotificationSchema.statics.findUnreadForUser = function (userId, limit = 50) {
   return this.find({
-    userId,
+    userId: new mongoose.Types.ObjectId(userId),
     isRead: false,
     isArchived: false,
     $or: [
@@ -355,7 +424,7 @@ NotificationSchema.statics.findByCategory = function (
   limit = 20
 ) {
   return this.find({
-    userId,
+    userId: new mongoose.Types.ObjectId(userId),
     category,
     isArchived: false,
     $or: [
@@ -387,7 +456,7 @@ NotificationSchema.statics.markAllAsReadForUser = function (
 };
 NotificationSchema.statics.getUnreadCount = function (userId) {
   return this.countDocuments({
-    userId,
+    userId: new mongoose.Types.ObjectId(userId),
     isRead: false,
     isArchived: false,
     $or: [

@@ -33,7 +33,7 @@ class _NetworkTestScreenState extends State<NetworkTestScreen> {
       // Test 1: Check if backend is reachable
       addLog('🔧 Testing backend connectivity...');
 
-      final baseUrl = 'http://10.0.2.2:3000/api/auth';
+      final baseUrl = 'http://10.0.2.2:3000/api/auth'; // Local
       addLog('🔧 Base URL: $baseUrl');
 
       // Test simple endpoint first

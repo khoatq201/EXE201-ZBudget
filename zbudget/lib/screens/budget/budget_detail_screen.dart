@@ -6,7 +6,9 @@ import '../../services/budget_service.dart';
 import '../../constants/typography.dart';
 import '../../utils/theme_extensions.dart';
 import '../../utils/currency_formatter.dart';
+import '../../utils/currency_input_formatter.dart';
 import '../../utils/date_formatter.dart';
+import '../../widgets/common_header.dart';
 
 class BudgetDetailScreen extends StatefulWidget {
   final String budgetId;
@@ -40,23 +42,19 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_budget?.name ?? 'Chi tiết ngân sách'),
-        actions: [
-          if (_budget != null)
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () {
-                // Navigate to edit screen
-                context.push('/budget/edit/${widget.budgetId}');
-              },
-            ),
-        ],
-      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _budget == null
-              ? _buildErrorState()
+              ? Column(
+                  children: [
+                    CommonHeaderPresets.detail(
+                      context: context,
+                      title: 'Chi tiết ngân sách',
+                      subtitle: 'Không tìm thấy',
+                    ),
+                    Expanded(child: _buildErrorState()),
+                  ],
+                )
               : RefreshIndicator(
                   onRefresh: _loadBudget,
                   child: SingleChildScrollView(
@@ -84,8 +82,8 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            context.colorScheme.primary,
-            context.colorScheme.primary.withValues(alpha: 0.8),
+            context.headerGradientStart,
+            context.headerGradientEnd,
           ],
         ),
       ),
@@ -387,69 +385,136 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
   Future<void> _showFundDialog(CategoryAllocation cat) async {
     final amountController = TextEditingController();
     final budgetService = Provider.of<BudgetService>(context, listen: false);
+    bool isLoading = false;
 
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Fund ${cat.category.displayName}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Ready to Assign: ${CurrencyFormatter.formatVND(budgetService.readyToAssign)}'),
-            const SizedBox(height: 8),
-            Text('Cần fund: ${CurrencyFormatter.formatVND(cat.needsMoreFunding)}'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: amountController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Số tiền',
-                border: OutlineInputBorder(),
-                suffixText: '₫',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final amount = CurrencyFormatter.parse(amountController.text);
-              if (amount <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Số tiền phải lớn hơn 0')),
-                );
-                return;
-              }
-
-              Navigator.pop(context);
-
-              final result = await budgetService.fundBudgetCategory(
-                budgetId: widget.budgetId,
-                category: cat.category.value,
-                amount: amount,
-              );
-
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(result['message'] ?? 'Thành công'),
-                    backgroundColor: result['success'] ? Colors.green : context.errorColor,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text('Fund ${cat.category.displayName}'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Ready to Assign: ${CurrencyFormatter.formatVND(budgetService.readyToAssign)}'),
+                const SizedBox(height: 8),
+                Text('Cần fund: ${CurrencyFormatter.formatVND(cat.needsMoreFunding)}'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: amountController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [CurrencyInputFormatter()],
+                  enabled: !isLoading,
+                  decoration: InputDecoration(
+                    labelText: 'Số tiền',
+                    border: const OutlineInputBorder(),
+                    suffixText: '₫',
+                    helperText: 'Tối đa: ${CurrencyFormatter.formatVND(budgetService.readyToAssign)}',
+                    helperMaxLines: 2,
                   ),
-                );
+                ),
+                if (isLoading) ...[
+                  const SizedBox(height: 16),
+                  const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: isLoading ? null : () => Navigator.pop(context),
+                child: const Text('Hủy'),
+              ),
+              ElevatedButton(
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        final amount = CurrencyFormatter.parse(amountController.text);
+                        if (amount <= 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Số tiền phải lớn hơn 0')),
+                          );
+                          return;
+                        }
 
-                if (result['success']) {
-                  _loadBudget();
-                }
-              }
-            },
-            child: const Text('Fund'),
-          ),
-        ],
+                        // Check if amount exceeds Ready to Assign
+                        if (amount > budgetService.readyToAssign) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Số tiền vượt quá Ready to Assign!\n'
+                                'Bạn chỉ có thể fund tối đa: ${CurrencyFormatter.formatVND(budgetService.readyToAssign)}',
+                              ),
+                              backgroundColor: Colors.red,
+                              duration: const Duration(seconds: 4),
+                            ),
+                          );
+                          return;
+                        }
+
+                        // Store context values before async gap
+                        final scaffoldMessenger = ScaffoldMessenger.of(context);
+                        final errorColor = context.errorColor;
+                        final navigator = Navigator.of(context);
+
+                        // Show loading
+                        setDialogState(() => isLoading = true);
+
+                        try {
+                          final result = await budgetService.fundBudgetCategory(
+                            budgetId: widget.budgetId,
+                            category: cat.category.value,
+                            amount: amount,
+                          );
+
+                          if (result['success']) {
+                            // Refresh budget detail and budgets list
+                            await Future.wait([
+                              _loadBudget(),
+                              budgetService.getBudgets(),
+                            ]);
+                          }
+
+                          // Close dialog
+                          navigator.pop();
+
+                          if (mounted) {
+                            scaffoldMessenger.showSnackBar(
+                              SnackBar(
+                                content: Text(result['message'] ?? 'Thành công'),
+                                backgroundColor: result['success'] ? Colors.green : errorColor,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          setDialogState(() => isLoading = false);
+                          if (mounted) {
+                            scaffoldMessenger.showSnackBar(
+                              SnackBar(
+                                content: Text('Lỗi: $e'),
+                                backgroundColor: errorColor,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                child: isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text('Fund'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

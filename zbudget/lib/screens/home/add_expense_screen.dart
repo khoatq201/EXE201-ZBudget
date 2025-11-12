@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../constants/colors.dart';
 import '../../constants/typography.dart';
+import '../../utils/theme_extensions.dart';
 import '../../widgets/scan_receipt_modal.dart';
 import '../../models/expense.dart';
 import '../../models/budget.dart';
@@ -11,6 +12,7 @@ import '../../services/budget_service.dart';
 import '../../services/dashboard_service.dart';
 import '../../utils/formatters.dart';
 import '../../utils/currency_formatter.dart';
+import '../../utils/ready_to_assign_dialog.dart';
 
 class CategoryOption {
   final String id;
@@ -224,7 +226,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
+      backgroundColor: context.scaffoldBackground,
       body: SafeArea(
         child: SlideTransition(
           position: _slideAnimation,
@@ -276,13 +278,13 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primary500, AppColors.primary400],
+          colors: [context.headerGradientStart, context.headerGradientEnd],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary500.withValues(alpha: 0.3),
+            color: context.headerGradientStart.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -295,12 +297,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: context.headerTextColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_back,
-                color: Colors.white,
+                color: context.headerTextColor,
                 size: 24,
               ),
             ),
@@ -313,14 +315,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                 Text(
                   'Thêm chi tiêu',
                   style: AppTypography.h2.copyWith(
-                    color: Colors.white,
+                    color: context.headerTextColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
                   'Ghi lại khoản chi tiêu của bạn',
                   style: AppTypography.body.copyWith(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: context.headerSubtitleColor,
                   ),
                 ),
               ],
@@ -331,26 +333,26 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: context.headerTextColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.3),
+                  color: context.headerTextColor.withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.qr_code_scanner,
-                    color: Colors.white,
+                    color: context.headerTextColor,
                     size: 20,
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Quét HĐ',
                     style: AppTypography.caption.copyWith(
-                      color: Colors.white,
+                      color: context.headerTextColor,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -403,14 +405,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                 Text(
                   'Quét hóa đơn thông minh',
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textPrimary,
+                    color: context.primaryTextColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
                   'AI tự động điền thông tin từ hóa đơn',
                   style: AppTypography.caption.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.secondaryTextColor,
                   ),
                 ),
               ],
@@ -445,16 +447,16 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
         Text(
           'Số tiền *',
           style: AppTypography.h4.copyWith(
-            color: AppColors.textPrimary,
+            color: context.primaryTextColor,
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardBackground,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.dark200),
+            border: Border.all(color: context.cardBorder),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
@@ -471,13 +473,13 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
               CurrencyInputFormatter(),
             ],
             style: AppTypography.h3.copyWith(
-              color: AppColors.textPrimary,
+              color: context.primaryTextColor,
               fontWeight: FontWeight.bold,
             ),
             decoration: InputDecoration(
               hintText: '0',
               hintStyle: AppTypography.h3.copyWith(
-                color: AppColors.textTertiary,
+                color: context.tertiaryTextColor,
               ),
               prefixIcon: Padding(
                 padding: const EdgeInsets.all(16),
@@ -505,7 +507,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
         Text(
           'Danh mục *',
           style: AppTypography.h4.copyWith(
-            color: AppColors.textPrimary,
+            color: context.primaryTextColor,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -534,10 +536,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
-                  color: isSelected ? category.color : Colors.white,
+                  color: isSelected ? category.color : context.cardBackground,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isSelected ? category.color : AppColors.dark200,
+                    color: isSelected ? category.color : context.cardBorder,
                     width: isSelected ? 2 : 1,
                   ),
                   boxShadow: [
@@ -559,7 +561,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                       style: AppTypography.caption.copyWith(
                         color: isSelected
                             ? Colors.white
-                            : AppColors.textSecondary,
+                            : context.secondaryTextColor,
                         fontWeight: isSelected
                             ? FontWeight.w600
                             : FontWeight.normal,
@@ -585,7 +587,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
         Text(
           'Phương thức thanh toán *',
           style: AppTypography.h4.copyWith(
-            color: AppColors.textPrimary,
+            color: context.primaryTextColor,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -610,10 +612,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: isSelected ? method.color : Colors.white,
+                  color: isSelected ? method.color : context.cardBackground,
                   borderRadius: BorderRadius.circular(25),
                   border: Border.all(
-                    color: isSelected ? method.color : AppColors.dark200,
+                    color: isSelected ? method.color : context.cardBorder,
                     width: isSelected ? 2 : 1,
                   ),
                   boxShadow: [
@@ -635,7 +637,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                       style: AppTypography.body.copyWith(
                         color: isSelected
                             ? Colors.white
-                            : AppColors.textPrimary,
+                            : context.primaryTextColor,
                         fontWeight: isSelected
                             ? FontWeight.w600
                             : FontWeight.normal,
@@ -658,7 +660,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
         Text(
           'Ngày chi tiêu',
           style: AppTypography.h4.copyWith(
-            color: AppColors.textPrimary,
+            color: context.primaryTextColor,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -690,9 +692,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.cardBackground,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.dark200),
+              border: Border.all(color: context.cardBorder),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
@@ -712,12 +714,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                 Text(
                   '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textPrimary,
+                    color: context.primaryTextColor,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 const Spacer(),
-                Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
+                Icon(Icons.arrow_drop_down, color: context.secondaryTextColor),
               ],
             ),
           ),
@@ -735,7 +737,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
             Text(
               'Ngân sách',
               style: AppTypography.h4.copyWith(
-                color: AppColors.textPrimary,
+                color: context.primaryTextColor,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -759,9 +761,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
         const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardBackground,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.dark200),
+            border: Border.all(color: context.cardBorder),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
@@ -788,7 +790,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                     children: [
                       Icon(
                         Icons.info_outline,
-                        color: AppColors.textTertiary,
+                        color: context.tertiaryTextColor,
                         size: 20,
                       ),
                       const SizedBox(width: 12),
@@ -796,7 +798,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                         child: Text(
                           'Chưa có ngân sách nào. Chi tiêu sẽ không được link với ngân sách.',
                           style: AppTypography.caption.copyWith(
-                            color: AppColors.textSecondary,
+                            color: context.secondaryTextColor,
                           ),
                         ),
                       ),
@@ -814,7 +816,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                     child: Text(
                       'Chọn ngân sách (không bắt buộc)',
                       style: AppTypography.body.copyWith(
-                        color: AppColors.textTertiary,
+                        color: context.tertiaryTextColor,
                       ),
                     ),
                   ),
@@ -833,7 +835,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                             Text(
                               budget.name,
                               style: AppTypography.body.copyWith(
-                                color: AppColors.textPrimary,
+                                color: context.primaryTextColor,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -915,16 +917,16 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
         Text(
           'Ghi chú',
           style: AppTypography.h4.copyWith(
-            color: AppColors.textPrimary,
+            color: context.primaryTextColor,
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardBackground,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.dark200),
+            border: Border.all(color: context.cardBorder),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
@@ -936,11 +938,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
           child: TextField(
             controller: _noteController,
             maxLines: 3,
-            style: AppTypography.body.copyWith(color: AppColors.textPrimary),
+            style: AppTypography.body.copyWith(color: context.primaryTextColor),
             decoration: InputDecoration(
               hintText: 'Nhập ghi chú cho khoản chi tiêu này...',
               hintStyle: AppTypography.body.copyWith(
-                color: AppColors.textTertiary,
+                color: context.tertiaryTextColor,
               ),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.all(16),
@@ -960,7 +962,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.1),
@@ -1312,17 +1314,27 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
 
       debugPrint('💬 [ADD_EXPENSE] Showing error to user: $errorMessage');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ $errorMessage'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+      // ✅ NEW: Check if error is about insufficient Ready to Assign
+      if (errorMessage.contains('Ready to Assign')) {
+        ReadyToAssignDialog.showErrorIfInsufficientFunds(
+          context,
+          errorMessage,
+          'chi tiêu',
+        );
+      } else {
+        // Show generic error as SnackBar
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ $errorMessage'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 4),
           ),
-          duration: const Duration(seconds: 4),
-        ),
-      );
+        );
+      }
     } finally {
       debugPrint('🏁 [ADD_EXPENSE] Finished (loading = false)');
       if (mounted) {

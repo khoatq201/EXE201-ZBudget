@@ -45,5 +45,20 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- Notification permissions -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>background-processing</string>
+		<string>remote-notification</string>
+	</array>
+	
+	<!-- Notification permission descriptions -->
+	<key>NSUserNotificationUsageDescription</key>
+	<string>ZBudget cần gửi thông báo để nhắc nhở bạn về ngân sách, chi tiêu và mục tiêu tiết kiệm.</string>
+	
+	<!-- Background app refresh -->
+	<key>UIBackgroundRefreshStatusDidChangeNotification</key>
+	<true/>
 </dict>
 </plist>

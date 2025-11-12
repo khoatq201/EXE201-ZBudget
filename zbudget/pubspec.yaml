@@ -51,6 +51,7 @@ dependencies:
 
   # Local Storage
   shared_preferences: ^2.3.2
+  flutter_secure_storage: ^9.0.0
   sqflite: ^2.3.3+1
 
   # Device Info
@@ -88,6 +89,24 @@ dependencies:
   csv: ^6.0.0
   path_provider: ^2.1.4
 
+  # AI Chat & Streaming
+  flutter_chat_ui: ^1.6.15 # Beautiful chat UI
+  dash_chat_2: ^0.0.21 # Alternative chat UI
+  flutter_markdown: ^0.7.4+1 # Markdown support for AI responses
+  web_socket_channel: ^3.0.1 # WebSocket for streaming
+  stream_channel: ^2.1.2 # Stream handling
+  animated_text_kit: ^4.2.2 # Text animations
+
+  # Charts for financial insights
+  syncfusion_flutter_charts: ^27.2.5 # Professional charts
+
+  # Animations
+  lottie: ^3.2.0 # Lottie animations for loading
+
+  # Local Notifications
+  flutter_local_notifications: ^17.2.3
+  timezone: ^0.9.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -98,6 +117,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -138,3 +158,12 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# App Icon Configuration
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#4CAF50"
+  adaptive_icon_foreground: "assets/icon.png"

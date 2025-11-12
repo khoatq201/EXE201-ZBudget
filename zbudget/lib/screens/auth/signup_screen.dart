@@ -1,11 +1,11 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../constants/colors.dart';
 import '../../constants/typography.dart';
 import '../../constants/spacing.dart';
 import '../../providers/app_provider.dart';
 import '../../services/auth_service.dart';
 import '../../models/user.dart';
+import '../../utils/theme_extensions.dart';
 import 'package:go_router/go_router.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -52,7 +52,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Vui lòng chọn ngày sinh'),
-          backgroundColor: AppColors.error,
+          backgroundColor: context.errorColor,
         ),
       );
       return;
@@ -63,7 +63,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Vui lòng đồng ý với điều khoản dịch vụ'),
-          backgroundColor: AppColors.error,
+          backgroundColor: context.errorColor,
         ),
       );
       return;
@@ -83,10 +83,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
         fullName: _nameController.text.trim(),
         email: _emailController.text.trim().toLowerCase(),
         password: _passwordController.text,
+        confirmPassword: _confirmPasswordController.text,
         phoneNumber: _phoneController.text.trim().isEmpty
             ? ''
             : _phoneController.text.trim(),
-        dateOfBirth: _dateOfBirth,
+        dateOfBirth: _dateOfBirth != null
+            ? '${_dateOfBirth!.day.toString().padLeft(2, '0')}/${_dateOfBirth!.month.toString().padLeft(2, '0')}/${_dateOfBirth!.year}'
+            : null,
         gender: _gender,
       );
 
@@ -100,12 +103,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 content: Text(
                   result['message'] ?? 'OTP đã được gửi đến email của bạn',
                 ),
-                backgroundColor: AppColors.success,
+                backgroundColor: context.colorScheme.primary,
               ),
             );
 
             // Navigate to OTP verification screen with email
-            context.go(
+            context.push(
               '/verify-otp',
               extra: {
                 'email': _emailController.text.trim().toLowerCase(),
@@ -121,7 +124,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(result['message'] ?? 'Đăng ký thành công!'),
-                backgroundColor: AppColors.success,
+                backgroundColor: context.colorScheme.primary,
               ),
             );
 
@@ -131,17 +134,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message'] ?? 'Đăng ký thất bại'),
-              backgroundColor: AppColors.error,
+              backgroundColor: context.errorColor,
             ),
           );
         }
       }
     } catch (error) {
       if (mounted) {
+        // Parse error message nếu là exception
+        String errorMessage = 'Lỗi kết nối. Vui lòng thử lại sau.';
+        if (error.toString().contains('Exception:')) {
+          errorMessage = error.toString().split('Exception:')[1].trim();
+        } else {
+          errorMessage = error.toString();
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Đăng ký thất bại: $error'),
-            backgroundColor: AppColors.error,
+            content: Text(errorMessage),
+            backgroundColor: context.errorColor,
+            duration: Duration(seconds: 5), // Hiển thị lâu hơn để user đọc
           ),
         );
       }
@@ -157,18 +169,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
+      backgroundColor: context.screenBackground,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back, color: context.primaryTextColor),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Đăng ký',
           style: AppTypography.h4.copyWith(
-            color: AppColors.textPrimary,
+            color: context.primaryTextColor,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -188,13 +200,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 Icon(
                   Icons.account_balance_wallet,
                   size: 80,
-                  color: AppColors.primary500,
+                  color: context.colorScheme.primary,
                 ),
                 const SizedBox(height: AppSpacing.itemSpacing),
                 Text(
                   'Tạo tài khoản mới',
                   style: AppTypography.h2.copyWith(
-                    color: AppColors.textPrimary,
+                    color: context.primaryTextColor,
                     fontWeight: FontWeight.bold,
                   ),
                   textAlign: TextAlign.center,
@@ -203,7 +215,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 Text(
                   'Quản lý tài chính thông minh cùng ZBudget',
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.secondaryTextColor,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -214,43 +226,44 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   controller: _nameController,
                   keyboardType: TextInputType.name,
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textPrimary,
+                    color: context.primaryTextColor,
                   ),
                   decoration: InputDecoration(
                     labelText: 'Họ và tên',
                     labelStyle: AppTypography.body.copyWith(
-                      color: AppColors.textSecondary,
+                      color: context.secondaryTextColor,
                     ),
                     hintText: 'Nhập họ và tên của bạn',
                     hintStyle: AppTypography.body.copyWith(
-                      color: AppColors.textTertiary,
+                      color: context.tertiaryTextColor,
                     ),
                     prefixIcon: Icon(
                       Icons.person_outline,
-                      color: AppColors.textSecondary,
+                      color: context.secondaryTextColor,
                     ),
                     filled: true,
-                    fillColor: AppColors.backgroundSecondary,
+                    fillColor: context.cardBackground,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: AppColors.backgroundSecondary,
-                      ),
+                      borderSide: BorderSide(color: context.cardBackground),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: AppColors.primary500,
+                        color: context.colorScheme.primary,
                         width: 2,
                       ),
                     ),
                     errorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.error, width: 2),
+                      borderSide: BorderSide(
+                        color: context.errorColor,
+                        width: 2,
+                      ),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.itemSpacing,
@@ -274,43 +287,44 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textPrimary,
+                    color: context.primaryTextColor,
                   ),
                   decoration: InputDecoration(
                     labelText: 'Email',
                     labelStyle: AppTypography.body.copyWith(
-                      color: AppColors.textSecondary,
+                      color: context.secondaryTextColor,
                     ),
                     hintText: 'Nhập email của bạn',
                     hintStyle: AppTypography.body.copyWith(
-                      color: AppColors.textTertiary,
+                      color: context.tertiaryTextColor,
                     ),
                     prefixIcon: Icon(
                       Icons.email_outlined,
-                      color: AppColors.textSecondary,
+                      color: context.secondaryTextColor,
                     ),
                     filled: true,
-                    fillColor: AppColors.backgroundSecondary,
+                    fillColor: context.cardBackground,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: AppColors.backgroundSecondary,
-                      ),
+                      borderSide: BorderSide(color: context.cardBackground),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: AppColors.primary500,
+                        color: context.colorScheme.primary,
                         width: 2,
                       ),
                     ),
                     errorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.error, width: 2),
+                      borderSide: BorderSide(
+                        color: context.errorColor,
+                        width: 2,
+                      ),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.itemSpacing,
@@ -334,43 +348,44 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textPrimary,
+                    color: context.primaryTextColor,
                   ),
                   decoration: InputDecoration(
                     labelText: 'Số điện thoại (tùy chọn)',
                     labelStyle: AppTypography.body.copyWith(
-                      color: AppColors.textSecondary,
+                      color: context.secondaryTextColor,
                     ),
                     hintText: 'Nhập số điện thoại của bạn',
                     hintStyle: AppTypography.body.copyWith(
-                      color: AppColors.textTertiary,
+                      color: context.tertiaryTextColor,
                     ),
                     prefixIcon: Icon(
                       Icons.phone_outlined,
-                      color: AppColors.textSecondary,
+                      color: context.secondaryTextColor,
                     ),
                     filled: true,
-                    fillColor: AppColors.backgroundSecondary,
+                    fillColor: context.cardBackground,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: AppColors.backgroundSecondary,
-                      ),
+                      borderSide: BorderSide(color: context.cardBackground),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: AppColors.primary500,
+                        color: context.colorScheme.primary,
                         width: 2,
                       ),
                     ),
                     errorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.error, width: 2),
+                      borderSide: BorderSide(
+                        color: context.errorColor,
+                        width: 2,
+                      ),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.itemSpacing,
@@ -379,12 +394,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                   validator: (value) {
                     if (value != null && value.isNotEmpty) {
-                      // Basic phone validation if provided
-                      if (value.length < 10 || value.length > 15) {
-                        return 'Số điện thoại không hợp lệ';
-                      }
-                      if (!RegExp(r'^[\d\+\-\s\(\)]+$').hasMatch(value)) {
-                        return 'Số điện thoại chỉ được chứa số và ký tự +, -, (), khoảng trắng';
+                      // Vietnamese phone validation if provided
+                      if (!RegExp(
+                        r'^(\+84|84|0)(3|5|7|8|9)[0-9]{8}$',
+                      ).hasMatch(value)) {
+                        return 'Số điện thoại phải là số Việt Nam hợp lệ';
                       }
                     }
                     return null;
@@ -406,10 +420,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         return Theme(
                           data: Theme.of(context).copyWith(
                             colorScheme: ColorScheme.light(
-                              primary: AppColors.primary500,
+                              primary: context.colorScheme.primary,
                               onPrimary: Colors.white,
-                              surface: AppColors.backgroundSecondary,
-                              onSurface: AppColors.textPrimary,
+                              surface: context.cardBackground,
+                              onSurface: context.primaryTextColor,
                             ),
                           ),
                           child: child!,
@@ -428,12 +442,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       vertical: AppSpacing.itemSpacing,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.backgroundSecondary,
+                      color: context.cardBackground,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: _dateOfBirth == null
-                            ? AppColors.backgroundSecondary
-                            : AppColors.primary500,
+                            ? context.cardBackground
+                            : context.colorScheme.primary,
                         width: _dateOfBirth == null ? 1 : 2,
                       ),
                     ),
@@ -441,7 +455,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       children: [
                         Icon(
                           Icons.calendar_today_outlined,
-                          color: AppColors.textSecondary,
+                          color: context.secondaryTextColor,
                         ),
                         const SizedBox(width: AppSpacing.xs),
                         Expanded(
@@ -451,8 +465,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 : '${_dateOfBirth!.day}/${_dateOfBirth!.month}/${_dateOfBirth!.year}',
                             style: AppTypography.body.copyWith(
                               color: _dateOfBirth == null
-                                  ? AppColors.textTertiary
-                                  : AppColors.textPrimary,
+                                  ? context.tertiaryTextColor
+                                  : context.primaryTextColor,
                             ),
                           ),
                         ),
@@ -466,34 +480,32 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 DropdownButtonFormField<String>(
                   value: _gender,
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textPrimary,
+                    color: context.primaryTextColor,
                   ),
-                  dropdownColor: AppColors.backgroundSecondary,
+                  dropdownColor: context.cardBackground,
                   decoration: InputDecoration(
                     labelText: 'Giới tính',
                     labelStyle: AppTypography.body.copyWith(
-                      color: AppColors.textSecondary,
+                      color: context.secondaryTextColor,
                     ),
                     prefixIcon: Icon(
                       Icons.person_outline,
-                      color: AppColors.textSecondary,
+                      color: context.secondaryTextColor,
                     ),
                     filled: true,
-                    fillColor: AppColors.backgroundSecondary,
+                    fillColor: context.cardBackground,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: AppColors.backgroundSecondary,
-                      ),
+                      borderSide: BorderSide(color: context.cardBackground),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: AppColors.primary500,
+                        color: context.colorScheme.primary,
                         width: 2,
                       ),
                     ),
@@ -526,27 +538,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   controller: _passwordController,
                   obscureText: _obscurePassword,
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textPrimary,
+                    color: context.primaryTextColor,
                   ),
                   decoration: InputDecoration(
                     labelText: 'Mật khẩu',
                     labelStyle: AppTypography.body.copyWith(
-                      color: AppColors.textSecondary,
+                      color: context.secondaryTextColor,
                     ),
                     hintText: 'Nhập mật khẩu của bạn',
                     hintStyle: AppTypography.body.copyWith(
-                      color: AppColors.textTertiary,
+                      color: context.tertiaryTextColor,
                     ),
                     prefixIcon: Icon(
                       Icons.lock_outline,
-                      color: AppColors.textSecondary,
+                      color: context.secondaryTextColor,
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword
                             ? Icons.visibility
                             : Icons.visibility_off,
-                        color: AppColors.textSecondary,
+                        color: context.secondaryTextColor,
                       ),
                       onPressed: () {
                         setState(() {
@@ -555,27 +567,28 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       },
                     ),
                     filled: true,
-                    fillColor: AppColors.backgroundSecondary,
+                    fillColor: context.cardBackground,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: AppColors.backgroundSecondary,
-                      ),
+                      borderSide: BorderSide(color: context.cardBackground),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: AppColors.primary500,
+                        color: context.colorScheme.primary,
                         width: 2,
                       ),
                     ),
                     errorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.error, width: 2),
+                      borderSide: BorderSide(
+                        color: context.errorColor,
+                        width: 2,
+                      ),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.itemSpacing,
@@ -586,8 +599,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Vui lòng nhập mật khẩu';
                     }
-                    if (value.length < 6) {
-                      return 'Mật khẩu phải có ít nhất 6 ký tự';
+                    if (value.length < 8) {
+                      return 'Mật khẩu phải có ít nhất 8 ký tự';
+                    }
+                    if (!RegExp(
+                      r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]',
+                    ).hasMatch(value)) {
+                      return 'Mật khẩu phải chứa chữ hoa, chữ thường, số và ký tự đặc biệt';
                     }
                     return null;
                   },
@@ -599,27 +617,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   controller: _confirmPasswordController,
                   obscureText: _obscureConfirmPassword,
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textPrimary,
+                    color: context.primaryTextColor,
                   ),
                   decoration: InputDecoration(
                     labelText: 'Xác nhận mật khẩu',
                     labelStyle: AppTypography.body.copyWith(
-                      color: AppColors.textSecondary,
+                      color: context.secondaryTextColor,
                     ),
                     hintText: 'Nhập lại mật khẩu của bạn',
                     hintStyle: AppTypography.body.copyWith(
-                      color: AppColors.textTertiary,
+                      color: context.tertiaryTextColor,
                     ),
                     prefixIcon: Icon(
                       Icons.lock_outline,
-                      color: AppColors.textSecondary,
+                      color: context.secondaryTextColor,
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscureConfirmPassword
                             ? Icons.visibility
                             : Icons.visibility_off,
-                        color: AppColors.textSecondary,
+                        color: context.secondaryTextColor,
                       ),
                       onPressed: () {
                         setState(() {
@@ -628,27 +646,28 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       },
                     ),
                     filled: true,
-                    fillColor: AppColors.backgroundSecondary,
+                    fillColor: context.cardBackground,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: AppColors.backgroundSecondary,
-                      ),
+                      borderSide: BorderSide(color: context.cardBackground),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: AppColors.primary500,
+                        color: context.colorScheme.primary,
                         width: 2,
                       ),
                     ),
                     errorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.error, width: 2),
+                      borderSide: BorderSide(
+                        color: context.errorColor,
+                        width: 2,
+                      ),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.itemSpacing,
@@ -678,7 +697,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           _acceptTerms = value ?? false;
                         });
                       },
-                      activeColor: AppColors.primary500,
+                      activeColor: context.colorScheme.primary,
                       checkColor: Colors.white,
                     ),
                     Expanded(
@@ -693,14 +712,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           child: RichText(
                             text: TextSpan(
                               style: AppTypography.caption.copyWith(
-                                color: AppColors.textSecondary,
+                                color: context.secondaryTextColor,
                               ),
                               children: [
                                 TextSpan(text: 'Tôi đồng ý với '),
                                 TextSpan(
                                   text: 'Điều khoản dịch vụ',
                                   style: TextStyle(
-                                    color: AppColors.primary500,
+                                    color: context.colorScheme.primary,
                                     fontWeight: FontWeight.w600,
                                     decoration: TextDecoration.underline,
                                   ),
@@ -709,7 +728,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 TextSpan(
                                   text: 'Chính sách bảo mật',
                                   style: TextStyle(
-                                    color: AppColors.primary500,
+                                    color: context.colorScheme.primary,
                                     fontWeight: FontWeight.w600,
                                     decoration: TextDecoration.underline,
                                   ),
@@ -731,7 +750,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _signUp,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary500,
+                      backgroundColor: context.colorScheme.primary,
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shadowColor: Colors.transparent,
@@ -765,7 +784,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     Text(
                       'Đã có tài khoản? ',
                       style: AppTypography.body.copyWith(
-                        color: AppColors.textSecondary,
+                        color: context.secondaryTextColor,
                       ),
                     ),
                     GestureDetector(
@@ -775,7 +794,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       child: Text(
                         'Đăng nhập',
                         style: AppTypography.body.copyWith(
-                          color: AppColors.primary500,
+                          color: context.colorScheme.primary,
                           fontWeight: FontWeight.w600,
                           decoration: TextDecoration.underline,
                         ),

@@ -422,25 +422,23 @@ export const recordFunding = async (req, res) => {
 // Record payment/settlement
 export const recordPayment = async (req, res) => {
   const { id } = req.params;
-  const { fromUserId, toUserId, amount } = req.body;
+  const { toUserId, amount } = req.body;
+  const fromUserId = req.userId; // ✅ Get from authenticated user
 
   const groupBudget = await GroupBudget.findById(id);
   if (!groupBudget) {
     throw new NotFoundError('GroupBudget không tồn tại');
   }
 
-  const fromMember = groupBudget.members.find(m => m.userId.toString() === fromUserId);
-  const toMember = groupBudget.members.find(m => m.userId.toString() === toUserId);
+  // ✅ Use the model's method which properly updates amountFunded/amountPaidOut
+  try {
+    groupBudget.recordPayment(fromUserId, toUserId, amount);
+    await groupBudget.save();
 
-  if (!fromMember || !toMember) {
-    throw new BadRequestError('User không phải thành viên');
+    return successResponse(res, 'Ghi nhận thanh toán thành công', groupBudget);
+  } catch (error) {
+    throw new BadRequestError(error.message);
   }
-
-  fromMember.balance += amount;
-  toMember.balance -= amount;
-  await groupBudget.save();
-
-  return successResponse(res, 'Ghi nhận thanh toán thành công', groupBudget);
 };
 
 // Get settlement plan
@@ -452,31 +450,14 @@ export const getSettlementPlan = async (req, res) => {
     throw new NotFoundError('GroupBudget không tồn tại');
   }
 
-  const debtors = groupBudget.members.filter(m => m.balance < 0);
-  const creditors = groupBudget.members.filter(m => m.balance > 0);
+  // ✅ Use the model's method which returns proper format with fromName/toName
+  const settlements = groupBudget.getSettlementPlan();
 
-  const settlements = [];
-  let i = 0, j = 0;
-
-  while (i < debtors.length && j < creditors.length) {
-    const debt = Math.abs(debtors[i].balance);
-    const credit = creditors[j].balance;
-    const amount = Math.min(debt, credit);
-
-    settlements.push({
-      from: debtors[i].userId,
-      to: creditors[j].userId,
-      amount
-    });
-
-    debtors[i].balance += amount;
-    creditors[j].balance -= amount;
-
-    if (Math.abs(debtors[i].balance) < 0.01) i++;
-    if (Math.abs(creditors[j].balance) < 0.01) j++;
-  }
-
-  return successResponse(res, 'Kế hoạch thanh toán', { settlements });
+  return res.status(200).json({
+    success: true,
+    message: 'Kế hoạch thanh toán',
+    data: settlements
+  });
 };
 
 // Settle group budget

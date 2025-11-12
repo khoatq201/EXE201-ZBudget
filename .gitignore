@@ -237,8 +237,32 @@ scripts/output/
 tools/output/
 
 # ===============================
-# Documentation files
+# Documentation files to ignore
 # ===============================
 
-# Markdown documentation files
-*.md
+# Temporary documentation and reports
+*_REPORT.md
+*_FIXES_REPORT.md
+*_IMPLEMENTATION.md
+*_COMPLETION_REPORT.md
+*_INTEGRATION_TEST_REPORT.md
+*_SETUP_GUIDE.md
+*_FIXES_SUMMARY.md
+*_ANALYSIS_AND_RECOMMENDATIONS.md
+*_SOLUTION.md
+*_IMPLEMENTATION_COMPLETE.md
+CLAUDE.md
+
+# ===============================
+# React Native / Expo (not used - Flutter project)
+# ===============================
+.expo/
+.expo-shared/
+
+# ===============================
+# Test and backup files
+# ===============================
+*_backup.*
+*.backup
+test-*.js
+server.log

@@ -18,6 +18,8 @@ import mongoose from "mongoose";
 // ✅ NEW: Import utilities and services
 import { FinancialSummaryService } from "../services/financialSummaryService.js";
 import { toNumber } from "../utils/currencyHelper.js";
+import { clearUserCache } from "../services/aiFinancialAnalysisService.js";
+import NotificationService from "../services/notificationService.js";
 /**
  * @desc    Tạo chi tiêu mới
  * @route   POST /api/expenses
@@ -66,9 +68,26 @@ export const createExpense = async (req, res) => {
     await expense.save();
     // Update user financial summary
     try {
-      await FinancialSummaryService.addExpense(userId, amount); // ✅ Using FinancialSummaryService
+      const hasBudget = !!budgetId;
+      await FinancialSummaryService.addExpense(userId, amount, hasBudget); // ✅ Pass hasBudget flag
     } catch (summaryError) {
-      console.error('⚠️ Financial summary update failed:', summaryError.message);
+      console.error(
+        "⚠️ Financial summary update failed:",
+        summaryError.message
+      );
+      // If it's readyToAssign validation error, delete the expense and return error
+      if (summaryError.message.includes("Ready to Assign")) {
+        await Expense.findByIdAndDelete(expense._id);
+        return res.status(400).json({
+          success: false,
+          error: summaryError.message,
+        });
+      }
+      // For other summary errors, continue but log
+      console.warn(
+        "⚠️ Continuing despite summary error:",
+        summaryError.message
+      );
     }
     // Update budget if specified (simplified without transaction)
     if (budgetId) {
@@ -79,17 +98,15 @@ export const createExpense = async (req, res) => {
           isActive: true,
         });
         if (budget) {
-          // Note: Budget model uses categoryAllocations, not categories
-          const categoryAllocation = budget.categoryAllocations?.find(
-            (cat) => cat.category === category
-          );
-          if (categoryAllocation) {
-            categoryAllocation.spent = (categoryAllocation.spent || 0) + amount;
-            await budget.save();
-          }
+          // Use Budget model's addExpense method to properly handle Decimal128
+          budget.addExpense(amount, category);
+          await budget.save();
         }
       } catch (budgetError) {
-        console.error('⚠️ Budget update failed (non-critical):', budgetError.message);
+        console.error(
+          "⚠️ Budget update failed (non-critical):",
+          budgetError.message
+        );
         // Don't fail the whole request if budget update fails
       }
     }
@@ -105,9 +122,66 @@ export const createExpense = async (req, res) => {
       hasReceipt: !!receipt,
       hasBudget: !!budgetId,
     });
+
+    // Clear AI analysis cache for real-time updates
+    try {
+      clearUserCache(userId);
+    } catch (cacheError) {
+      console.error(
+        "⚠️ AI cache invalidation failed (non-critical):",
+        cacheError.message
+      );
+    }
+
+    // ✅ NEW: Notification triggers
+    try {
+      // ✅ ADD: Normal expense notification for all expenses
+      await NotificationService.triggerExpenseNotification(userId, {
+        expenseId: expense._id,
+        expenseAmount: expense.amount,
+        category: expense.category,
+        description: expense.description,
+      });
+
+      // Check for budget alerts
+      if (budgetId) {
+        const budget = await Budget.findById(budgetId);
+        if (budget && budget.status) {
+          const spentPercentage = budget.status.spentPercentage;
+
+          if (spentPercentage >= 80) {
+            await NotificationService.triggerBudgetAlert(userId, {
+              budgetId: budget._id,
+              budgetName: budget.name,
+              category: budget.categoryAllocations?.[0]?.category || "general",
+              spentPercentage,
+              remainingAmount:
+                budget.status.totalBudget - budget.status.totalSpent,
+            });
+          }
+        }
+      }
+
+      // Check for anomaly (chi tiêu bất thường)
+      if (expense.amount > 2000000) {
+        // Ngưỡng 2 triệu
+        await NotificationService.triggerAnomalyAlert(userId, {
+          expenseId: expense._id,
+          expenseAmount: expense.amount,
+          category: expense.category,
+          description: expense.description,
+        });
+      }
+    } catch (notificationError) {
+      console.error(
+        "⚠️ Notification trigger failed (non-critical):",
+        notificationError.message
+      );
+    }
+
     return successResponse(res, "Tạo chi tiêu thành công!", { expense }, 201);
   } catch (error) {
-    console.error('❌ Create expense error:', error);
+    console.error("❌ Create expense error:", error);
     // Clean up uploaded file if failed
     if (receipt) {
       try {
@@ -278,6 +352,10 @@ export const updateExpense = async (req, res) => {
   try {
     const oldAmount = expense.amount;
     const oldCategory = expense.category;
+    const oldBudgetId = expense.budgetId;
+    const newBudgetId =
+      req.body.budgetId !== undefined ? req.body.budgetId : expense.budgetId;
+
     // Handle receipt update
     if (receiptFile || req.file) {
       // Delete old receipt if exists
@@ -312,34 +390,31 @@ export const updateExpense = async (req, res) => {
     if (paymentMethod !== undefined) expense.paymentMethod = paymentMethod;
     if (location !== undefined) expense.location = location;
     if (tags !== undefined) expense.tags = tags;
+    if (req.body.budgetId !== undefined) expense.budgetId = newBudgetId;
     await expense.save({ session });
+
+    // Update financial summary if amount or budget changed
+    if (amount !== undefined || req.body.budgetId !== undefined) {
+      const newAmount = amount !== undefined ? amount : oldAmount;
+      const oldHasBudget = !!oldBudgetId;
+      const newHasBudget = !!newBudgetId;
+
+      await FinancialSummaryService.updateExpense(
+        userId,
+        oldAmount,
+        newAmount,
+        oldHasBudget,
+        newHasBudget
+      );
+    }
     // Update budget if amount or category changed
     if (expense.budgetId && (amount !== undefined || category !== undefined)) {
       const budget = await Budget.findById(expense.budgetId).session(session);
       if (budget) {
         // Remove old amount from old category
-        const oldCategoryBudget = budget.categories.find(
-          (cat) => cat.category === oldCategory
-        );
-        if (oldCategoryBudget) {
-          oldCategoryBudget.spent = Math.max(
-            0,
-            (oldCategoryBudget.spent || 0) - oldAmount
-          );
-        }
+        budget.removeExpense(oldAmount, oldCategory);
         // Add new amount to new category
-        const newCategoryBudget = budget.categories.find(
-          (cat) => cat.category === expense.category
-        );
-        if (newCategoryBudget) {
-          newCategoryBudget.spent =
-            (newCategoryBudget.spent || 0) + expense.amount;
-        }
-        // Recalculate total spent
-        budget.totalSpent = budget.categories.reduce(
-          (total, cat) => total + (cat.spent || 0),
-          0
-        );
+        budget.addExpense(expense.amount, expense.category);
         await budget.save({ session });
       }
     }
@@ -394,24 +469,22 @@ export const deleteExpense = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
+    const hasBudget = !!expense.budgetId;
+
+    // Update financial summary - return money if no budget
+    await FinancialSummaryService.removeExpense(
+      userId,
+      expense.amount,
+      hasBudget
+    );
+
     // Update budget if expense was linked
     if (expense.budgetId) {
       const budget = await Budget.findById(expense.budgetId).session(session);
       if (budget) {
-        const categoryBudget = budget.categories.find(
-          (cat) => cat.category === expense.category
-        );
-        if (categoryBudget) {
-          categoryBudget.spent = Math.max(
-            0,
-            (categoryBudget.spent || 0) - expense.amount
-          );
-          budget.totalSpent = Math.max(
-            0,
-            (budget.totalSpent || 0) - expense.amount
-          );
-          await budget.save({ session });
-        }
+        // Use Budget model's removeExpense method to properly handle Decimal128
+        budget.removeExpense(expense.amount, expense.category);
+        await budget.save({ session });
       }
     }
     // Delete receipt file if exists
@@ -842,9 +915,13 @@ export const bulkDeleteExpenses = async (req, res) => {
       deletedCount: result.deletedCount,
       expenseIds,
     });
-    return successResponse(res, `Xóa thành công ${result.deletedCount} chi tiêu!`, {
-      deletedCount: result.deletedCount,
-    });
+    return successResponse(
+      res,
+      `Xóa thành công ${result.deletedCount} chi tiêu!`,
+      {
+        deletedCount: result.deletedCount,
+      }
+    );
   } catch (error) {
     await session.abortTransaction();
     throw error;
@@ -883,7 +960,12 @@ export const duplicateExpense = async (req, res) => {
     { path: "groupId", select: "name type" },
   ]);
   res.locals.expenseId = duplicatedExpense._id;
-  return successResponse(res, "Nhân bản chi tiêu thành công!", {
-    expense: duplicatedExpense,
-  }, 201);
+  return successResponse(
+    res,
+    "Nhân bản chi tiêu thành công!",
+    {
+      expense: duplicatedExpense,
+    },
+    201
+  );
 };

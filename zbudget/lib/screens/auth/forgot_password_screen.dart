@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import '../../constants/colors.dart';
 import '../../constants/typography.dart';
 import '../../constants/spacing.dart';
+import '../../utils/theme_extensions.dart';
 import '../../services/auth_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -46,13 +46,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message']),
-              backgroundColor: AppColors.success,
+              backgroundColor: context.colorScheme.primary,
               duration: const Duration(seconds: 1),
             ),
           );
 
           // Navigate to password reset OTP screen
-          context.go(
+          context.push(
             '/password-reset-otp',
             extra: {'email': _emailController.text.trim()},
           );
@@ -62,7 +62,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message']),
-              backgroundColor: AppColors.error,
+              backgroundColor: context.errorColor,
             ),
           );
         }
@@ -76,7 +76,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Có lỗi xảy ra: $e'),
-            backgroundColor: AppColors.error,
+            backgroundColor: context.errorColor,
           ),
         );
       }
@@ -86,17 +86,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.screenBackground,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios, color: context.primaryTextColor),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Quên mật khẩu',
-          style: AppTypography.h2.copyWith(color: AppColors.textPrimary),
+          style: AppTypography.h2.copyWith(color: context.primaryTextColor),
         ),
         centerTitle: true,
       ),
@@ -115,13 +115,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: AppColors.primary50,
+                    color: context.colorScheme.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(40),
                   ),
                   child: Icon(
                     Icons.lock_reset,
                     size: 40,
-                    color: AppColors.primary500,
+                    color: context.colorScheme.primary,
                   ),
                 ),
 
@@ -131,7 +131,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 Text(
                   'Quên mật khẩu?',
                   style: AppTypography.h1.copyWith(
-                    color: AppColors.textPrimary,
+                    color: context.primaryTextColor,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -142,7 +142,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 Text(
                   'Nhập email của bạn và chúng tôi sẽ gửi mã OTP để đặt lại mật khẩu.',
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.secondaryTextColor,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -155,40 +155,40 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   keyboardType: TextInputType.emailAddress,
                   enabled: !_isLoading,
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textPrimary,
+                    color: context.primaryTextColor,
                   ),
                   decoration: InputDecoration(
                     labelText: 'Email',
                     labelStyle: AppTypography.body.copyWith(
-                      color: AppColors.textSecondary,
+                      color: context.secondaryTextColor,
                     ),
                     prefixIcon: Icon(
                       Icons.email_outlined,
-                      color: AppColors.textSecondary,
+                      color: context.secondaryTextColor,
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: AppColors.borderSecondary,
+                        color: context.tertiaryTextColor,
                         width: 1.5,
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: AppColors.primary500,
+                        color: context.colorScheme.primary,
                         width: 2,
                       ),
                     ),
                     errorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: AppColors.error,
+                        color: context.errorColor,
                         width: 1.5,
                       ),
                     ),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: context.cardBackground,
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -207,7 +207,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ElevatedButton(
                   onPressed: _isLoading ? null : _resetPassword,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary500,
+                    backgroundColor: context.colorScheme.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                       vertical: AppSpacing.md,
@@ -245,7 +245,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   child: Text(
                     'Quay lại đăng nhập',
                     style: AppTypography.body.copyWith(
-                      color: AppColors.primary500,
+                      color: context.colorScheme.primary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),

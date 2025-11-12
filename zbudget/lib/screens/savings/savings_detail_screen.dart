@@ -8,6 +8,8 @@ import '../../utils/theme_extensions.dart';
 import '../../utils/currency_formatter.dart';
 import '../../utils/currency_input_formatter.dart';
 import '../../utils/date_formatter.dart';
+import '../../utils/ready_to_assign_dialog.dart';
+import '../../widgets/common_header.dart';
 
 class SavingsDetailScreen extends StatefulWidget {
   final String goalId;
@@ -113,16 +115,31 @@ class _SavingsDetailScreenState extends State<SavingsDetailScreen> {
 
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(result['message'] ?? 'Đã đóng góp thành công'),
-        backgroundColor: result['success'] == true
-            ? context.colorScheme.primary
-            : context.colorScheme.error,
-      ),
-    );
+    // ✅ NEW: Check if error is about insufficient Ready to Assign
+    if (result['success'] == false) {
+      final errorMessage = result['message'] ?? 'Đã có lỗi xảy ra';
 
-    if (result['success'] == true) {
+      if (errorMessage.contains('Ready to Assign')) {
+        ReadyToAssignDialog.showErrorIfInsufficientFunds(
+          context,
+          errorMessage,
+          'tiết kiệm',
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: context.colorScheme.error,
+          ),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Đã đóng góp thành công'),
+          backgroundColor: context.colorScheme.primary,
+        ),
+      );
       _loadGoalDetails();
     }
   }
@@ -277,67 +294,95 @@ class _SavingsDetailScreenState extends State<SavingsDetailScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Chi tiết mục tiêu'),
+        body: Column(
+          children: [
+            CommonHeaderPresets.detail(
+              context: context,
+              title: 'Chi tiết mục tiêu',
+              subtitle: 'Đang tải...',
+            ),
+            const Expanded(
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ],
         ),
-        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_goal == null) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Chi tiết mục tiêu'),
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: 64,
-                color: context.colorScheme.error,
+        body: Column(
+          children: [
+            CommonHeaderPresets.detail(
+              context: context,
+              title: 'Chi tiết mục tiêu',
+              subtitle: 'Không tìm thấy',
+            ),
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: context.colorScheme.error,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Không tìm thấy mục tiêu'),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () => context.pop(),
+                      child: const Text('Quay lại'),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
-              const Text('Không tìm thấy mục tiêu'),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => context.pop(),
-                child: const Text('Quay lại'),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
 
+    final goal = _goal!;
+    final targetDate = DateFormatter.toDisplayFormat(goal.targetDate);
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_goal!.name),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () => context.push('/savings/edit/${widget.goalId}'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete),
-            onPressed: _deleteGoal,
-          ),
-        ],
-      ),
       body: RefreshIndicator(
         onRefresh: _loadGoalDetails,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.zero,
           children: [
-            _buildProgressCard(),
-            const SizedBox(height: 16),
-            _buildActionsCard(),
-            const SizedBox(height: 16),
-            _buildStatsCard(),
-            const SizedBox(height: 16),
-            _buildContributionsCard(),
-            const SizedBox(height: 100),
+            CommonHeaderPresets.detail(
+              context: context,
+              title: goal.name,
+              subtitle: 'Mục tiêu: $targetDate',
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: () => context.push('/savings/edit/${widget.goalId}'),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: _deleteGoal,
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _buildProgressCard(),
+                  const SizedBox(height: 16),
+                  _buildActionsCard(),
+                  const SizedBox(height: 16),
+                  _buildStatsCard(),
+                  const SizedBox(height: 16),
+                  _buildContributionsCard(),
+                  const SizedBox(height: 100),
+                ],
+              ),
+            ),
           ],
         ),
       ),

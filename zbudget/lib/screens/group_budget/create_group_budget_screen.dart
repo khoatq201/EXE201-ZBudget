@@ -8,6 +8,7 @@ import '../../constants/spacing.dart';
 import '../../utils/theme_extensions.dart';
 import '../../utils/currency_input_formatter.dart';
 import '../../utils/currency_formatter.dart';
+import '../../utils/snackbar_utils.dart';
 
 class MemberInput {
   final TextEditingController nameController;
@@ -159,11 +160,9 @@ class _CreateGroupBudgetScreenState extends State<CreateGroupBudgetScreen> {
 
     // Validate total percentage if multiple members
     if (_members.length > 1 && _totalPercentage != 100) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tổng phần trăm đóng góp phải bằng 100%'),
-          backgroundColor: Colors.orange,
-        ),
+      SnackBarUtils.showWarning(
+        context,
+        'Tổng phần trăm đóng góp phải bằng 100%',
       );
       return;
     }
@@ -194,26 +193,17 @@ class _CreateGroupBudgetScreenState extends State<CreateGroupBudgetScreen> {
       if (!mounted) return;
 
       if (result['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tạo ngân sách thành công!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        SnackBarUtils.showSuccess(context, 'Tạo ngân sách thành công!');
         context.go('/group-budgets');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Có lỗi xảy ra'),
-            backgroundColor: Colors.red,
-          ),
+        SnackBarUtils.showError(
+          context,
+          result['message'] ?? 'Có lỗi xảy ra',
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
-      );
+      SnackBarUtils.showError(context, 'Lỗi: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -226,9 +216,9 @@ class _CreateGroupBudgetScreenState extends State<CreateGroupBudgetScreen> {
     return Scaffold(
       backgroundColor: context.colorScheme.surface,
       appBar: AppBar(
-        title: Text('Tạo ngân sách nhóm', style: AppTypography.h2),
-        backgroundColor: context.colorScheme.primary,
-        foregroundColor: Colors.white,
+        title: const Text('Tạo ngân sách nhóm'),
+        backgroundColor: context.headerGradientStart,
+        foregroundColor: context.headerTextColor,
         elevation: 0,
       ),
       body: Form(

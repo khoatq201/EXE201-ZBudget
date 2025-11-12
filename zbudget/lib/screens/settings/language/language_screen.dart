@@ -63,7 +63,7 @@ class _LanguageScreenState extends State<LanguageScreen>
             floating: false,
             pinned: true,
             backgroundColor: context.headerGradientStart,
-            foregroundColor: context.colorScheme.onPrimary,
+            foregroundColor: context.headerTextColor,
             elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
               title: Text(

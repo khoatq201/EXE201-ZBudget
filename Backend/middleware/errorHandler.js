@@ -114,8 +114,7 @@ export const errorHandler = (err, req, res, next) => {
   }
   // Mongoose duplicate key
   if (err.code === 11000) {
-    const message = "Dữ liệu đã tồn tại";
-    error = new ConflictError(message);
+    error = handleDuplicateKeyError(err);
   }
   // Mongoose validation error
   if (err.name === "ValidationError") {

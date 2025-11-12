@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 import { connectDB } from "./models/index.js";
 import logger from "morgan";
 import sessionCleanupJob from "./services/SessionCleanupJob.js";
+import notificationSchedulerJob from "./services/NotificationSchedulerJob.js";
 // Import routes
 import authRoutes from "./routes/authRoutes.js";
 import expenseRoutes from "./routes/expenseRoutes.js";
@@ -21,10 +22,12 @@ import savingsRoutes from "./routes/savingsRoutes.js";
 import budgetRoutes from "./routes/budgetRoutes.js";
 import groupBudgetRoutes from "./routes/groupBudgetRoutes.js";
 import ocrRoutes from "./routes/ocrRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
+import aiAnalysisRoutes from "./routes/aiAnalysisRoutes.js";
 // import userRoutes from './routes/users.js';
 // import challengeRoutes from './routes/challenges.js';
 // import groupRoutes from './routes/groups.js';
-// import notificationRoutes from './routes/notifications.js';
+import notificationRoutes from "./routes/notificationRoutes.js";
 // import healthRoutes from './routes/health.js';
 // Middleware
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -122,6 +125,39 @@ app.use(
     limit: process.env.MAX_URLENCODED_SIZE || "10mb",
   })
 );
+// Simple console logging for every request (works better on Render)
+app.use((req, res, next) => {
+  const startTime = Date.now();
+  const timestamp = new Date().toISOString();
+  console.log(
+    `[${timestamp}] 📥 ${req.method} ${req.originalUrl} - IP: ${
+      req.ip || req.connection.remoteAddress
+    }`
+  );
+
+  if (req.method !== "GET" && req.body && Object.keys(req.body).length > 0) {
+    // Sanitize sensitive data for logging
+    const body = { ...req.body };
+    if (body.password) body.password = "***REDACTED***";
+    if (body.token) body.token = "***REDACTED***";
+    console.log(`Request body:`, JSON.stringify(body));
+  }
+
+  // Log response when it finishes
+  res.on("finish", () => {
+    const duration = Date.now() - startTime;
+    const statusEmoji =
+      res.statusCode >= 500 ? "❌" : res.statusCode >= 400 ? "⚠️" : "✅";
+    console.log(
+      `[${new Date().toISOString()}] 📤 ${statusEmoji} ${req.method} ${
+        req.originalUrl
+      } - Status: ${res.statusCode} - Time: ${duration}ms`
+    );
+  });
+
+  next();
+});
+
 // Request and response logging middleware
 app.use(requestLogger);
 app.use(responseLogger);
@@ -148,11 +184,13 @@ app.use("/api/savings", savingsRoutes);
 app.use("/api/budgets", budgetRoutes);
 app.use("/api/group-budgets", groupBudgetRoutes);
 app.use("/api/ocr", ocrRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/ai/analysis", aiAnalysisRoutes);
 // Protected routes (will be added later)
 // app.use('/api/users', authenticate, userRoutes);
 // app.use('/api/challenges', authenticate, challengeRoutes);
 // app.use('/api/groups', authenticate, groupRoutes);
-// app.use('/api/notifications', authenticate, notificationRoutes);
+app.use("/api/notifications", notificationRoutes);
 // API documentation
 app.get("/api", (req, res) => {
   res.json({
@@ -166,6 +204,8 @@ app.get("/api", (req, res) => {
       income: "/api/income",
       reports: "/api/reports",
       savings: "/api/savings",
+      ai: "/api/ai",
+      aiAnalysis: "/api/ai/analysis",
       health: "/api/health",
     },
     todo_endpoints: {
@@ -250,16 +290,36 @@ process.on("uncaughtException", (error) => {
 // Start server
 async function startServer() {
   try {
+    console.log("🌍 Environment:", process.env.NODE_ENV || "development");
+    console.log("🔌 Connecting to database...");
     // Connect to database
     await connectDB();
+    console.log("✅ Database connected successfully");
+
     // Start HTTP server
     server = app.listen(PORT, () => {
       console.log(`🚀 Server is running on port ${PORT}`);
+      console.log(
+        `📍 Server URL: ${
+          process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`
+        }`
+      );
+      console.log(
+        `🏥 Health check: ${
+          process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`
+        }/api/health`
+      );
       // Start session cleanup job
       sessionCleanupJob.start();
+      // Start notification scheduler job
+      notificationSchedulerJob.start();
+      console.log("✅ Background jobs started");
+
       if (process.env.NODE_ENV === "development") {
         console.log(`📝 API Documentation: http://localhost:${PORT}/api`);
       }
+
+      console.log("🎉 Server is ready to accept requests!");
     });
     return server;
   } catch (error) {

@@ -5,16 +5,33 @@ class ApiConfig {
   // Base URLs for different environments
   static const String _devBaseUrlWeb = 'http://localhost:3000/api';
   static const String _devBaseUrlAndroid = 'http://10.0.2.2:3000/api';
-  static const String _prodBaseUrl = 'https://your-production-api.com/api';
-  static const String _stagingBaseUrl = 'https://your-staging-api.com/api';
+  static const String _prodBaseUrl = 'https://zbudget-backend.onrender.com/api';
+  static const String _stagingBaseUrl =
+      'https://zbudget-backend.onrender.com/api';
 
-  // Current environment
-  static const bool _isDevelopment =
-      true; // Change this based on build configuration
-  static const bool _isProduction = false;
+  // Current environment - sử dụng environment variables
+  static const bool _isDevelopment = false;
+  static const bool _isProduction = true;
+  // static String get baseUrl {
+  //   if (kIsWeb) {
+  //     // Cho Flutter web, sử dụng localhost
+  //     return 'http://localhost:3000/api/auth';
+  //   } else {
+  //     // Cho Android emulator, sử dụng 10.0.2.2 thay vì localhost
+  //     // 10.0.2.2 là địa chỉ đặc biệt trong Android emulator để truy cập host machine
+  //     return 'http://10.0.2.2:3000/api/auth';
+  //   }
+  // }
 
   /// Get the base URL based on the current environment
   static String get baseUrl {
+    // Kiểm tra environment variable trước
+    const String envUrl = String.fromEnvironment('BACKEND_URL');
+    if (envUrl.isNotEmpty) {
+      return envUrl;
+    }
+
+    // Fallback logic
     if (_isDevelopment) {
       // Different URLs for web and mobile
       if (kIsWeb) {
@@ -55,6 +72,23 @@ class ApiConfig {
 
   // Dashboard endpoints
   static const String dashboardEndpoint = '/dashboard';
+
+  // AI Endpoints
+  static const String aiChatStart = '/ai/chat/start';
+  static const String aiChatMessage = '/ai/chat/message';
+  static const String aiChatHistory = '/ai/chat/history';
+  static const String aiChatEnd = '/ai/chat/end';
+  static const String aiChatSessions = '/ai/chat/sessions';
+
+  // AI Analysis Endpoints
+  static const String aiAnalysisDeep = '/ai/analysis/deep';
+  static const String aiAnalysisForecast = '/ai/analysis/forecast';
+  static const String aiAnalysisAnomalies = '/ai/analysis/anomalies';
+  static const String aiAnalysisRecommendations =
+      '/ai/analysis/recommendations';
+  static const String aiAnalysisInsights = '/ai/analysis/insights';
+  static const String aiAnalysisPatterns = '/ai/analysis/patterns';
+  static const String aiAnalysisCache = '/ai/analysis/cache';
 
   // Request timeout settings
   static const Duration requestTimeout = Duration(seconds: 30);

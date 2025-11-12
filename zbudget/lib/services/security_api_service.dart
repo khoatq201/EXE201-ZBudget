@@ -1,24 +1,20 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/device_info_helper.dart';
+import '../utils/secure_storage_manager.dart';
+import '../config/api_config.dart';
 
 /// API service for security-related operations
 class SecurityApiService {
-  // Base URL - different for web and mobile
+  // Base URL - sử dụng ApiConfig để quản lý theo environment
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000/api/security';
-    } else {
-      return 'http://10.0.2.2:3000/api/security';
-    }
+    return ApiConfig.baseUrl + '/security';
   }
 
   /// Get authorization headers
   static Future<Map<String, String>> _getHeaders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('access_token');
+    final token = await SecureStorageManager.getToken();
 
     if (token == null) {
       throw Exception('No access token found. Please login again.');

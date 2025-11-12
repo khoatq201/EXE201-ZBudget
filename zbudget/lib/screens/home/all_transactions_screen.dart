@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../constants/colors.dart';
 import '../../constants/typography.dart';
+import '../../utils/theme_extensions.dart';
 import '../../models/dashboard.dart';
 import '../../services/dashboard_service.dart';
+import '../../services/expense_service.dart';
+import '../../services/income_service.dart';
 import '../../utils/formatters.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -87,11 +90,11 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
+      backgroundColor: context.scaffoldBackground,
       appBar: AppBar(
         title: const Text('Toàn bộ giao dịch'),
-        backgroundColor: AppColors.primary500,
-        foregroundColor: Colors.white,
+        backgroundColor: context.headerGradientStart,
+        foregroundColor: context.headerTextColor,
         elevation: 0,
       ),
       body: Column(
@@ -113,7 +116,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBackground,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(13),
@@ -227,10 +230,10 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? color : Colors.grey.shade100,
+          color: isSelected ? color : context.cardBackground,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? color : Colors.grey.shade300,
+            color: isSelected ? color : context.cardBorder,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -240,13 +243,13 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
             Icon(
               icon,
               size: 16,
-              color: isSelected ? Colors.white : Colors.grey.shade600,
+              color: isSelected ? Colors.white : context.secondaryTextColor,
             ),
             const SizedBox(width: 4),
             Text(
               label,
               style: AppTypography.bodySmall.copyWith(
-                color: isSelected ? Colors.white : Colors.grey.shade600,
+                color: isSelected ? Colors.white : context.secondaryTextColor,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -262,9 +265,9 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: context.cardBackground,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: context.cardBorder),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -274,7 +277,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
             Text(
               label,
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textPrimary,
+                color: context.primaryTextColor,
               ),
             ),
           ],
@@ -397,7 +400,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                 child: Text(
                   dateKey,
                   style: AppTypography.h4.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.secondaryTextColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -412,69 +415,228 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   }
 
   Widget _buildTransactionItem(Transaction transaction) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(8),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+    return Dismissible(
+      key: Key(transaction.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        decoration: BoxDecoration(
+          color: AppColors.error,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.centerRight,
+        child: const Icon(
+          Icons.delete,
+          color: Colors.white,
+          size: 28,
+        ),
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: transaction.isIncome
-                  ? AppColors.success.withAlpha(26)
-                  : AppColors.error.withAlpha(26),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              transaction.isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-              color: transaction.isIncome ? AppColors.success : AppColors.error,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  transaction.title,
-                  style: AppTypography.bodyMedium.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+      confirmDismiss: (direction) async {
+        return await showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Xác nhận xóa'),
+              content: Text(
+                'Bạn có chắc muốn xóa giao dịch "${transaction.title}"?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Hủy'),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  _getCategoryName(transaction.category),
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                  child: const Text('Xóa'),
                 ),
               ],
-            ),
+            );
+          },
+        );
+      },
+      onDismissed: (direction) {
+        _deleteTransaction(transaction);
+      },
+      child: InkWell(
+        onTap: () => _showTransactionOptions(transaction),
+        onLongPress: () => _showTransactionOptions(transaction),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: context.cardBackground,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(8),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          Text(
-            transaction.isIncome
-              ? CurrencyFormatter.formatIncome(transaction.amount)
-              : CurrencyFormatter.formatExpense(transaction.amount),
-            style: AppTypography.h4.copyWith(
-              color: transaction.isIncome ? AppColors.success : AppColors.error,
-              fontWeight: FontWeight.bold,
-            ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: transaction.isIncome
+                      ? AppColors.success.withAlpha(26)
+                      : AppColors.error.withAlpha(26),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  transaction.isIncome ? Icons.arrow_downward : Icons.arrow_upward,
+                  color: transaction.isIncome ? AppColors.success : AppColors.error,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      transaction.title,
+                      style: AppTypography.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: context.primaryTextColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _getCategoryName(transaction.category),
+                      style: AppTypography.bodySmall.copyWith(
+                        color: context.secondaryTextColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                transaction.isIncome
+                  ? CurrencyFormatter.formatIncome(transaction.amount)
+                  : CurrencyFormatter.formatExpense(transaction.amount),
+                style: AppTypography.h4.copyWith(
+                  color: transaction.isIncome ? AppColors.success : AppColors.error,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
+  }
+
+  void _showTransactionOptions(Transaction transaction) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: context.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: Icon(Icons.edit, color: AppColors.primary),
+                title: const Text('Chỉnh sửa'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _editTransaction(transaction);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: AppColors.error),
+                title: const Text('Xóa'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDelete(transaction);
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _editTransaction(Transaction transaction) {
+    // TODO: Navigate to edit screen based on transaction type
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Chức năng sửa đang phát triển')),
+    );
+  }
+
+  void _confirmDelete(Transaction transaction) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Xác nhận xóa'),
+          content: Text(
+            'Bạn có chắc muốn xóa giao dịch "${transaction.title}"?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Hủy'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(foregroundColor: AppColors.error),
+              child: const Text('Xóa'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      _deleteTransaction(transaction);
+    }
+  }
+
+  Future<void> _deleteTransaction(Transaction transaction) async {
+    try {
+      // Delete based on transaction type
+      if (transaction.isIncome) {
+        final incomeService = context.read<IncomeService>();
+        await incomeService.deleteIncome(transaction.id);
+      } else {
+        final expenseService = context.read<ExpenseService>();
+        await expenseService.deleteExpense(transaction.id);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã xóa giao dịch')),
+        );
+        _loadTransactions();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi: ${e.toString()}')),
+        );
+      }
+    }
   }
 
   String _getCategoryName(String category) {

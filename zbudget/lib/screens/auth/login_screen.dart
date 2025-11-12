@@ -3,9 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/auth_service.dart';
-import '../../constants/colors.dart';
 import '../../constants/typography.dart';
 import '../../constants/spacing.dart';
+import '../../utils/theme_extensions.dart';
 import 'package:go_router/go_router.dart';
 import '../debug/network_test_screen.dart';
 import '../debug/google_signin_test_screen.dart';
@@ -127,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Đăng nhập thành công!'),
-              backgroundColor: AppColors.success,
+              backgroundColor: context.colorScheme.primary,
               duration: Duration(seconds: 2),
             ),
           );
@@ -155,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(errorMessage),
-                backgroundColor: AppColors.error,
+                backgroundColor: context.errorColor,
                 duration: Duration(seconds: 4),
               ),
             );
@@ -167,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Lỗi kết nối. Vui lòng thử lại sau.'),
-            backgroundColor: AppColors.error,
+            backgroundColor: context.errorColor,
           ),
         );
       }
@@ -215,7 +215,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Text(
                   'Đăng nhập để tiếp tục',
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.secondaryTextColor,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -235,7 +235,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppColors.dark200),
+                      borderSide: BorderSide(color: context.tertiaryTextColor),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -285,7 +285,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppColors.dark200),
+                      borderSide: BorderSide(color: context.tertiaryTextColor),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -325,7 +325,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               print('🔥 Remember Me changed: $_rememberMe');
                             });
                           },
-                          activeColor: AppColors.primary500,
+                          activeColor: context.colorScheme.primary,
                           checkColor: Colors.white,
                           tristate: false, // ✅ Explicitly disable tristate
                         ),
@@ -339,7 +339,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Text(
                             'Ghi nhớ đăng nhập',
                             style: AppTypography.body.copyWith(
-                              color: AppColors.textSecondary,
+                              color: context.secondaryTextColor,
                             ),
                           ),
                         ),
@@ -353,7 +353,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Text(
                         'Quên mật khẩu?',
                         style: AppTypography.body.copyWith(
-                          color: AppColors.primary500,
+                          color: context.colorScheme.primary,
                         ),
                       ),
                     ),
@@ -399,21 +399,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Divider
                 Row(
                   children: [
-                    const Expanded(
-                      child: Divider(color: AppColors.textTertiary),
-                    ),
+                    Expanded(child: Divider(color: context.tertiaryTextColor)),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
                         'Hoặc',
                         style: AppTypography.body.copyWith(
-                          color: AppColors.textSecondary,
+                          color: context.secondaryTextColor,
                         ),
                       ),
                     ),
-                    const Expanded(
-                      child: Divider(color: AppColors.textTertiary),
-                    ),
+                    Expanded(child: Divider(color: context.tertiaryTextColor)),
                   ],
                 ),
 
@@ -447,18 +443,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     label: Text(
                       _isLoading ? 'Đang xử lý...' : 'Đăng nhập với Google',
                       style: AppTypography.button.copyWith(
-                        color: AppColors.textPrimary,
+                        color: context.primaryTextColor,
                       ),
                     ),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(
-                        color: AppColors.textTertiary,
+                      side: BorderSide(
+                        color: context.tertiaryTextColor,
                         width: 1,
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      backgroundColor: AppColors.backgroundPrimary,
+                      backgroundColor: context.screenBackground,
                     ),
                   ),
                 ),
@@ -472,7 +468,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Text(
                       'Chưa có tài khoản? ',
                       style: AppTypography.body.copyWith(
-                        color: AppColors.textSecondary,
+                        color: context.secondaryTextColor,
                       ),
                     ),
                     TextButton(
@@ -483,7 +479,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Text(
                         'Đăng ký',
                         style: AppTypography.body.copyWith(
-                          color: AppColors.primary500,
+                          color: context.colorScheme.primary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

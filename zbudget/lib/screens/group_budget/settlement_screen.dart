@@ -6,6 +6,8 @@ import '../../constants/typography.dart';
 import '../../constants/spacing.dart';
 import '../../utils/theme_extensions.dart';
 import '../../utils/currency_formatter.dart';
+import '../../utils/snackbar_utils.dart';
+import '../../utils/snackbar_utils.dart';
 
 class SettlementScreen extends StatefulWidget {
   final String budgetId;
@@ -34,16 +36,35 @@ class _SettlementScreenState extends State<SettlementScreen> {
     try {
       final service = Provider.of<GroupBudgetService>(context, listen: false);
       final plan = await service.getSettlementPlan(widget.budgetId);
+
+      // Validate plan data
+      if (plan != null) {
+        final validatedPlan = plan.where((payment) {
+          return payment['fromName'] != null &&
+              payment['toName'] != null &&
+              payment['amount'] != null &&
+              payment['toUserId'] != null;
+        }).toList();
+
+        setState(() {
+          _settlementPlan = validatedPlan;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _settlementPlan = [];
+          _isLoading = false;
+        });
+      }
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error loading settlement plan: $e');
+      debugPrint('Stack: $stackTrace');
       setState(() {
-        _settlementPlan = plan;
+        _settlementPlan = [];
         _isLoading = false;
       });
-    } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
-        );
+        SnackBarUtils.showError(context, 'Lỗi: $e');
       }
     }
   }
@@ -60,31 +81,29 @@ class _SettlementScreenState extends State<SettlementScreen> {
       if (!mounted) return;
 
       if (result['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ghi nhận thanh toán thành công!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        SnackBarUtils.showSuccess(context, 'Ghi nhận thanh toán thành công!');
         // Reload settlement plan
         _loadSettlementPlan();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Có lỗi xảy ra'),
-            backgroundColor: Colors.red,
-          ),
+        SnackBarUtils.showError(
+          context,
+          result['message'] ?? 'Có lỗi xảy ra',
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
-      );
+      SnackBarUtils.showError(context, 'Lỗi: $e');
     }
   }
 
   void _showPaymentDialog(Map<String, dynamic> payment) {
+    final fromName = payment['fromName']?.toString() ?? 'Người trả';
+    final toName = payment['toName']?.toString() ?? 'Người nhận';
+    final amount = payment['amount'] is num
+        ? (payment['amount'] as num).toDouble()
+        : 0.0;
+    final toUserId = payment['toUserId']?.toString() ?? '';
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -93,10 +112,10 @@ class _SettlementScreenState extends State<SettlementScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${payment['fromName']} trả ${payment['toName']}:'),
+            Text('$fromName trả $toName:'),
             const SizedBox(height: 8),
             Text(
-              CurrencyFormatter.format(payment['amount']),
+              CurrencyFormatter.format(amount),
               style: AppTypography.h4.copyWith(
                 fontWeight: FontWeight.bold,
                 color: context.colorScheme.primary,
@@ -117,10 +136,9 @@ class _SettlementScreenState extends State<SettlementScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              _recordPayment(
-                payment['toUserId'],
-                payment['amount'].toDouble(),
-              );
+              if (toUserId.isNotEmpty) {
+                _recordPayment(toUserId, amount);
+              }
             },
             child: const Text('Xác nhận'),
           ),
@@ -134,8 +152,8 @@ class _SettlementScreenState extends State<SettlementScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Phương án thanh toán'),
-        backgroundColor: context.colorScheme.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: context.headerGradientStart,
+        foregroundColor: context.headerTextColor,
       ),
       body: Consumer<GroupBudgetService>(
         builder: (context, service, child) {
@@ -245,6 +263,12 @@ class _SettlementScreenState extends State<SettlementScreen> {
   }
 
   Widget _buildPaymentCard(Map<String, dynamic> payment) {
+    final fromName = payment['fromName']?.toString() ?? 'Người trả';
+    final toName = payment['toName']?.toString() ?? 'Người nhận';
+    final amount = payment['amount'] is num
+        ? (payment['amount'] as num).toDouble()
+        : 0.0;
+
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       child: InkWell(
@@ -262,7 +286,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
                 ),
                 child: Center(
                   child: Text(
-                    payment['fromName'][0].toUpperCase(),
+                    fromName.isNotEmpty ? fromName[0].toUpperCase() : '?',
                     style: TextStyle(
                       color: Colors.red.shade700,
                       fontWeight: FontWeight.bold,
@@ -279,7 +303,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
                     Row(
                       children: [
                         Text(
-                          payment['fromName'],
+                          fromName,
                           style: AppTypography.body.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -288,7 +312,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
                         const Icon(Icons.arrow_forward, size: 16),
                         const SizedBox(width: 8),
                         Text(
-                          payment['toName'],
+                          toName,
                           style: AppTypography.body.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -297,7 +321,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      CurrencyFormatter.format(payment['amount']),
+                      CurrencyFormatter.format(amount),
                       style: AppTypography.h6.copyWith(
                         color: context.colorScheme.primary,
                         fontWeight: FontWeight.bold,
@@ -308,7 +332,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
               ),
               Icon(
                 Icons.chevron_right,
-                color: context.colorScheme.onSurface.withOpacity(0.3),
+                color: context.colorScheme.onSurface.withValues(alpha: 0.3),
               ),
             ],
           ),

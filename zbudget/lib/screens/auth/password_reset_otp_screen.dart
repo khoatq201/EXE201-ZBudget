@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import '../../constants/colors.dart';
 import '../../constants/typography.dart';
 import '../../constants/spacing.dart';
+import '../../utils/theme_extensions.dart';
 import '../../services/auth_service.dart';
 
 class PasswordResetOTPScreen extends StatefulWidget {
@@ -107,12 +107,12 @@ class _PasswordResetOTPScreenState extends State<PasswordResetOTPScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message']),
-              backgroundColor: AppColors.success,
+              backgroundColor: context.colorScheme.primary,
             ),
           );
 
           // Navigate to reset password screen
-          context.go(
+          context.push(
             '/reset-password',
             extra: {'email': widget.email, 'otp': _otpCode},
           );
@@ -123,7 +123,7 @@ class _PasswordResetOTPScreenState extends State<PasswordResetOTPScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message']),
-              backgroundColor: AppColors.error,
+              backgroundColor: context.errorColor,
             ),
           );
         }
@@ -138,7 +138,7 @@ class _PasswordResetOTPScreenState extends State<PasswordResetOTPScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Có lỗi xảy ra: $e'),
-            backgroundColor: AppColors.error,
+            backgroundColor: context.errorColor,
           ),
         );
       }
@@ -173,7 +173,7 @@ class _PasswordResetOTPScreenState extends State<PasswordResetOTPScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('Mã OTP mới đã được gửi'),
-              backgroundColor: AppColors.success,
+              backgroundColor: context.colorScheme.primary,
             ),
           );
         }
@@ -182,7 +182,7 @@ class _PasswordResetOTPScreenState extends State<PasswordResetOTPScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message']),
-              backgroundColor: AppColors.error,
+              backgroundColor: context.errorColor,
             ),
           );
         }
@@ -196,7 +196,7 @@ class _PasswordResetOTPScreenState extends State<PasswordResetOTPScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Có lỗi xảy ra: $e'),
-            backgroundColor: AppColors.error,
+            backgroundColor: context.errorColor,
           ),
         );
       }
@@ -206,17 +206,17 @@ class _PasswordResetOTPScreenState extends State<PasswordResetOTPScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.screenBackground,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios, color: context.primaryTextColor),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Xác thực OTP',
-          style: AppTypography.h2.copyWith(color: AppColors.textPrimary),
+          style: AppTypography.h2.copyWith(color: context.primaryTextColor),
         ),
         centerTitle: true,
       ),
@@ -233,13 +233,13 @@ class _PasswordResetOTPScreenState extends State<PasswordResetOTPScreen> {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: AppColors.primary50,
+                  color: context.colorScheme.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(40),
                 ),
                 child: Icon(
                   Icons.mail_outline,
                   size: 40,
-                  color: AppColors.primary500,
+                  color: context.colorScheme.primary,
                 ),
               ),
 
@@ -248,7 +248,9 @@ class _PasswordResetOTPScreenState extends State<PasswordResetOTPScreen> {
               // Title
               Text(
                 'Nhập mã xác thực',
-                style: AppTypography.h1.copyWith(color: AppColors.textPrimary),
+                style: AppTypography.h1.copyWith(
+                  color: context.primaryTextColor,
+                ),
                 textAlign: TextAlign.center,
               ),
 
@@ -259,7 +261,7 @@ class _PasswordResetOTPScreenState extends State<PasswordResetOTPScreen> {
                 textAlign: TextAlign.center,
                 text: TextSpan(
                   style: AppTypography.body.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.secondaryTextColor,
                   ),
                   children: [
                     const TextSpan(text: 'Chúng tôi đã gửi mã 6 số đến\n'),
@@ -288,7 +290,7 @@ class _PasswordResetOTPScreenState extends State<PasswordResetOTPScreen> {
                       maxLength: 1,
                       enabled: !_isLoading,
                       style: AppTypography.h2.copyWith(
-                        color: AppColors.textPrimary,
+                        color: context.primaryTextColor,
                       ),
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: InputDecoration(
@@ -297,26 +299,26 @@ class _PasswordResetOTPScreenState extends State<PasswordResetOTPScreen> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppColors.borderSecondary,
+                            color: context.tertiaryTextColor,
                             width: 1.5,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppColors.primary500,
+                            color: context.colorScheme.primary,
                             width: 2,
                           ),
                         ),
                         errorBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppColors.error,
+                            color: context.errorColor,
                             width: 1.5,
                           ),
                         ),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: context.cardBackground,
                       ),
                       onChanged: (value) => _onOTPChanged(value, index),
                     ),
@@ -330,7 +332,7 @@ class _PasswordResetOTPScreenState extends State<PasswordResetOTPScreen> {
               if (_isLoading)
                 CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    AppColors.primary500,
+                    context.colorScheme.primary,
                   ),
                 ),
 
@@ -342,7 +344,7 @@ class _PasswordResetOTPScreenState extends State<PasswordResetOTPScreen> {
                   Text(
                     'Không nhận được mã?',
                     style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
+                      color: context.secondaryTextColor,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
@@ -352,7 +354,7 @@ class _PasswordResetOTPScreenState extends State<PasswordResetOTPScreen> {
                       child: Text(
                         'Gửi lại mã',
                         style: AppTypography.body.copyWith(
-                          color: AppColors.primary500,
+                          color: context.colorScheme.primary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -361,7 +363,7 @@ class _PasswordResetOTPScreenState extends State<PasswordResetOTPScreen> {
                     Text(
                       'Gửi lại sau $_resendCountdown giây',
                       style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
+                        color: context.secondaryTextColor,
                       ),
                     ),
                 ],

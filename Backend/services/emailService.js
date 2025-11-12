@@ -1,14 +1,9 @@
-import nodemailer from "nodemailer";
-// Tạo transporter đơn giản với Gmail
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
-};
+import sgMail from "@sendgrid/mail";
+
+// Initialize SendGrid
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+}
 // Email templates
 const emailTemplates = {
   verification: (name, token) => ({
@@ -26,7 +21,9 @@ const emailTemplates = {
             vui lòng xác thực địa chỉ email của bạn bằng cách nhấp vào nút bên dưới:
           </p>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.FRONTEND_URL || "http://localhost:3000"}/verify-email/${token}"
+            <a href="${
+              process.env.FRONTEND_URL || "http://localhost:3000"
+            }/verify-email/${token}"
                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                       color: white;
                       padding: 12px 30px;
@@ -41,7 +38,9 @@ const emailTemplates = {
             Nếu bạn không thể nhấp vào nút trên, hãy sao chép và dán liên kết sau vào trình duyệt:
           </p>
           <p style="background-color: #e9ecef; padding: 10px; border-radius: 4px; word-break: break-all; font-size: 14px;">
-            ${process.env.FRONTEND_URL || "http://localhost:3000"}/verify-email/${token}
+            ${
+              process.env.FRONTEND_URL || "http://localhost:3000"
+            }/verify-email/${token}
           </p>
           <div style="border-top: 1px solid #dee2e6; margin-top: 30px; padding-top: 20px;">
             <p style="color: #666; font-size: 14px; margin-bottom: 10px;">
@@ -75,7 +74,9 @@ const emailTemplates = {
             Nhấp vào nút bên dưới để tạo mật khẩu mới:
           </p>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.FRONTEND_URL || "http://localhost:3000"}/reset-password/${token}"
+            <a href="${
+              process.env.FRONTEND_URL || "http://localhost:3000"
+            }/reset-password/${token}"
                style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
                       color: white;
                       padding: 12px 30px;
@@ -90,7 +91,9 @@ const emailTemplates = {
             Hoặc sao chép và dán liên kết sau vào trình duyệt:
           </p>
           <p style="background-color: #e9ecef; padding: 10px; border-radius: 4px; word-break: break-all; font-size: 14px;">
-            ${process.env.FRONTEND_URL || "http://localhost:3000"}/reset-password/${token}
+            ${
+              process.env.FRONTEND_URL || "http://localhost:3000"
+            }/reset-password/${token}
           </p>
           <div style="border-top: 1px solid #dee2e6; margin-top: 30px; padding-top: 20px;">
             <p style="color: #dc3545; font-size: 14px; margin-bottom: 10px;">
@@ -133,7 +136,9 @@ const emailTemplates = {
             </ul>
           </div>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.FRONTEND_URL || "http://localhost:3000"}/dashboard"
+            <a href="${
+              process.env.FRONTEND_URL || "http://localhost:3000"
+            }/dashboard"
                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                       color: white;
                       padding: 12px 30px;
@@ -175,11 +180,15 @@ const emailTemplates = {
           <div style="background-color: white; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin: 25px 0;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
               <span style="color: #666;">Đã chi tiêu:</span>
-              <span style="color: #dc3545; font-weight: bold; font-size: 18px;">${spent.toLocaleString("vi-VN")} ₫</span>
+              <span style="color: #dc3545; font-weight: bold; font-size: 18px;">${spent.toLocaleString(
+                "vi-VN"
+              )} ₫</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
               <span style="color: #666;">Tổng ngân sách:</span>
-              <span style="color: #333; font-weight: bold; font-size: 18px;">${total.toLocaleString("vi-VN")} ₫</span>
+              <span style="color: #333; font-weight: bold; font-size: 18px;">${total.toLocaleString(
+                "vi-VN"
+              )} ₫</span>
             </div>
             <div style="background-color: #e9ecef; border-radius: 10px; height: 20px; margin: 15px 0;">
               <div style="background: linear-gradient(90deg, #ffa500 0%, #ff6347 100%);
@@ -193,7 +202,9 @@ const emailTemplates = {
             </p>
           </div>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.FRONTEND_URL || "http://localhost:3000"}/budgets"
+            <a href="${
+              process.env.FRONTEND_URL || "http://localhost:3000"
+            }/budgets"
                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                       color: white;
                       padding: 12px 30px;
@@ -214,25 +225,41 @@ const emailTemplates = {
     `,
   }),
 };
-// Send email function - đơn giản và hiệu quả
+// Send email function sử dụng SendGrid API
 const sendEmail = async (to, template) => {
   try {
-    // Kiểm tra email credentials
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.warn("Email credentials not configured");
-      return { success: false, error: "Email not configured" };
+    // Kiểm tra Brevo API key
+    if (!process.env.SENDGRID_API_KEY) {
+      console.warn("⚠️ SendGrid API key not configured");
+      return { success: false, error: "Email service not configured" };
     }
-    const transporter = createTransporter();
-    const mailOptions = {
-      from: `"ZBudget" <${process.env.EMAIL_USER}>`,
+
+    // Gửi email qua SendGrid API
+    const fromEmail = process.env.SENDGRID_FROM_EMAIL || "noreply@sendgrid.net";
+    const fromName = "ZBudget";
+
+    const msg = {
       to,
+      from: `${fromName} <${fromEmail}>`,
       subject: template.subject,
       html: template.html,
+      text: template.text || "",
     };
-    const result = await transporter.sendMail(mailOptions);
-    return { success: true, messageId: result.messageId };
+
+    console.log("🔍 Sending email to:", to);
+
+    const response = await sgMail.send(msg);
+
+    return {
+      success: true,
+      messageId: response[0]?.headers?.["x-message-id"] || "sent",
+    };
   } catch (error) {
-    console.error("Email send error:", error.message);
+    console.warn("⚠️ Email send error:", error.message);
+    if (error.response) {
+      console.warn("Error status:", error.response.status);
+      console.warn("Error body:", error.response.body);
+    }
     return { success: false, error: error.message };
   }
 };
@@ -393,16 +420,33 @@ export const sendBulkEmail = async (recipients, template, data = {}) => {
   }
   return results;
 };
-// Test email configuration - đơn giản
+// Test email configuration với SendGrid
 export const testEmailService = async () => {
   try {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      return { success: false, error: "Email credentials not configured" };
+    if (!process.env.SENDGRID_API_KEY) {
+      return { success: false, error: "SendGrid API key not configured" };
     }
-    const transporter = createTransporter();
-    await transporter.verify();
-    return { success: true, message: "Email service ready" };
+
+    const fromEmail = process.env.SENDGRID_FROM_EMAIL || "noreply@sendgrid.net";
+    const testEmail = process.env.TEST_EMAIL || "test@example.com";
+
+    const msg = {
+      to: testEmail,
+      from: `ZBudget <${fromEmail}>`,
+      subject: "ZBudget Email Test",
+      html: "<p>Email service is working correctly!</p>",
+    };
+
+    const response = await sgMail.send(msg);
+
+    return {
+      success: true,
+      message: "Email service ready",
+      emailId: response[0]?.headers?.["x-message-id"] || "sent",
+    };
   } catch (error) {
+    console.warn("⚠️ Test email error:", error.message);
+    console.warn("Error details:", error);
     return { success: false, error: error.message };
   }
 };

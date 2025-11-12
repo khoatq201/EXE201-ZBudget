@@ -1,14 +1,9 @@
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jwt_decode/jwt_decode.dart';
+import 'secure_storage_manager.dart';
 
 /// Utility class for handling authentication tokens and state
 class AuthUtils {
-  static const String _tokenKey = 'access_token'; // Match AuthService key
-  static const String _userKey = 'user_data'; // Match AuthService key
-  static const String _refreshTokenKey =
-      'refresh_token'; // Match AuthService key
-
   /// Check if user is currently authenticated
   static Future<bool> isAuthenticated() async {
     try {
@@ -33,9 +28,7 @@ class AuthUtils {
   /// Get the stored authentication token
   static Future<String?> getToken() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(_tokenKey);
-      return token;
+      return await SecureStorageManager.getToken();
     } catch (e) {
       print('AuthUtils.getToken: Error getting token: $e');
       return null;
@@ -45,8 +38,8 @@ class AuthUtils {
   /// Store authentication token
   static Future<bool> setToken(String token) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      return await prefs.setString(_tokenKey, token);
+      await SecureStorageManager.setToken(token);
+      return true;
     } catch (e) {
       return false;
     }
@@ -55,8 +48,7 @@ class AuthUtils {
   /// Get the stored refresh token
   static Future<String?> getRefreshToken() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString(_refreshTokenKey);
+      return await SecureStorageManager.getRefreshToken();
     } catch (e) {
       return null;
     }
@@ -65,8 +57,8 @@ class AuthUtils {
   /// Store refresh token
   static Future<bool> setRefreshToken(String refreshToken) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      return await prefs.setString(_refreshTokenKey, refreshToken);
+      await SecureStorageManager.setRefreshToken(refreshToken);
+      return true;
     } catch (e) {
       return false;
     }
@@ -75,8 +67,7 @@ class AuthUtils {
   /// Get stored user information
   static Future<Map<String, dynamic>?> getUser() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userJson = prefs.getString(_userKey);
+      final userJson = await SecureStorageManager.getUserData();
       if (userJson != null) {
         return json.decode(userJson);
       }
@@ -89,9 +80,9 @@ class AuthUtils {
   /// Store user information
   static Future<bool> setUser(Map<String, dynamic> user) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
       final userJson = json.encode(user);
-      return await prefs.setString(_userKey, userJson);
+      await SecureStorageManager.setUserData(userJson);
+      return true;
     } catch (e) {
       return false;
     }
@@ -169,10 +160,7 @@ class AuthUtils {
   /// Logout and clear all stored data
   static Future<void> logout() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_tokenKey);
-      await prefs.remove(_refreshTokenKey);
-      await prefs.remove(_userKey);
+      await SecureStorageManager.clearAll();
     } catch (e) {
       // Ignore errors during logout
     }

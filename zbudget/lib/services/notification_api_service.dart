@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../utils/auth_utils.dart';
 import '../models/settings/notification_settings.dart';
+import '../config/api_config.dart';
 
 class NotificationApiService {
-  static const String baseUrl = 'http://10.0.2.2:3000/api/settings';
+  static String get baseUrl => ApiConfig.baseUrl + '/settings';
 
   /// Get notification settings from backend
   static Future<NotificationSettings?> getNotificationSettings() async {

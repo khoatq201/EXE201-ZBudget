@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/group_budget.dart';
+import '../utils/secure_storage_manager.dart';
+import '../config/api_config.dart';
 
 /// Service for managing GroupBudget operations
 class GroupBudgetService extends ChangeNotifier {
@@ -22,16 +23,11 @@ class GroupBudgetService extends ChangeNotifier {
       _budgets.where((b) => b.isSettled).toList();
 
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000/api/group-budgets';
-    } else {
-      return 'http://10.0.2.2:3000/api/group-budgets';
-    }
+    return ApiConfig.baseUrl + '/group-budgets';
   }
 
   Future<Map<String, String>> _getHeaders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('access_token');
+    final token = await SecureStorageManager.getToken();
     return {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
@@ -46,6 +42,26 @@ class GroupBudgetService extends ChangeNotifier {
   void _setError(String? error) {
     _error = error;
     notifyListeners();
+  }
+
+  /// Safely decode JSON response body
+  /// Returns null if body is empty or invalid JSON (e.g., HTML error page)
+  Map<String, dynamic>? _safeJsonDecode(String body) {
+    if (body.isEmpty) {
+      if (kDebugMode) {
+        debugPrint('⚠️ Response body is empty');
+      }
+      return null;
+    }
+    try {
+      return json.decode(body) as Map<String, dynamic>;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ JSON decode error: $e');
+        debugPrint('Response body: ${body.substring(0, body.length > 200 ? 200 : body.length)}...');
+      }
+      return null;
+    }
   }
 
   /// Create a new GroupBudget
@@ -83,8 +99,13 @@ class GroupBudgetService extends ChangeNotifier {
         body: jsonEncode(body),
       );
 
+      final data = _safeJsonDecode(response.body);
+      if (data == null) {
+        _setError('Invalid response from server');
+        return {'success': false, 'message': 'Invalid response from server'};
+      }
+
       if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
         debugPrint('✅ Create budget response: ${response.body}');
         debugPrint('📦 Data type: ${data['data'].runtimeType}');
 
@@ -101,8 +122,7 @@ class GroupBudgetService extends ChangeNotifier {
           return {'success': false, 'message': 'Error parsing response: $e'};
         }
       } else {
-        final error =
-            jsonDecode(response.body)['message'] ?? 'Failed to create budget';
+        final error = data['message'] ?? 'Failed to create budget';
         _setError(error);
         return {'success': false, 'message': error};
       }
@@ -127,8 +147,13 @@ class GroupBudgetService extends ChangeNotifier {
 
       final response = await http.get(uri, headers: headers);
 
+      final data = _safeJsonDecode(response.body);
+      if (data == null) {
+        _setError('Invalid response from server');
+        return;
+      }
+
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
         debugPrint('✅ Get budgets response type: ${data['data'].runtimeType}');
         debugPrint(
           '📦 Response: ${response.body.length > 500 ? response.body.substring(0, 500) : response.body}...',
@@ -157,8 +182,7 @@ class GroupBudgetService extends ChangeNotifier {
         }
         notifyListeners();
       } else {
-        final error =
-            jsonDecode(response.body)['message'] ?? 'Failed to get budgets';
+        final error = data['message'] ?? 'Failed to get budgets';
         _setError(error);
       }
     } catch (e) {
@@ -180,8 +204,13 @@ class GroupBudgetService extends ChangeNotifier {
         headers: headers,
       );
 
+      final data = _safeJsonDecode(response.body);
+      if (data == null) {
+        _setError('Invalid response from server');
+        return null;
+      }
+
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
         final budget = GroupBudget.fromJson(data['data']);
         _currentBudget = budget;
 
@@ -196,8 +225,7 @@ class GroupBudgetService extends ChangeNotifier {
         notifyListeners();
         return budget;
       } else {
-        final error =
-            jsonDecode(response.body)['message'] ?? 'Failed to get budget';
+        final error = data['message'] ?? 'Failed to get budget';
         _setError(error);
         return null;
       }
@@ -231,16 +259,20 @@ class GroupBudgetService extends ChangeNotifier {
         body: jsonEncode(body),
       );
 
+      final data = _safeJsonDecode(response.body);
+      if (data == null) {
+        _setError('Invalid response from server');
+        return {'success': false, 'message': 'Invalid response from server'};
+      }
+
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
         final budget = GroupBudget.fromJson(data['data']);
         _budgets.add(budget);
         _currentBudget = budget;
         notifyListeners();
         return {'success': true, 'budget': budget};
       } else {
-        final error =
-            jsonDecode(response.body)['message'] ?? 'Failed to join budget';
+        final error = data['message'] ?? 'Failed to join budget';
         _setError(error);
         return {'success': false, 'message': error};
       }
@@ -289,8 +321,13 @@ class GroupBudgetService extends ChangeNotifier {
         body: jsonEncode(body),
       );
 
+      final data = _safeJsonDecode(response.body);
+      if (data == null) {
+        _setError('Invalid response from server');
+        return {'success': false, 'message': 'Invalid response from server'};
+      }
+
       if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
         final updatedBudget = GroupBudget.fromJson(data['data']['groupBudget']);
 
         // Update budget in list
@@ -305,8 +342,7 @@ class GroupBudgetService extends ChangeNotifier {
         notifyListeners();
         return {'success': true, 'budget': updatedBudget};
       } else {
-        final error =
-            jsonDecode(response.body)['message'] ?? 'Failed to add expense';
+        final error = data['message'] ?? 'Failed to add expense';
         _setError(error);
         return {'success': false, 'message': error};
       }
@@ -337,8 +373,13 @@ class GroupBudgetService extends ChangeNotifier {
         body: jsonEncode(body),
       );
 
+      final data = _safeJsonDecode(response.body);
+      if (data == null) {
+        _setError('Invalid response from server');
+        return {'success': false, 'message': 'Invalid response from server'};
+      }
+
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
         final updatedBudget = GroupBudget.fromJson(data['data']);
 
         // Update budget in list
@@ -353,8 +394,7 @@ class GroupBudgetService extends ChangeNotifier {
         notifyListeners();
         return {'success': true, 'budget': updatedBudget};
       } else {
-        final error =
-            jsonDecode(response.body)['message'] ?? 'Failed to record payment';
+        final error = data['message'] ?? 'Failed to record payment';
         _setError(error);
         return {'success': false, 'message': error};
       }
@@ -378,17 +418,39 @@ class GroupBudgetService extends ChangeNotifier {
         headers: headers,
       );
 
+      final data = _safeJsonDecode(response.body);
+      if (data == null) {
+        _setError('Invalid response from server');
+        return null;
+      }
+
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data['data']);
+        debugPrint(
+          '✅ Get settlement plan response type: ${data['data'].runtimeType}',
+        );
+
+        // Handle both array and single object/null response
+        if (data['data'] == null) {
+          return [];
+        } else if (data['data'] is List) {
+          return List<Map<String, dynamic>>.from(data['data']);
+        } else if (data['data'] is Map) {
+          // If single object returned, wrap in array
+          return [Map<String, dynamic>.from(data['data'])];
+        } else {
+          debugPrint(
+            '⚠️ Unexpected settlement plan data type: ${data['data'].runtimeType}',
+          );
+          return [];
+        }
       } else {
-        final error =
-            jsonDecode(response.body)['message'] ??
-            'Failed to get settlement plan';
+        final error = data['message'] ?? 'Failed to get settlement plan';
         _setError(error);
         return null;
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error getting settlement plan: $e');
+      debugPrint('Stack: $stackTrace');
       _setError(e.toString());
       return null;
     } finally {
@@ -412,8 +474,13 @@ class GroupBudgetService extends ChangeNotifier {
         body: jsonEncode(updates ?? {}),
       );
 
+      final data = _safeJsonDecode(response.body);
+      if (data == null) {
+        _setError('Invalid response from server');
+        return {'success': false, 'message': 'Invalid response from server'};
+      }
+
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
         final updatedBudget = GroupBudget.fromJson(data['data']);
 
         // Update budget in list
@@ -428,8 +495,7 @@ class GroupBudgetService extends ChangeNotifier {
         notifyListeners();
         return {'success': true, 'budget': updatedBudget};
       } else {
-        final error =
-            jsonDecode(response.body)['message'] ?? 'Failed to update budget';
+        final error = data['message'] ?? 'Failed to update budget';
         _setError(error);
         return {'success': false, 'message': error};
       }
@@ -453,6 +519,12 @@ class GroupBudgetService extends ChangeNotifier {
         headers: headers,
       );
 
+      final data = _safeJsonDecode(response.body);
+      if (data == null) {
+        _setError('Invalid response from server');
+        return {'success': false, 'message': 'Invalid response from server'};
+      }
+
       if (response.statusCode == 200) {
         _budgets.removeWhere((b) => b.id == budgetId);
         if (_currentBudget?.id == budgetId) {
@@ -461,8 +533,7 @@ class GroupBudgetService extends ChangeNotifier {
         notifyListeners();
         return {'success': true};
       } else {
-        final error =
-            jsonDecode(response.body)['message'] ?? 'Failed to delete budget';
+        final error = data['message'] ?? 'Failed to delete budget';
         _setError(error);
         return {'success': false, 'message': error};
       }

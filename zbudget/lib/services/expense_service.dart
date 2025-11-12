@@ -2,19 +2,19 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../models/expense.dart';
 import '../models/budget_models.dart';
 import '../utils/date_formatter.dart';
+import '../utils/secure_storage_manager.dart';
+import 'notification_sync_service.dart';
+import '../main.dart';
+import '../config/api_config.dart';
 
 class ExpenseService extends ChangeNotifier {
-  // Base URL - different for web and mobile
+  // Base URL - sử dụng ApiConfig để quản lý theo environment
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000/api/expenses';
-    } else {
-      return 'http://10.0.2.2:3000/api/expenses';
-    }
+    return ApiConfig.baseUrl + '/expenses';
   }
 
   List<Expense> _expenses = [];
@@ -34,8 +34,7 @@ class ExpenseService extends ChangeNotifier {
 
   /// Get authorization header
   Future<Map<String, String>> _getHeaders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('access_token');
+    final token = await SecureStorageManager.getToken();
 
     if (token == null) {
       throw Exception('No access token found. Please login again.');
@@ -46,6 +45,26 @@ class ExpenseService extends ChangeNotifier {
       'Accept': 'application/json',
       'Authorization': 'Bearer $token',
     };
+  }
+
+  /// Safely decode JSON response body
+  /// Returns null if body is empty or invalid JSON (e.g., HTML error page)
+  Map<String, dynamic>? _safeJsonDecode(String body) {
+    if (body.isEmpty) {
+      if (kDebugMode) {
+        debugPrint('⚠️ Response body is empty');
+      }
+      return null;
+    }
+    try {
+      return json.decode(body) as Map<String, dynamic>;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ JSON decode error: $e');
+        debugPrint('Response body: ${body.substring(0, body.length > 200 ? 200 : body.length)}...');
+      }
+      return null;
+    }
   }
 
   /// Get all expenses with filters
@@ -98,11 +117,16 @@ class ExpenseService extends ChangeNotifier {
 
       final response = await http.get(uri, headers: headers);
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
+      final jsonResponse = _safeJsonDecode(response.body);
+      if (jsonResponse == null) {
+        throw Exception('Invalid response from server');
+      }
 
+      if (response.statusCode == 200) {
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
-          final expenseListResponse = ExpenseListResponse.fromJson(jsonResponse['data']);
+          final expenseListResponse = ExpenseListResponse.fromJson(
+            jsonResponse['data'],
+          );
           _expenses = expenseListResponse.expenses;
           _pagination = expenseListResponse.pagination;
           _error = null;
@@ -111,8 +135,7 @@ class ExpenseService extends ChangeNotifier {
           throw Exception(jsonResponse['message'] ?? 'Failed to load expenses');
         }
       } else {
-        final errorBody = jsonDecode(response.body);
-        throw Exception(errorBody['error'] ?? 'Failed to load expenses');
+        throw Exception(jsonResponse['error'] ?? 'Failed to load expenses');
       }
     } catch (e) {
       _error = e.toString();
@@ -135,9 +158,12 @@ class ExpenseService extends ChangeNotifier {
         headers: headers,
       );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
+      final jsonResponse = _safeJsonDecode(response.body);
+      if (jsonResponse == null) {
+        throw Exception('Invalid response from server');
+      }
 
+      if (response.statusCode == 200) {
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
           return Expense.fromJson(jsonResponse['data']['expense']);
         } else {
@@ -201,21 +227,36 @@ class ExpenseService extends ChangeNotifier {
         body: jsonEncode(body),
       );
 
+      final jsonResponse = _safeJsonDecode(response.body);
+      if (jsonResponse == null) {
+        throw Exception('Invalid response from server');
+      }
+
       if (response.statusCode == 201) {
-        final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
 
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
           final newExpense = Expense.fromJson(jsonResponse['data']['expense']);
           _expenses.insert(0, newExpense); // Add to beginning
+
+          // ✅ KEY: Trigger notification refresh after successful creation
+          await _refreshNotificationsAfterAction();
+
           debugPrint('✅ Expense created: ${newExpense.id}');
           notifyListeners();
           return newExpense;
         } else {
-          throw Exception(jsonResponse['message'] ?? 'Failed to create expense');
+          throw Exception(
+            jsonResponse['message'] ?? 'Failed to create expense',
+          );
         }
       } else {
-        final errorBody = jsonDecode(response.body);
-        throw Exception(errorBody['error'] ?? 'Failed to create expense');
+        // Parse error message - could be 'error' or 'message' field
+        final errorMessage =
+            jsonResponse['error'] ??
+            jsonResponse['message'] ??
+            'Failed to create expense';
+        debugPrint('❌ Create expense failed: $errorMessage');
+        throw Exception(errorMessage);
       }
     } catch (e) {
       _error = e.toString();
@@ -265,11 +306,16 @@ class ExpenseService extends ChangeNotifier {
         body: jsonEncode(body),
       );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
+      final jsonResponse = _safeJsonDecode(response.body);
+      if (jsonResponse == null) {
+        throw Exception('Invalid response from server');
+      }
 
+      if (response.statusCode == 200) {
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
-          final updatedExpense = Expense.fromJson(jsonResponse['data']['expense']);
+          final updatedExpense = Expense.fromJson(
+            jsonResponse['data']['expense'],
+          );
 
           // Update in local list
           final index = _expenses.indexWhere((e) => e.id == id);
@@ -281,11 +327,12 @@ class ExpenseService extends ChangeNotifier {
           debugPrint('✅ Expense updated: $id');
           return updatedExpense;
         } else {
-          throw Exception(jsonResponse['message'] ?? 'Failed to update expense');
+          throw Exception(
+            jsonResponse['message'] ?? 'Failed to update expense',
+          );
         }
       } else {
-        final errorBody = jsonDecode(response.body);
-        throw Exception(errorBody['error'] ?? 'Failed to update expense');
+        throw Exception(jsonResponse['error'] ?? 'Failed to update expense');
       }
     } catch (e) {
       debugPrint('❌ Update expense error: $e');
@@ -310,8 +357,8 @@ class ExpenseService extends ChangeNotifier {
         notifyListeners();
         debugPrint('✅ Expense deleted: $id');
       } else {
-        final errorBody = jsonDecode(response.body);
-        throw Exception(errorBody['error'] ?? 'Failed to delete expense');
+        final errorBody = _safeJsonDecode(response.body);
+        throw Exception(errorBody?['error'] ?? 'Failed to delete expense');
       }
     } catch (e) {
       debugPrint('❌ Delete expense error: $e');
@@ -323,7 +370,8 @@ class ExpenseService extends ChangeNotifier {
   Future<ExpenseStats> getExpenseStats({
     String? startDate,
     String? endDate,
-    String groupBy = 'category', // 'day', 'week', 'month', 'year', 'category', 'paymentMethod'
+    String groupBy =
+        'category', // 'day', 'week', 'month', 'year', 'category', 'paymentMethod'
     String? category,
   }) async {
     try {
@@ -334,14 +382,19 @@ class ExpenseService extends ChangeNotifier {
       if (endDate != null) queryParams['endDate'] = endDate;
       if (category != null) queryParams['category'] = category;
 
-      final uri = Uri.parse('$baseUrl/stats').replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/stats',
+      ).replace(queryParameters: queryParams);
       debugPrint('📊 Fetching expense stats');
 
       final response = await http.get(uri, headers: headers);
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
+      final jsonResponse = _safeJsonDecode(response.body);
+      if (jsonResponse == null) {
+        throw Exception('Invalid response from server');
+      }
 
+      if (response.statusCode == 200) {
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
           return ExpenseStats.fromJson(jsonResponse['data']);
         } else {
@@ -460,56 +513,13 @@ class ExpenseService extends ChangeNotifier {
         receipt: receipt,
       );
 
-      // Update local budget (legacy behavior)
-      if (budgetId != null && _budgets.containsKey(budgetId)) {
-        await _updateBudgetSpentAmount(budgetId, category, amount);
-      }
+      // ✅ FIX: Don't update local budget cache
+      // Backend already updated the budget, let UI refetch to get correct data
+      // This prevents string concatenation bug: "542083" + 108417 = "542083108417"
     } catch (e) {
       debugPrint('❌ Legacy addExpense error: $e');
       rethrow;
     }
-  }
-
-  /// Update budget spent amount (legacy - local only)
-  Future<void> _updateBudgetSpentAmount(
-    String budgetId,
-    ExpenseCategory category,
-    int amount,
-  ) async {
-    final budget = _budgets[budgetId];
-    if (budget == null) return;
-
-    // Update categories
-    final updatedCategories = budget.categories.map((cat) {
-      if (cat.category == category) {
-        return BudgetCategoryData(
-          category: cat.category,
-          allocatedAmount: cat.allocatedAmount,
-          spentAmount: cat.spentAmount + amount,
-          color: cat.color,
-        );
-      }
-      return cat;
-    }).toList();
-
-    // Calculate total spent
-    final totalSpent = updatedCategories.fold<int>(
-      0,
-      (sum, cat) => sum + cat.spentAmount,
-    );
-
-    // Update budget
-    final updatedBudget = BudgetData(
-      id: budget.id,
-      name: budget.name,
-      totalAmount: budget.totalAmount,
-      spentAmount: totalSpent,
-      period: budget.period,
-      categories: updatedCategories,
-    );
-
-    _budgets[budgetId] = updatedBudget;
-    notifyListeners();
   }
 
   /// Get expenses by budget (legacy)
@@ -531,5 +541,23 @@ class ExpenseService extends ChangeNotifier {
       return expense.date.isAfter(start.subtract(const Duration(days: 1))) &&
           expense.date.isBefore(end.add(const Duration(days: 1)));
     }).toList();
+  }
+
+  /// ✅ NEW: Refresh notifications after action
+  Future<void> _refreshNotificationsAfterAction() async {
+    try {
+      // Get notification service from context
+      final notificationService = Provider.of<NotificationSyncService>(
+        navigatorKey.currentContext!,
+        listen: false,
+      );
+
+      // Refresh notifications
+      await notificationService.fetchNotifications();
+
+      debugPrint('🔄 Notifications refreshed after expense creation');
+    } catch (error) {
+      debugPrint('❌ Failed to refresh notifications: $error');
+    }
   }
 }
