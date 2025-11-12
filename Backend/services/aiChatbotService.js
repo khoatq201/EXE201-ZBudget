@@ -544,23 +544,36 @@ ${await buildFinancialContext(userId)}`;
 
     let fullResponse = "";
     let tokensUsed = 0;
+    let buffer = ""; // Buffer to accumulate chunks
 
     // Process streaming response
     for await (const chunk of chatCompletion) {
       const content = chunk.choices[0]?.delta?.content || "";
       if (content) {
-        // Apply spelling fix in real-time to each chunk
-        const fixedContent = fixVietnameseSpelling(content);
-        fullResponse += fixedContent;
+        fullResponse += content;
         tokensUsed += content.length;
+        buffer += content;
 
-        // Yield complete chunk to preserve Vietnamese encoding
-        // Don't split into characters as it breaks diacritical marks
-        yield fixedContent;
+        // Check if buffer ends with whitespace or punctuation
+        // This ensures we send complete words/phrases to preserve Vietnamese encoding
+        const shouldFlush = /[\s,.\n!?:;)\]}\-]$/.test(buffer);
 
-        // Small delay to prevent overwhelming the client
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        if (shouldFlush) {
+          // Apply spelling fix to complete word/phrase
+          const fixedContent = fixVietnameseSpelling(buffer);
+          yield fixedContent;
+          buffer = ""; // Clear buffer after sending
+
+          // Small delay for smooth streaming
+          await new Promise((resolve) => setTimeout(resolve, 30));
+        }
       }
+    }
+
+    // Flush any remaining content in buffer
+    if (buffer.length > 0) {
+      const fixedContent = fixVietnameseSpelling(buffer);
+      yield fixedContent;
     }
 
     // No remaining content to yield
