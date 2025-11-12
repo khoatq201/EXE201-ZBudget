@@ -210,6 +210,44 @@ export const requireAdmin = async (req, res, next) => {
   }
   next();
 };
+
+// Role-based authorization middleware
+export const authorizeRoles = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: "Yêu cầu xác thực",
+        code: "AUTHENTICATION_REQUIRED",
+      });
+    }
+
+    // Check if user has required role
+    const userRole = req.user.role || "user";
+
+    // Admin emails from environment variable
+    const adminEmails = (process.env.ADMIN_EMAILS || "").split(",");
+    const isAdmin = adminEmails.includes(req.user.email) || userRole === "admin";
+
+    // If user is admin, allow access
+    if (isAdmin && roles.includes("admin")) {
+      return next();
+    }
+
+    // Check if user's role is in the allowed roles
+    if (roles.includes(userRole)) {
+      return next();
+    }
+
+    return res.status(403).json({
+      success: false,
+      error: "Bạn không có quyền truy cập tài nguyên này",
+      code: "INSUFFICIENT_PERMISSIONS",
+      requiredRoles: roles,
+      userRole: userRole,
+    });
+  };
+};
 // Refresh token middleware
 export const refreshTokenMiddleware = async (req, res, next) => {
   try {
@@ -443,6 +481,7 @@ export default {
   optionalAuth,
   optionalAuthenticate,
   requireAdmin,
+  authorizeRoles,
   refreshTokenMiddleware,
   sensitiveRateLimit,
   blacklistToken,

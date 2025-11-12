@@ -1,8 +1,11 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../constants/colors.dart';
 import '../../../constants/typography.dart';
 import '../../../constants/spacing.dart';
 import '../../../utils/theme_extensions.dart';
+import '../../../services/feedback_service.dart';
+import '../../../services/auth_service.dart';
 
 class FeedbackScreen extends StatefulWidget {
   const FeedbackScreen({super.key});
@@ -20,6 +23,37 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   String _selectedType = 'suggestion';
   int _rating = 0;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Wait for the first frame to ensure context is ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserInfo();
+    });
+  }
+
+  void _loadUserInfo() {
+    // Auto-fill user info if logged in
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      debugPrint('🔍 AuthService - isAuthenticated: ${authService.isAuthenticated}');
+      debugPrint('🔍 AuthService - currentUser: ${authService.currentUser}');
+
+      if (authService.isAuthenticated && authService.currentUser != null) {
+        final user = authService.currentUser!;
+        debugPrint('✅ Auto-filling: name=${user.name}, email=${user.email}');
+        setState(() {
+          _nameController.text = user.name;
+          _emailController.text = user.email;
+        });
+      } else {
+        debugPrint('❌ User not authenticated or user is null');
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading user info: $e');
+    }
+  }
 
   final List<Map<String, dynamic>> _feedbackTypes = [
     {
@@ -443,73 +477,97 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     });
 
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 2));
+      // Gọi API để gửi feedback
+      final result = await FeedbackService.submitFeedback(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        type: _selectedType,
+        rating: _rating,
+        content: _feedbackController.text.trim(),
+        deviceInfo: FeedbackService.getDeviceInfo(),
+      );
 
       if (mounted) {
-        // Show success dialog
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.check_circle,
-                  color: context.colorScheme.secondary,
-                  size: 64,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  'Cảm ơn bạn!',
-                  style: AppTypography.h6.copyWith(
-                    color: context.settingsItemTitleColor,
-                    fontWeight: FontWeight.bold,
+        if (result['success'] == true) {
+          // Show success dialog
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.check_circle,
+                    color: context.colorScheme.secondary,
+                    size: 64,
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  'Phản hồi của bạn đã được gửi thành công. Chúng tôi sẽ xem xét và phản hồi sớm nhất có thể.',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: context.settingsItemSubtitleColor,
+                  const SizedBox(height: AppSpacing.lg),
+                  Text(
+                    'Cảm ơn bạn!',
+                    style: AppTypography.h6.copyWith(
+                      color: context.settingsItemTitleColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    result['message'] ?? 'Phản hồi của bạn đã được gửi thành công. Chúng tôi sẽ xem xét và phản hồi sớm nhất có thể.',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: context.settingsItemSubtitleColor,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+              actions: [
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // Close dialog first
+                      Navigator.of(context).pop();
+
+                      // Then go back to settings if possible
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: context.colorScheme.secondary,
+                      foregroundColor: context.headerTextColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('Đóng'),
+                  ),
                 ),
               ],
             ),
-            actions: [
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(); // Close dialog
-                    Navigator.of(context).pop(); // Go back to settings
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: context.colorScheme.secondary,
-                    foregroundColor: context.headerTextColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text('Đóng'),
-                ),
-              ),
-            ],
-          ),
-        );
+          );
+        } else {
+          // Show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Có lỗi xảy ra. Vui lòng thử lại!'),
+              backgroundColor: AppColors.error,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Có lỗi xảy ra. Vui lòng thử lại!'),
+          SnackBar(
+            content: Text('Có lỗi xảy ra: ${e.toString()}'),
             backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 4),
           ),
         );
       }

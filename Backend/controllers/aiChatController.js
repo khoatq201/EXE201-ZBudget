@@ -2,24 +2,24 @@ import * as aiService from "../services/aiChatbotService.js";
 import ChatSession from "../models/ChatSession.js";
 
 /**
- * Start new chat session (lazy initialization)
+ * Start new chat session (creates real session immediately)
  * POST /api/ai/chat/start
- * This doesn't create a session immediately, just returns a temporary session ID
- * Session will be created when user sends first message
+ * Creates a real session immediately instead of temp session
  */
 export async function startChatSession(req, res, next) {
   try {
-    // Generate a temporary session ID for frontend
-    const tempSessionId = `temp_${Date.now()}_${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
+    // Create a real session immediately
+    const session = await aiService.createChatSession(req.userId);
+
+    console.log(`✅ Created new session: ${session.sessionId} for user: ${req.userId}`);
 
     res.json({
       success: true,
       session: {
-        sessionId: tempSessionId,
-        isTemporary: true,
-        message: "Session will be created when you send your first message",
+        sessionId: session.sessionId,
+        isTemporary: false,
+        createdAt: session.createdAt,
+        message: "Chat session created successfully",
       },
     });
   } catch (error) {
@@ -43,32 +43,21 @@ export async function sendChatMessage(req, res, next) {
       });
     }
 
-    // Check if this is a temporary session (starts with 'temp_')
-    let actualSessionId = sessionId;
-    let isNewSession = false;
+    // Check if session exists (all sessions should be real now)
+    const existingSession = await ChatSession.findOne({
+      sessionId: sessionId,
+      userId: req.userId,
+    });
 
-    if (sessionId.startsWith("temp_")) {
-      // Create a real session for the first message
-      const session = await aiService.createChatSession(req.userId);
-      actualSessionId = session.sessionId;
-      isNewSession = true;
-      console.log(
-        `🆕 Created new session ${actualSessionId} for first message`
-      );
-    } else {
-      // Check if session exists
-      const existingSession = await ChatSession.findOne({
-        sessionId: actualSessionId,
-        userId: req.userId,
+    if (!existingSession) {
+      return res.status(404).json({
+        success: false,
+        error: "Session not found. Please start a new chat session.",
+        code: "SESSION_NOT_FOUND",
       });
-
-      if (!existingSession) {
-        return res.status(404).json({
-          success: false,
-          error: "Session not found",
-        });
-      }
     }
+
+    const actualSessionId = sessionId;
 
     // Set SSE headers
     res.setHeader("Content-Type", "text/event-stream");
@@ -81,17 +70,6 @@ export async function sendChatMessage(req, res, next) {
     res.write(
       'data: {"type":"connected","message":"Connected to AI chat"}\n\n'
     );
-
-    // Send session info if it's a new session
-    if (isNewSession) {
-      res.write(
-        `data: ${JSON.stringify({
-          type: "session_created",
-          sessionId: actualSessionId,
-          message: "Chat session created successfully",
-        })}\n\n`
-      );
-    }
 
     try {
       // Get streaming response

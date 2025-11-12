@@ -5,9 +5,10 @@ class ApiConfig {
   // Base URLs for different environments
   static const String _devBaseUrlWeb = 'http://localhost:3000/api';
   static const String _devBaseUrlAndroid = 'http://10.0.2.2:3000/api';
-  static const String _prodBaseUrl = 'https://zbudget-backend.onrender.com/api';
+  static const String _prodBaseUrl =
+      'https://exe201-zbudget-production.up.railway.app/api';
   static const String _stagingBaseUrl =
-      'https://zbudget-backend.onrender.com/api';
+      'https://exe201-zbudget-production.up.railway.app/api';
 
   // Current environment - sử dụng environment variables
   static const bool _isDevelopment = false;
@@ -89,6 +90,13 @@ class ApiConfig {
   static const String aiAnalysisInsights = '/ai/analysis/insights';
   static const String aiAnalysisPatterns = '/ai/analysis/patterns';
   static const String aiAnalysisCache = '/ai/analysis/cache';
+
+  // Feedback Endpoints
+  static const String feedbackEndpoint = '/feedback';
+  static const String allFeedbacksEndpoint =
+      '/feedback/all'; // Public: all feedbacks
+  static const String myFeedbacksEndpoint = '/feedback/my-feedbacks';
+  static const String feedbackStatsEndpoint = '/feedback/stats';
 
   // Request timeout settings
   static const Duration requestTimeout = Duration(seconds: 30);

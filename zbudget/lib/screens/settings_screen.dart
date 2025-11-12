@@ -19,6 +19,8 @@ import 'settings/notifications/notification_settings_simple.dart';
 import 'settings/help/help_screen.dart';
 import 'settings/about/about_screen.dart';
 import 'settings/feedback/feedback_screen.dart';
+import 'settings/feedback/my_feedbacks_screen.dart';
+import 'settings/feedback/all_feedbacks_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -172,6 +174,32 @@ class SettingsScreen extends StatelessWidget {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) => const FeedbackScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildSettingItem(
+                      context: context,
+                      icon: Icons.list_alt,
+                      title: 'Phản hồi của tôi',
+                      subtitle: 'Xem phản hồi đã gửi',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const MyFeedbacksScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildSettingItem(
+                      context: context,
+                      icon: Icons.forum,
+                      title: 'Tất cả phản hồi',
+                      subtitle: 'Xem phản hồi từ cộng đồng',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const AllFeedbacksScreen(),
                           ),
                         );
                       },

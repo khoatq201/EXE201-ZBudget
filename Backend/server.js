@@ -28,6 +28,7 @@ import aiAnalysisRoutes from "./routes/aiAnalysisRoutes.js";
 // import challengeRoutes from './routes/challenges.js';
 // import groupRoutes from './routes/groups.js';
 import notificationRoutes from "./routes/notificationRoutes.js";
+import feedbackRoutes from "./routes/feedbackRoutes.js";
 // import healthRoutes from './routes/health.js';
 // Middleware
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -191,6 +192,7 @@ app.use("/api/ai/analysis", aiAnalysisRoutes);
 // app.use('/api/challenges', authenticate, challengeRoutes);
 // app.use('/api/groups', authenticate, groupRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/feedback", feedbackRoutes);
 // API documentation
 app.get("/api", (req, res) => {
   res.json({

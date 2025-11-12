@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 import config from "../config/env.js";
 import ChatSession from "../models/ChatSession.js";
 import { v4 as uuidv4 } from "uuid";
@@ -10,8 +10,10 @@ import SavingsGoal from "../models/SavingsGoal.js";
 import Challenge from "../models/Challenge.js";
 import UserChallenge from "../models/UserChallenge.js";
 
-// Initialize Gemini client
-const genAI = new GoogleGenerativeAI(config.GEMINI_API_KEY);
+// Initialize Groq client
+const groq = new Groq({
+  apiKey: config.GROQ_API_KEY,
+});
 
 /**
  * Fix common Vietnamese spelling errors from AI response
@@ -518,49 +520,48 @@ VÍ DỤ XỬ LÝ CÂU HỎI:
 Thông tin tài chính người dùng:
 ${await buildFinancialContext(userId)}`;
 
-    // Call Gemini API with streaming
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-lite",
-      systemInstruction: systemPrompt, // Gemini hỗ trợ systemInstruction riêng
-      generationConfig: {
-        temperature: 0.3, // Gemini xử lý tốt hơn với temperature 0.3
-        maxOutputTokens: 1000, // Tăng lên vì Gemini tốt hơn với response dài hơn
+    // Build messages array for Groq (convert to OpenAI format)
+    const messages = [
+      {
+        role: "system",
+        content: systemPrompt,
       },
+      ...session.messages.map((msg) => ({
+        role: msg.role === "assistant" ? "assistant" : "user",
+        content: msg.content,
+      })),
+    ];
+
+    // Call Groq API with streaming
+    const chatCompletion = await groq.chat.completions.create({
+      messages: messages,
+      model: config.GROQ_MODEL || "llama-3.3-70b-versatile",
+      temperature: 0.5, // Groq works well with 0.5 for Vietnamese
+      max_tokens: 1024,
+      top_p: 1,
+      stream: true,
     });
-
-    // Convert messages to Gemini format
-    const history = session.messages.slice(0, -1).map((msg) => ({
-      role: msg.role === "assistant" ? "model" : "user",
-      parts: [{ text: msg.content }],
-    }));
-
-    const chat = model.startChat({ history });
-
-    const lastMessage = session.messages[session.messages.length - 1].content;
-    const result = await chat.sendMessageStream(lastMessage);
 
     let fullResponse = "";
     let tokensUsed = 0;
 
-    for await (const chunk of result.stream) {
-      const chunkText = chunk.text();
-      if (chunkText) {
-        fullResponse += chunkText;
-        tokensUsed += chunkText.length;
+    // Process streaming response
+    for await (const chunk of chatCompletion) {
+      const content = chunk.choices[0]?.delta?.content || "";
+      if (content) {
+        // Apply spelling fix in real-time to each chunk
+        const fixedContent = fixVietnameseSpelling(content);
+        fullResponse += fixedContent;
+        tokensUsed += content.length;
 
-        // Split chunk into individual characters for typing effect
-        // This creates the typing animation effect like before
-        const characters = chunkText.split("");
-        for (const char of characters) {
-          yield char;
-          // Delay for typing effect (30ms per character)
-          await new Promise((resolve) => setTimeout(resolve, 30));
-        }
+        // Yield complete chunk to preserve Vietnamese encoding
+        // Don't split into characters as it breaks diacritical marks
+        yield fixedContent;
+
+        // Small delay to prevent overwhelming the client
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
     }
-
-    // Apply spelling fix to the full response
-    fullResponse = fixVietnameseSpelling(fullResponse);
 
     // No remaining content to yield
 

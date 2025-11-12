@@ -39,14 +39,25 @@ class AiChatService {
     ),
   ];
 
-  // Start new chat session (always create new session)
-  Future<String> startChatSession() async {
+  // Start or resume chat session (reuse existing active session if available)
+  Future<String> startChatSession({bool forceNew = false}) async {
     final token = await AuthUtils.getToken();
     if (token == null) {
       throw Exception('User not authenticated');
     }
 
-    // Always create new temporary session
+    // Check if we have an active session (unless forced to create new)
+    if (!forceNew) {
+      final existingSessionId = await _getActiveSessionId();
+      if (existingSessionId != null) {
+        debugPrint('♻️ Reusing existing session: $existingSessionId');
+        _currentSessionId = existingSessionId;
+        return existingSessionId;
+      }
+    }
+
+    // Create new session
+    debugPrint('🆕 Creating new chat session...');
     final response = await http.post(
       Uri.parse('$baseUrl/ai/chat/start'),
       headers: {
@@ -59,9 +70,34 @@ class AiChatService {
       final data = json.decode(response.body);
       _currentSessionId = data['session']['sessionId'];
       await _saveSessionLocally(_currentSessionId!);
+      debugPrint('✅ New session created: $_currentSessionId');
       return _currentSessionId!;
     }
     throw Exception('Failed to start chat session');
+  }
+
+  // Get active session ID from local storage
+  Future<String?> _getActiveSessionId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final sessionId = prefs.getString('active_chat_session');
+      return sessionId;
+    } catch (e) {
+      debugPrint('Error getting active session: $e');
+      return null;
+    }
+  }
+
+  // Clear active session (call when ending chat)
+  Future<void> clearActiveSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('active_chat_session');
+      _currentSessionId = null;
+      debugPrint('🗑️ Active session cleared');
+    } catch (e) {
+      debugPrint('Error clearing active session: $e');
+    }
   }
 
   // Load existing session
@@ -157,10 +193,11 @@ class AiChatService {
     }
   }
 
-  // Save session locally
+  // Save session locally as active session
   Future<void> _saveSessionLocally(String sessionId) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('current_ai_session', sessionId);
+    await prefs.setString('active_chat_session', sessionId);
+    debugPrint('💾 Saved active session: $sessionId');
   }
 
   // Save message to local storage

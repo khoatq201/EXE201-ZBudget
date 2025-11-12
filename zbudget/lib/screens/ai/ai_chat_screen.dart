@@ -57,16 +57,20 @@ class _AiChatScreenState extends State<AiChatScreen>
     try {
       _sessionId = await _aiService.startChatSession();
 
-      // Check if this is a temporary session (new chat) or existing session
-      if (_sessionId!.startsWith('temp_')) {
-        // New chat - show welcome message
+      // Try to load chat history first
+      try {
+        await _loadChatHistory();
+        // If history is empty, show welcome message
+        if (_messages.isEmpty && !_hasShownWelcome) {
+          _addWelcomeMessage();
+          _hasShownWelcome = true;
+        }
+      } catch (e) {
+        // If loading fails (empty session), show welcome message
         if (!_hasShownWelcome) {
           _addWelcomeMessage();
           _hasShownWelcome = true;
         }
-      } else {
-        // Existing session - load chat history
-        await _loadChatHistory();
       }
     } catch (e) {
       _showError('Không thể khởi tạo chat: $e');
@@ -189,6 +193,51 @@ Hãy bắt đầu bằng cách hỏi tôi về tình hình tài chính của b�
     }
   }
 
+  Future<void> _startNewChat() async {
+    // Confirm with user
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Bắt đầu cuộc trò chuyện mới?'),
+        content: const Text(
+          'Cuộc trò chuyện hiện tại sẽ được lưu vào lịch sử. Bạn có muốn bắt đầu một cuộc trò chuyện mới?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Bắt đầu mới'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Clear active session and create new one
+      await _aiService.clearActiveSession();
+      _sessionId = await _aiService.startChatSession(forceNew: true);
+
+      // Clear messages and show welcome
+      setState(() {
+        _messages.clear();
+        _hasShownWelcome = false;
+        _isLoading = false;
+      });
+
+      _addWelcomeMessage();
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _showError('Không thể tạo cuộc trò chuyện mới: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -218,6 +267,14 @@ Hãy bắt đầu bằng cách hỏi tôi về tình hình tài chính của b�
             ),
           ],
         ),
+        actions: [
+          // New chat button
+          IconButton(
+            icon: const Icon(Icons.add_comment_outlined),
+            tooltip: 'Cuộc trò chuyện mới',
+            onPressed: _startNewChat,
+          ),
+        ],
       ),
       body: Column(
         children: [

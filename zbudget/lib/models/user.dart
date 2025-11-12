@@ -28,18 +28,24 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
+    // Extract profile data if it exists
+    final profile = json['profile'] as Map<String, dynamic>?;
+    final location = profile?['location'] as Map<String, dynamic>?;
+
     return User(
       id: json['id'] ?? json['_id'] ?? '',
-      name: json['name'] ?? json['fullName'] ?? '',
+      name: profile?['name'] ?? json['name'] ?? json['fullName'] ?? '',
       email: json['email'] as String,
-      phone: json['phone'] ?? json['phoneNumber'],
-      avatar: json['avatar'] as String?,
-      dateOfBirth: json['dateOfBirth'] != null
-          ? DateTime.parse(json['dateOfBirth'] as String)
-          : null,
-      gender: json['gender'] as String?,
-      city: json['city'] as String?,
-      country: json['country'] as String?,
+      phone: profile?['phone'] ?? json['phone'] ?? json['phoneNumber'],
+      avatar: profile?['avatar'] ?? json['avatar'] as String?,
+      dateOfBirth: profile?['dateOfBirth'] != null
+          ? DateTime.parse(profile!['dateOfBirth'] as String)
+          : (json['dateOfBirth'] != null
+              ? DateTime.parse(json['dateOfBirth'] as String)
+              : null),
+      gender: profile?['gender'] ?? json['gender'] as String?,
+      city: location?['city'] ?? json['city'] as String?,
+      country: location?['country'] ?? json['country'] as String?,
       isPremium: json['isPremium'] ?? false,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
