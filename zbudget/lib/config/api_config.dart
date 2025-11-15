@@ -11,8 +11,8 @@ class ApiConfig {
       'https://exe201-zbudget-production.up.railway.app/api';
 
   // Current environment - sử dụng environment variables
-  static const bool _isDevelopment = true;
-  static const bool _isProduction = false;
+  static const bool _isDevelopment = false;
+  static const bool _isProduction = true;
   // static String get baseUrl {
   //   if (kIsWeb) {
   //     // Cho Flutter web, sử dụng localhost
