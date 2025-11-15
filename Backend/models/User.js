@@ -328,6 +328,124 @@ const FinancialSummarySchema = new mongoose.Schema(
   },
   { _id: false }
 );
+
+// Subscription Schema for Premium/Free tier management
+const SubscriptionSchema = new mongoose.Schema(
+  {
+    tier: {
+      type: String,
+      enum: ["free", "premium"],
+      default: "free",
+      index: true,
+    },
+    status: {
+      type: String,
+      enum: ["active", "inactive", "expired", "trial"],
+      default: "inactive",
+      index: true,
+    },
+    startDate: {
+      type: Date,
+      description: "Ngày bắt đầu gói premium",
+    },
+    expiryDate: {
+      type: Date,
+      description: "Ngày hết hạn gói premium",
+      index: true,
+    },
+    price: {
+      amount: {
+        type: Number,
+        description: "Giá gói (VND)",
+      },
+      currency: {
+        type: String,
+        default: "VND",
+      },
+      duration: {
+        type: String,
+        enum: ["monthly", "yearly"],
+        description: "Loại gói: tháng (25k) hoặc năm (250k)",
+      },
+    },
+    features: {
+      maxBudgets: {
+        type: Number,
+        default: 2,
+        description: "Số lượng ngân sách tối đa được tạo (free: 2, premium: 20)",
+      },
+      maxSavingsGoals: {
+        type: Number,
+        default: 2,
+        description: "Số lượng mục tiêu tiết kiệm tối đa (free: 2, premium: 10)",
+      },
+      ocrScansPerDay: {
+        type: Number,
+        default: 10,
+        description: "Số lượt quét hóa đơn mỗi ngày (free: 10, premium: unlimited/-1)",
+      },
+      aiAnalysisEnabled: {
+        type: Boolean,
+        default: false,
+        description: "Cho phép sử dụng AI Analysis (free: false, premium: true)",
+      },
+    },
+    autoRenew: {
+      type: Boolean,
+      default: false,
+      description: "Tự động gia hạn (cho tương lai khi tích hợp payment)",
+    },
+    paymentMethod: {
+      type: String,
+      enum: ["manual", "stripe", "vnpay", "momo", "zalopay"],
+      default: "manual",
+      description: "Phương thức thanh toán",
+    },
+    lastUpdated: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
+
+// Subscription History Schema for audit trail
+const SubscriptionHistorySchema = new mongoose.Schema(
+  {
+    tier: {
+      type: String,
+      enum: ["free", "premium"],
+      required: true,
+    },
+    action: {
+      type: String,
+      enum: ["upgrade", "downgrade", "renew", "expire", "cancel"],
+      required: true,
+    },
+    startDate: {
+      type: Date,
+      required: true,
+    },
+    endDate: {
+      type: Date,
+    },
+    price: {
+      amount: Number,
+      currency: String,
+    },
+    reason: {
+      type: String,
+      description: "Lý do thay đổi (manual upgrade, auto-expire, etc.)",
+    },
+    performedBy: {
+      type: String,
+      enum: ["user", "admin", "system"],
+      default: "system",
+    },
+  },
+  { _id: false, timestamps: true }
+);
+
 // Main User Schema
 const UserSchema = new mongoose.Schema(
   {
@@ -367,6 +485,25 @@ const UserSchema = new mongoose.Schema(
     financialSummary: {
       type: FinancialSummarySchema,
       default: () => ({}),
+    },
+    // Subscription & Premium Features
+    subscription: {
+      type: SubscriptionSchema,
+      default: () => ({
+        tier: "free",
+        status: "inactive",
+        features: {
+          maxBudgets: 2,
+          maxSavingsGoals: 2,
+          ocrScansPerDay: 10,
+          aiAnalysisEnabled: false,
+        },
+      }),
+    },
+    subscriptionHistory: {
+      type: [SubscriptionHistorySchema],
+      default: [],
+      description: "Lịch sử thay đổi gói subscription (audit trail)",
     },
     // Auth & Security
     emailVerified: {
@@ -451,6 +588,11 @@ const UserSchema = new mongoose.Schema(
 UserSchema.index({ "profile.phone": 1 }, { sparse: true });
 UserSchema.index({ "stats.points": -1 }); // Leaderboards
 UserSchema.index({ isActive: 1, createdAt: -1 });
+// Subscription indexes for premium features
+UserSchema.index({ "subscription.tier": 1 });
+UserSchema.index({ "subscription.status": 1 });
+UserSchema.index({ "subscription.expiryDate": 1 });
+UserSchema.index({ "subscription.tier": 1, "subscription.status": 1 }); // Compound index for common queries
 // Instance methods
 UserSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.passwordHash);
@@ -483,6 +625,115 @@ UserSchema.methods.addSavings = function (amount) {
   this.stats.totalSaved = mongoose.Types.Decimal128.fromString(
     (currentSaved + amount).toFixed(2)
   );
+};
+
+// Subscription management methods
+UserSchema.methods.isPremium = function () {
+  return (
+    this.subscription.tier === "premium" &&
+    this.subscription.status === "active" &&
+    (!this.subscription.expiryDate || this.subscription.expiryDate > new Date())
+  );
+};
+
+UserSchema.methods.getFeatureLimits = function () {
+  if (this.isPremium()) {
+    return {
+      maxBudgets: 20,
+      maxSavingsGoals: 10,
+      ocrScansPerDay: -1, // unlimited
+      aiAnalysisEnabled: true,
+    };
+  }
+  return {
+    maxBudgets: 2,
+    maxSavingsGoals: 2,
+    ocrScansPerDay: 10,
+    aiAnalysisEnabled: false,
+  };
+};
+
+UserSchema.methods.upgradeToPremium = function (duration = "monthly") {
+  const now = new Date();
+  const pricing = {
+    monthly: { amount: 25000, duration: 30 },
+    yearly: { amount: 250000, duration: 365 },
+  };
+
+  const selectedPlan = pricing[duration] || pricing.monthly;
+  const expiryDate = new Date(now);
+  expiryDate.setDate(expiryDate.getDate() + selectedPlan.duration);
+
+  // Update subscription
+  this.subscription.tier = "premium";
+  this.subscription.status = "active";
+  this.subscription.startDate = now;
+  this.subscription.expiryDate = expiryDate;
+  this.subscription.price = {
+    amount: selectedPlan.amount,
+    currency: "VND",
+    duration: duration,
+  };
+  this.subscription.features = {
+    maxBudgets: 20,
+    maxSavingsGoals: 10,
+    ocrScansPerDay: -1,
+    aiAnalysisEnabled: true,
+  };
+  this.subscription.lastUpdated = now;
+
+  // Add to history
+  this.subscriptionHistory.push({
+    tier: "premium",
+    action: "upgrade",
+    startDate: now,
+    endDate: expiryDate,
+    price: {
+      amount: selectedPlan.amount,
+      currency: "VND",
+    },
+    reason: `Upgraded to premium ${duration} plan`,
+    performedBy: "admin", // Will be updated based on context
+  });
+};
+
+UserSchema.methods.downgradeToFree = function (reason = "Subscription expired") {
+  const now = new Date();
+
+  // Add expiry to history before downgrade
+  if (this.subscription.tier === "premium") {
+    this.subscriptionHistory.push({
+      tier: "free",
+      action: "downgrade",
+      startDate: now,
+      reason: reason,
+      performedBy: "system",
+    });
+  }
+
+  // Reset to free tier
+  this.subscription.tier = "free";
+  this.subscription.status = "inactive";
+  this.subscription.expiryDate = undefined;
+  this.subscription.features = {
+    maxBudgets: 2,
+    maxSavingsGoals: 2,
+    ocrScansPerDay: 10,
+    aiAnalysisEnabled: false,
+  };
+  this.subscription.lastUpdated = now;
+};
+
+UserSchema.methods.checkSubscriptionExpiry = function () {
+  if (
+    this.subscription.tier === "premium" &&
+    this.subscription.expiryDate &&
+    this.subscription.expiryDate <= new Date()
+  ) {
+    this.downgradeToFree("Subscription expired");
+    return true; // Expired and downgraded
+  }
+  return false; // Still valid
 };
 // Pre-save middleware
 UserSchema.pre("save", async function (next) {

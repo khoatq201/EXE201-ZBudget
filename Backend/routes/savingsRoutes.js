@@ -10,6 +10,7 @@ import {
   getSavingsStats,
 } from "../controllers/savingsController.js";
 import { authenticate, rateLimitGeneral } from "../middleware/auth.js";
+import { checkSavingsGoalLimit } from "../middleware/premium.js";
 const router = express.Router();
 // Apply authentication to all savings routes
 router.use(authenticate);
@@ -21,7 +22,7 @@ router.use(rateLimitGeneral());
  * @access  Private
  * @body    { name, targetAmount, targetDate, category, description, priority, autoSave, icon, color, tags, notes }
  */
-router.post("/", createSavingsGoal);
+router.post("/", checkSavingsGoalLimit, createSavingsGoal); // Check savings goal limit before creating
 /**
  * @route   GET /api/savings
  * @desc    Get all savings goals with filters

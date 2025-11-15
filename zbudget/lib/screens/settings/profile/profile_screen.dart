@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../services/profile_service.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/image_upload_service.dart';
+import '../../../services/subscription_service.dart';
 import '../../../models/settings/user_profile.dart';
 import '../../../services/profile_share_service.dart';
 import '../../../services/qr_code_service.dart';
@@ -69,6 +70,10 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   void _debugProfileStatus() async {
     final profileService = Provider.of<ProfileService>(context, listen: false);
+    final subscriptionService = Provider.of<SubscriptionService>(
+      context,
+      listen: false,
+    );
     final isAuthenticated = await AuthUtils.isAuthenticated();
 
     print('=== PROFILE DEBUG ===');
@@ -82,6 +87,15 @@ class _ProfileScreenState extends State<ProfileScreen>
       print('Sync result: $success');
       print('After sync - Profile: ${profileService.currentProfile?.name}');
       print('After sync - Profile ID: ${profileService.currentProfile?.id}');
+    }
+
+    // Load subscription data
+    if (isAuthenticated) {
+      print('Loading subscription data...');
+      await subscriptionService.getStatus();
+      print(
+        'Subscription loaded - isPremium: ${subscriptionService.subscription?.isPremium}',
+      );
     }
   }
 
@@ -167,12 +181,19 @@ class _ProfileScreenState extends State<ProfileScreen>
                 const SizedBox(height: 60),
                 _buildAvatarSection(context, profile),
                 const SizedBox(height: AppSpacing.md),
-                Text(
-                  profile.name,
-                  style: AppTypography.h2.copyWith(
-                    color: context.colorScheme.onPrimary,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      profile.name,
+                      style: AppTypography.h2.copyWith(
+                        color: context.colorScheme.onPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildPremiumBadge(context),
+                  ],
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Container(
@@ -307,6 +328,52 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildPremiumBadge(BuildContext context) {
+    return Consumer<SubscriptionService>(
+      builder: (context, subscriptionService, _) {
+        final isPremium = subscriptionService.subscription?.isPremium ?? false;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            gradient: isPremium
+                ? const LinearGradient(
+                    colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                  )
+                : null,
+            color: isPremium ? null : Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isPremium ? Colors.white : Colors.white.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isPremium ? Icons.star : Icons.star_border,
+                color: isPremium ? Colors.white : Colors.white.withOpacity(0.7),
+                size: 14,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                isPremium ? 'PREMIUM' : 'FREE',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: isPremium
+                      ? Colors.white
+                      : Colors.white.withOpacity(0.7),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

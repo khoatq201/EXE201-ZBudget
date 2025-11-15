@@ -18,6 +18,7 @@ import 'services/security_service.dart';
 import 'services/notification_service.dart';
 import 'services/notification_sync_service.dart';
 import 'services/report_service.dart';
+import 'services/subscription_service.dart';
 import 'services/theme_manager.dart';
 import 'config/app_router.dart' as app_router;
 import 'widgets/activity_detector.dart';
@@ -135,6 +136,9 @@ class ZBudgetApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => NotificationSyncService()),
         ChangeNotifierProvider(create: (_) => ReportService()),
+        ChangeNotifierProvider(
+          create: (_) => SubscriptionService()..initialize(),
+        ),
       ],
       child: Consumer<ThemeManager>(
         builder: (context, themeManager, child) {

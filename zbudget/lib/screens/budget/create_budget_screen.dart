@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../constants/typography.dart';
 import '../../services/budget_service.dart';
+import '../../services/subscription_service.dart';
 import '../../models/budget.dart' as budget_model;
 import '../../utils/currency_input_formatter.dart';
 import '../../utils/currency_formatter.dart';
@@ -696,6 +697,8 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        _buildLimitInfoBanner(),
+                        const SizedBox(height: 16),
                         _buildBasicInfo(),
                         const SizedBox(height: 24),
                         _buildBudgetTemplates(),
@@ -775,6 +778,95 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildLimitInfoBanner() {
+    return Consumer2<SubscriptionService, BudgetService>(
+      builder: (context, subscriptionService, budgetService, child) {
+        final subscription = subscriptionService.subscription;
+        final isPremium = subscription?.isPremium ?? false;
+        final limit = subscription?.features.maxBudgets ?? 2;
+
+        // Count active budgets
+        final budgets = budgetService.budgets;
+        final activeBudgets = budgets.where((b) => b.isActive).length;
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isPremium
+                  ? [const Color(0xFFFFD700).withValues(alpha: 0.1), const Color(0xFFFFA500).withValues(alpha: 0.1)]
+                  : [Colors.blue.withValues(alpha: 0.1), Colors.blue.withValues(alpha: 0.05)],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isPremium ? const Color(0xFFFFD700).withValues(alpha: 0.3) : Colors.blue.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isPremium ? const Color(0xFFFFD700).withValues(alpha: 0.2) : Colors.blue.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  isPremium ? Icons.workspace_premium : Icons.info_outline,
+                  color: isPremium ? const Color(0xFFFFA500) : Colors.blue,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isPremium ? 'Gói Premium' : 'Gói Free',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Ngân sách: $activeBudgets/${isPremium ? limit : limit} đang hoạt động',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isPremium) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    'Premium: 20',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 

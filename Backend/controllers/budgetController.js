@@ -179,11 +179,22 @@ export const createBudget = async (req, res) => {
       );
     }
 
-    res.status(201).json({
+    const response = {
       success: true,
       message: "Tạo ngân sách thành công",
       data: budget.toJSON(),
-    });
+    };
+
+    // Add budget limit info if middleware attached it
+    if (req.budgetCount !== undefined && req.budgetLimit !== undefined) {
+      response.limitInfo = {
+        current: req.budgetCount + 1, // +1 because we just created one
+        limit: req.budgetLimit,
+        remaining: req.budgetLimit - (req.budgetCount + 1),
+      };
+    }
+
+    res.status(201).json(response);
   } catch (error) {
     console.error("Error in createBudget:", error);
     res.status(400).json({

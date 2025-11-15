@@ -2,6 +2,7 @@ import express from "express";
 import OCRController from "../controllers/ocrController.js";
 import { uploadMiddleware } from "../middleware/upload.js";
 import { authenticate } from "../middleware/auth.js";
+import { checkOCRLimit, trackOCRUsage } from "../middleware/premium.js";
 import rateLimit from "express-rate-limit";
 
 const router = express.Router();
@@ -22,9 +23,10 @@ const ocrRateLimit = rateLimit({
 router.post(
   "/process-receipt",
   authenticate,
+  checkOCRLimit, // Check if user has quota remaining
   ocrRateLimit,
   uploadMiddleware.ocr,
-  OCRController.processReceipt
+  OCRController.processReceipt // Tracking happens inside controller now
 );
 
 router.post(

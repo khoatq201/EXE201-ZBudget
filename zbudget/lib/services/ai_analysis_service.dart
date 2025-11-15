@@ -4,6 +4,15 @@ import '../config/api_config.dart';
 import '../models/ai_analysis_models.dart';
 import '../utils/auth_utils.dart';
 
+/// Exception thrown when premium subscription is required
+class PremiumRequiredException implements Exception {
+  final String message;
+  PremiumRequiredException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 class AiAnalysisService {
   final String baseUrl = ApiConfig.baseUrl;
 
@@ -19,6 +28,16 @@ class AiAnalysisService {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
+  }
+
+  /// Helper method to check if error is premium required
+  PremiumRequiredException? _checkPremiumRequired(int statusCode, Map<String, dynamic>? data) {
+    if (statusCode == 403) {
+      return PremiumRequiredException(
+        data?['message'] ?? 'Tính năng này yêu cầu Premium. Vui lòng nâng cấp để sử dụng.',
+      );
+    }
+    return null;
   }
 
   /// Get deep financial analysis with AI insights
@@ -39,7 +58,10 @@ class AiAnalysisService {
           throw Exception(data['error'] ?? 'Failed to get deep analysis');
         }
       } else {
-        throw Exception('Server error: ${response.statusCode}');
+        final data = json.decode(response.body);
+        final premiumError = _checkPremiumRequired(response.statusCode, data);
+        if (premiumError != null) throw premiumError;
+        throw Exception(data['message'] ?? 'Server error: ${response.statusCode}');
       }
     } catch (e) {
       print('Deep Analysis Error: $e');
@@ -70,7 +92,10 @@ class AiAnalysisService {
           throw Exception(data['error'] ?? 'Failed to get forecast');
         }
       } else {
-        throw Exception('Server error: ${response.statusCode}');
+        final data = json.decode(response.body);
+        final premiumError = _checkPremiumRequired(response.statusCode, data);
+        if (premiumError != null) throw premiumError;
+        throw Exception(data['message'] ?? 'Server error: ${response.statusCode}');
       }
     } catch (e) {
       print('Forecast Error: $e');
@@ -98,7 +123,10 @@ class AiAnalysisService {
           throw Exception(data['error'] ?? 'Failed to get anomalies');
         }
       } else {
-        throw Exception('Server error: ${response.statusCode}');
+        final data = json.decode(response.body);
+        final premiumError = _checkPremiumRequired(response.statusCode, data);
+        if (premiumError != null) throw premiumError;
+        throw Exception(data['message'] ?? 'Server error: ${response.statusCode}');
       }
     } catch (e) {
       print('Anomalies Error: $e');
@@ -130,7 +158,10 @@ class AiAnalysisService {
           throw Exception(data['error'] ?? 'Failed to get recommendations');
         }
       } else {
-        throw Exception('Server error: ${response.statusCode}');
+        final data = json.decode(response.body);
+        final premiumError = _checkPremiumRequired(response.statusCode, data);
+        if (premiumError != null) throw premiumError;
+        throw Exception(data['message'] ?? 'Server error: ${response.statusCode}');
       }
     } catch (e) {
       print('Recommendations Error: $e');
@@ -156,7 +187,10 @@ class AiAnalysisService {
           throw Exception(data['error'] ?? 'Failed to get quick insights');
         }
       } else {
-        throw Exception('Server error: ${response.statusCode}');
+        final data = json.decode(response.body);
+        final premiumError = _checkPremiumRequired(response.statusCode, data);
+        if (premiumError != null) throw premiumError;
+        throw Exception(data['message'] ?? 'Server error: ${response.statusCode}');
       }
     } catch (e) {
       print('Quick Insights Error: $e');
@@ -184,7 +218,10 @@ class AiAnalysisService {
           throw Exception(data['error'] ?? 'Failed to get spending patterns');
         }
       } else {
-        throw Exception('Server error: ${response.statusCode}');
+        final data = json.decode(response.body);
+        final premiumError = _checkPremiumRequired(response.statusCode, data);
+        if (premiumError != null) throw premiumError;
+        throw Exception(data['message'] ?? 'Server error: ${response.statusCode}');
       }
     } catch (e) {
       print('Spending Patterns Error: $e');

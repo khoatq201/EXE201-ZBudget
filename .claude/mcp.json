@@ -1,0 +1,49 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "d:\\Document\\EXE201"
+      ],
+      "description": "Provides file system access for reading, writing, and managing files in the project"
+    },
+    "git": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-git",
+        "--repository",
+        "d:\\Document\\EXE201"
+      ],
+      "description": "Git operations including status, diff, log, commit, and branch management"
+    },
+    "mongodb": {
+      "command": "npx",
+      "args": ["-y", "mongodb-mcp-server@latest"],
+      "env": {
+        "MONGODB_URI": "mongodb+srv://khoakhoatran20m_db_user:nAFYitq6zqjdkNNL@cluster0.k1rqmxf.mongodb.net/zbudget"
+      },
+      "description": "Official MongoDB MCP Server v1.1.0+ - Provides AI-powered MongoDB database operations (find, aggregate, count, insert, Atlas management)"
+    },
+    "serena": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena",
+        "start-mcp-server"
+      ],
+      "description": "Serena v1.0.52+ - Powerful coding agent toolkit with semantic code retrieval and editing (supports Python, TypeScript, JavaScript, PHP, Go, Rust, C/C++, Java)"
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "YOUR_BRAVE_API_KEY_HERE"
+      },
+      "description": "Web search capabilities for finding documentation, packages, and solutions (requires API key)"
+    }
+  }
+}

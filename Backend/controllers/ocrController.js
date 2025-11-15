@@ -1,5 +1,7 @@
 import OCRService from "../services/ocrService.js";
 import { uploadMiddleware } from "../middleware/upload.js";
+import UsageLimit from "../models/UsageLimit.js";
+import User from "../models/User.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -55,12 +57,64 @@ class OCRController {
         }
       }
 
-      res.json({
+      // Track OCR usage AFTER successful scan
+      console.log(`[OCR] Starting usage tracking for user ${req.userId}...`);
+      try {
+        const userId = req.userId;
+        console.log(`[OCR] Finding user ${userId}...`);
+        const user = await User.findById(userId).select("subscription");
+
+        if (!user) {
+          console.error(`[OCR] User ${userId} not found!`);
+        } else {
+          console.log(`[OCR] User found, tier: ${user.subscription.tier}`);
+          const tier = user.subscription.tier;
+
+          console.log(`[OCR] Incrementing OCR count...`);
+          await UsageLimit.incrementOCRCount(userId, tier);
+          console.log(`[OCR] OCR count incremented successfully`);
+
+          // Get updated usage for response
+          console.log(`[OCR] Getting updated usage stats...`);
+          const updatedUsage = await UsageLimit.getUserUsageStats(userId, tier);
+
+          console.log(
+            `[OCR] ✅ Tracked usage for user ${userId}: ${updatedUsage.usage.ocr.count}/${updatedUsage.usage.ocr.limit}`
+          );
+
+          // Include usage info in response
+          const response = {
+            success: true,
+            data: receiptData,
+            confidence: ocrResult.confidence,
+            provider: ocrResult.provider,
+            usage: {
+              ocr: updatedUsage.usage.ocr,
+              tier: updatedUsage.tier,
+              message:
+                updatedUsage.tier === "free"
+                  ? `Còn ${updatedUsage.usage.ocr.remaining} lượt quét hôm nay`
+                  : "Quét không giới hạn (Premium)",
+            },
+          };
+
+          return res.json(response);
+        }
+      } catch (trackError) {
+        console.error("[OCR] ❌ Error tracking usage:", trackError);
+        console.error("[OCR] Error stack:", trackError.stack);
+        // Continue with response even if tracking fails
+      }
+
+      // Fallback response without usage info
+      const response = {
         success: true,
         data: receiptData,
         confidence: ocrResult.confidence,
         provider: ocrResult.provider,
-      });
+      };
+
+      res.json(response);
     } catch (error) {
       // Clean up uploaded file on error (only if it's a local file)
       if (req.files && req.files[0] && !req.files[0].path.startsWith("http")) {

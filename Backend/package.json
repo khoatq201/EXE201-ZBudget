@@ -15,7 +15,14 @@
     "lint:fix": "eslint . --ext .js --fix",
     "format": "prettier --write ./**/*.js",
     "docs": "jsdoc . -d docs/",
-    "sample:create": "node scripts/createSampleData.js"
+    "seed": "node scripts/addMoreData.js",
+    "seed:add": "node scripts/addMoreData.js",
+    "seed:sample": "node scripts/createSampleData.js",
+    "seed:user": "node scripts/seedUserData.js",
+    "sample:create": "node scripts/createSampleData.js",
+    "migrate:subscription": "node scripts/migrate-add-subscription.js",
+    "migrate:subscription:test": "node scripts/test-subscription-migration.js",
+    "migrate:subscription:rollback": "node scripts/migrate-add-subscription.js rollback"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

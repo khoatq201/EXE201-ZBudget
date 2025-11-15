@@ -10,6 +10,7 @@ import {
   getCurrentBudget,
 } from '../controllers/budgetController.js';
 import { authenticate } from '../middleware/auth.js';
+import { checkBudgetLimit } from '../middleware/premium.js';
 const router = express.Router();
 // All routes require authentication
 router.use(authenticate);
@@ -18,7 +19,7 @@ router.get('/', getBudgets);
 router.get('/current', getCurrentBudget);
 router.get('/stats/summary', getBudgetStats);
 router.get('/:id', getBudgetById);
-router.post('/', createBudget);
+router.post('/', checkBudgetLimit, createBudget); // Check budget limit before creating
 router.put('/:id', updateBudget);
 router.delete('/:id', deleteBudget);
 // YNAB-style funding

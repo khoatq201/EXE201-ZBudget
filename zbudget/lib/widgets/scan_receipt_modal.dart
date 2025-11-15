@@ -146,9 +146,9 @@ class _ScanReceiptModalState extends State<ScanReceiptModal>
         'description': result.description,
       };
 
-      // Auto-fill form and close modal
+      // Auto-fill form (modal will be closed by onReceiptScanned)
       widget.onReceiptScanned(receiptMap);
-      widget.onClose();
+      // NOTE: Don't call widget.onClose() here - it's already handled in onReceiptScanned
     }
   }
 
@@ -180,15 +180,23 @@ class _ScanReceiptModalState extends State<ScanReceiptModal>
   }
 
   Future<void> _processImageFromFile(File imageFile) async {
+    debugPrint('🔍 [OCR MODAL] Starting OCR processing...');
+    debugPrint('🔍 [OCR MODAL] Image path: ${imageFile.path}');
+
     try {
       // Show loading state
       setState(() {
         _isProcessing = true;
         _currentStep = 'Đang xử lý ảnh...';
       });
+      debugPrint('🔍 [OCR MODAL] Loading state set to true');
 
       // Process with backend OCR
+      debugPrint('🔍 [OCR MODAL] Calling BackendOCRService.processReceipt...');
       final result = await BackendOCRService.processReceipt(imageFile.path);
+      debugPrint(
+        '🔍 [OCR MODAL] OCR result received - success: ${result.success}, confidence: ${result.confidence}',
+      );
 
       if (result.success && result.data != null) {
         // Convert ReceiptData to Map format
@@ -200,16 +208,23 @@ class _ScanReceiptModalState extends State<ScanReceiptModal>
           'confidence': (result.confidence * 100).round(),
           'description': result.data!.description,
         };
+        debugPrint('🔍 [OCR MODAL] Receipt map created: $receiptMap');
 
-        // Auto-fill form and close modal
+        // Stop loading state before calling callback
+        if (mounted) {
+          setState(() {
+            _isProcessing = false;
+          });
+          debugPrint('🔍 [OCR MODAL] Loading state set to false');
+        }
+
+        // Auto-fill form - this will trigger Navigator.pop() in the callback
+        debugPrint('🔍 [OCR MODAL] Calling onReceiptScanned callback...');
         widget.onReceiptScanned(receiptMap);
-        // Close modal after a short delay to avoid navigation conflicts
-        Future.delayed(const Duration(milliseconds: 50), () {
-          if (mounted) {
-            widget.onClose();
-          }
-        });
+        debugPrint('🔍 [OCR MODAL] onReceiptScanned callback completed');
+        // NOTE: The parent widget will close this dialog via Navigator.pop()
       } else {
+        debugPrint('❌ [OCR MODAL] OCR failed - success: ${result.success}');
         setState(() {
           _isProcessing = false;
         });

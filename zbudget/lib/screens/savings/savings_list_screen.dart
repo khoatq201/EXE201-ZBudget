@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/savings_service.dart';
+import '../../services/subscription_service.dart';
 import '../../models/savings_models.dart';
+import '../../widgets/premium/upgrade_dialog.dart';
+import '../../widgets/premium/premium_paywall.dart';
 import '../../constants/typography.dart';
 import '../../utils/theme_extensions.dart';
 import '../../utils/currency_formatter.dart';
@@ -63,7 +66,45 @@ class _SavingsListScreenState extends State<SavingsListScreen>
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/savings/create'),
+        onPressed: () async {
+          // Check if user can create savings goal
+          final subscriptionService = context.read<SubscriptionService>();
+          final savingsService = context.read<SavingsService>();
+
+          // Get current savings goal count
+          final goals = savingsService.savingsGoals;
+          final activeGoals = goals.where((g) => g.status == 'active').length;
+
+          // Get limits
+          final subscription = subscriptionService.subscription;
+          final isPremium = subscription?.isPremium ?? false;
+          final limit = subscription?.features.maxSavingsGoals ?? 2;
+
+          // Check if can create
+          if (!isPremium && activeGoals >= limit) {
+            // Show upgrade dialog
+            showUpgradeDialog(
+              context,
+              feature: 'Tạo mục tiêu tiết kiệm',
+              reason:
+                  'Bạn đã có $activeGoals/$limit mục tiêu đang hoạt động. Nâng cấp Premium để tạo tối đa 10 mục tiêu!',
+              onUpgrade: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PremiumPaywallScreen(
+                      feature: 'Tạo tối đa 10 mục tiêu tiết kiệm',
+                      reason: 'Theo dõi nhiều mục tiêu cùng lúc',
+                    ),
+                  ),
+                );
+              },
+            );
+            return;
+          }
+
+          await context.push('/savings/create');
+        },
         icon: const Icon(Icons.add),
         label: const Text('Thêm mục tiêu'),
         backgroundColor: context.headerGradientStart,

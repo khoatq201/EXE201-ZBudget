@@ -65,13 +65,26 @@ class BackendOCRService {
             ),
             confidence: responseData['confidence']?.toDouble() ?? 0.0,
             provider: responseData['provider'] ?? 'Backend OCR',
+            usageInfo: responseData['usageInfo'] != null
+                ? OCRUsageInfo.fromJson(responseData['usageInfo'])
+                : null,
           );
         } else {
           return BackendOCRResult(
             success: false,
             error: responseData['message'] ?? 'Lỗi không xác định từ backend',
+            quotaExceeded: responseData['quotaExceeded'] ?? false,
+            upgradeRequired: responseData['upgradeRequired'] ?? false,
           );
         }
+      } else if (response.statusCode == 403) {
+        final responseData = json.decode(responseBody);
+        return BackendOCRResult(
+          success: false,
+          error: responseData['message'] ?? 'Đã vượt quá giới hạn quét hóa đơn',
+          quotaExceeded: true,
+          upgradeRequired: true,
+        );
       } else {
         return BackendOCRResult(
           success: false,
@@ -169,6 +182,9 @@ class BackendOCRResult {
   final ReceiptData? data;
   final double confidence;
   final String provider;
+  final bool quotaExceeded;
+  final bool upgradeRequired;
+  final OCRUsageInfo? usageInfo;
 
   BackendOCRResult({
     required this.success,
@@ -176,6 +192,9 @@ class BackendOCRResult {
     this.data,
     this.confidence = 0.0,
     this.provider = 'Backend OCR',
+    this.quotaExceeded = false,
+    this.upgradeRequired = false,
+    this.usageInfo,
   });
 }
 
@@ -204,4 +223,28 @@ class ReceiptData {
   bool get hasValidAmount => amount > 0;
   bool get hasStoreName => storeName.isNotEmpty;
   bool get hasItems => items.isNotEmpty;
+}
+
+/// OCR Usage Information
+class OCRUsageInfo {
+  final int used;
+  final int limit;
+  final int remaining;
+
+  OCRUsageInfo({
+    required this.used,
+    required this.limit,
+    required this.remaining,
+  });
+
+  factory OCRUsageInfo.fromJson(Map<String, dynamic> json) {
+    return OCRUsageInfo(
+      used: json['used'] ?? 0,
+      limit: json['limit'] ?? 10,
+      remaining: json['remaining'] ?? 0,
+    );
+  }
+
+  double get percentage => limit > 0 ? (used / limit) * 100 : 0.0;
+  bool get isExceeded => used >= limit;
 }

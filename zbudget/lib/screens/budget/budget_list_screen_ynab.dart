@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../models/budget.dart';
 import '../../services/budget_service.dart';
+import '../../services/subscription_service.dart';
+import '../../widgets/premium/upgrade_dialog.dart';
+import '../../widgets/premium/premium_paywall.dart';
 import '../../constants/typography.dart';
 import '../../utils/theme_extensions.dart';
 import '../../utils/currency_formatter.dart';
@@ -78,6 +81,42 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB>
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
+          // Check if user can create budget
+          final subscriptionService = context.read<SubscriptionService>();
+          final budgetService = context.read<BudgetService>();
+
+          // Get current budget count
+          final budgets = budgetService.budgets;
+          final activeBudgets = budgets.where((b) => b.status == 'active').length;
+
+          // Get limits
+          final subscription = subscriptionService.subscription;
+          final isPremium = subscription?.isPremium ?? false;
+          final limit = subscription?.features.maxBudgets ?? 2;
+
+          // Check if can create
+          if (!isPremium && activeBudgets >= limit) {
+            // Show upgrade dialog
+            showUpgradeDialog(
+              context,
+              feature: 'Tạo ngân sách',
+              reason:
+                  'Bạn đã có $activeBudgets/$limit ngân sách đang hoạt động. Nâng cấp Premium để tạo tối đa 20 ngân sách!',
+              onUpgrade: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PremiumPaywallScreen(
+                      feature: 'Tạo tối đa 20 ngân sách',
+                      reason: 'Quản lý chi tiết từng khoản chi',
+                    ),
+                  ),
+                );
+              },
+            );
+            return;
+          }
+
           final result = await context.push('/budget/create');
           // Refresh list if budget was created
           if (result == true) {

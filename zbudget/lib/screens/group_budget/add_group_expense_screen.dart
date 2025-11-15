@@ -2,14 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/group_budget_service.dart';
+import '../../services/subscription_service.dart';
 import '../../constants/typography.dart';
 import '../../constants/spacing.dart';
+import '../../constants/colors.dart';
 import '../../utils/theme_extensions.dart';
 import '../../utils/currency_input_formatter.dart';
 import '../../utils/currency_formatter.dart';
 import '../../utils/snackbar_utils.dart';
 import '../../widgets/receipt_scanner_widget.dart';
 import '../../widgets/ocr_result_preview.dart';
+import '../../widgets/premium/upgrade_dialog.dart';
+import '../../widgets/premium/premium_paywall.dart';
+import '../../widgets/premium/usage_progress_widget.dart';
 import '../../services/backend_ocr_service.dart';
 
 class AddGroupExpenseScreen extends StatefulWidget {
@@ -43,6 +48,15 @@ class _AddGroupExpenseScreenState extends State<AddGroupExpenseScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Load subscription usage stats for OCR progress display
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SubscriptionService>().getUsage();
+    });
+  }
+
+  @override
   void dispose() {
     _descriptionController.dispose();
     _amountController.dispose();
@@ -74,10 +88,7 @@ class _AddGroupExpenseScreenState extends State<AddGroupExpenseScreen> {
         SnackBarUtils.showSuccess(context, 'Thêm chi tiêu thành công!');
         context.pop();
       } else {
-        SnackBarUtils.showError(
-          context,
-          result['message'] ?? 'Có lỗi xảy ra',
-        );
+        SnackBarUtils.showError(context, result['message'] ?? 'Có lỗi xảy ra');
       }
     } catch (e) {
       if (!mounted) return;
@@ -89,8 +100,46 @@ class _AddGroupExpenseScreenState extends State<AddGroupExpenseScreen> {
     }
   }
 
-  /// Handle OCR receipt scanning
-  void _scanReceipt() {
+  /// Handle OCR receipt scanning with quota check
+  Future<void> _scanReceipt() async {
+    // Check subscription service for OCR quota
+    final subscriptionService = context.read<SubscriptionService>();
+
+    // Refresh usage stats to get latest data
+    await subscriptionService.getUsage();
+
+    final canUseOCR = await subscriptionService.canUseOCR();
+    final usageStats = subscriptionService.usageStats;
+    final isPremium = subscriptionService.isPremium;
+
+    if (!canUseOCR && !isPremium) {
+      // Show quota exceeded dialog
+      if (!mounted) return;
+
+      final ocrUsage = usageStats?.ocr;
+      showUpgradeDialog(
+        context,
+        feature: 'Quét hóa đơn',
+        reason: ocrUsage != null
+            ? 'Bạn đã sử dụng ${ocrUsage.count}/${ocrUsage.limit} lần quét hôm nay. Nâng cấp Premium để quét không giới hạn!'
+            : 'Bạn đã hết quota quét hóa đơn hôm nay. Nâng cấp Premium để tiếp tục!',
+        onUpgrade: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const PremiumPaywallScreen(
+                feature: 'Quét hóa đơn không giới hạn',
+                reason: 'Nâng cấp để sử dụng tính năng OCR không giới hạn',
+              ),
+            ),
+          );
+        },
+      );
+      return;
+    }
+
+    // Show scanner if quota is available
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => ReceiptScannerWidget(
@@ -121,6 +170,9 @@ class _AddGroupExpenseScreenState extends State<AddGroupExpenseScreen> {
   void _handleOCRConfirmed(ReceiptData receiptData) {
     Navigator.of(context).pop(); // Close preview
 
+    // Refresh usage stats to show updated count
+    context.read<SubscriptionService>().getUsage();
+
     // Auto-fill form with OCR data
     setState(() {
       _descriptionController.text = receiptData.description;
@@ -136,6 +188,99 @@ class _AddGroupExpenseScreenState extends State<AddGroupExpenseScreen> {
     SnackBarUtils.showSuccess(context, 'Đã tự động điền thông tin từ hóa đơn');
   }
 
+  Widget _buildOCRUsageBanner() {
+    return Consumer<SubscriptionService>(
+      builder: (context, subscriptionService, child) {
+        final usageStats = subscriptionService.usageStats;
+        final isPremium = subscriptionService.isPremium;
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppColors.primary500.withValues(alpha: 0.1),
+                AppColors.accent500.withValues(alpha: 0.1),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.primary500.withValues(alpha: 0.2),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary500,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.qr_code_scanner,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Quét hóa đơn thông minh',
+                          style: AppTypography.body.copyWith(
+                            color: context.primaryTextColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (usageStats == null)
+                          Text(
+                            'Đang tải...',
+                            style: AppTypography.caption.copyWith(
+                              color: context.secondaryTextColor,
+                            ),
+                          )
+                        else if (isPremium)
+                          Text(
+                            'Unlimited - Premium ⭐',
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.accent500,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          )
+                        else
+                          Text(
+                            'Free: ${usageStats.ocr.count}/${usageStats.ocr.limit} lần/ngày',
+                            style: AppTypography.caption.copyWith(
+                              color: context.secondaryTextColor,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (!isPremium && usageStats != null) ...[
+                const SizedBox(height: 12),
+                CompactUsageProgress(
+                  current: usageStats.ocr.count,
+                  limit: usageStats.ocr.limit,
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -149,6 +294,8 @@ class _AddGroupExpenseScreenState extends State<AddGroupExpenseScreen> {
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.lg),
           children: [
+            _buildOCRUsageBanner(),
+            const SizedBox(height: AppSpacing.lg),
             _buildBasicInfo(),
             const SizedBox(height: AppSpacing.lg),
             _buildCategorySelection(),

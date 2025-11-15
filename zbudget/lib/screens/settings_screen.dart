@@ -13,7 +13,7 @@ import 'settings/profile/profile_screen.dart';
 import 'settings/security/security_screen_simple.dart';
 import 'settings/theme/theme_screen.dart';
 import 'settings/language/language_screen.dart';
-import 'settings/premium/premium_screen.dart';
+import 'settings/subscription_settings_screen.dart';
 import 'settings/chat_history_screen.dart';
 import 'settings/notifications/notification_settings_simple.dart';
 import 'settings/help/help_screen.dart';
@@ -99,13 +99,13 @@ class SettingsScreen extends StatelessWidget {
                     _buildSectionHeader('Tính năng'),
                     _buildSettingItem(
                       context: context,
-                      icon: Icons.star,
-                      title: 'Premium',
-                      subtitle: 'Nâng cấp tài khoản Premium',
+                      icon: Icons.workspace_premium,
+                      title: 'Gói đăng ký',
+                      subtitle: 'Quản lý gói Premium',
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) => const PremiumScreen(),
+                            builder: (context) => const SubscriptionSettingsScreen(),
                           ),
                         );
                       },

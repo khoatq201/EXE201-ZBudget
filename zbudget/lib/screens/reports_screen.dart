@@ -4,8 +4,10 @@ import 'package:fl_chart/fl_chart.dart';
 import '../utils/theme_extensions.dart';
 import '../constants/typography.dart';
 import '../services/report_service.dart';
+import '../services/subscription_service.dart';
 import '../utils/formatters.dart';
 import '../widgets/floating_ai_button.dart';
+import '../widgets/premium/premium_paywall.dart';
 import '../services/ai_analysis_service.dart';
 import '../models/ai_analysis_models.dart';
 
@@ -2135,11 +2137,120 @@ class _ReportsScreenState extends State<ReportsScreen>
 
   // ========== AI Analysis Tab ==========
   Widget _buildAIAnalysisTab(ReportService reportService) {
-    // Always show AI analysis content - remove tab index check
+    // Check if user has premium access to AI Analysis
+    return Consumer<SubscriptionService>(
+      builder: (context, subscriptionService, child) {
+        final canUseAI = subscriptionService.isPremium;
 
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _loadAIAnalysis(),
-      builder: (context, snapshot) {
+        // Show premium paywall if not premium
+        if (!canUseAI) {
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  const SizedBox(height: 40),
+                  // Lock icon
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                      ),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.lock,
+                      size: 48,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Tính năng Premium',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Phân tích AI chi tiết chỉ dành cho người dùng Premium',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  // Features preview
+                  _buildPremiumFeatureItem(
+                    Icons.analytics,
+                    'Phân tích xu hướng chi tiêu',
+                    'Hiểu rõ thói quen chi tiêu của bạn',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildPremiumFeatureItem(
+                    Icons.trending_up,
+                    'Dự báo ngân sách',
+                    'Dự đoán chi tiêu trong tương lai',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildPremiumFeatureItem(
+                    Icons.lightbulb,
+                    'Gợi ý thông minh',
+                    'Nhận insight và lời khuyên tiết kiệm',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildPremiumFeatureItem(
+                    Icons.warning,
+                    'Phát hiện bất thường',
+                    'Cảnh báo chi tiêu không bình thường',
+                  ),
+                  const SizedBox(height: 32),
+                  // CTA Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PremiumPaywallScreen(
+                              feature: 'Phân tích AI chi tiết',
+                              reason: 'Nhận insight thông minh về chi tiêu',
+                            ),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFFD700),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Nâng cấp Premium',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // User has premium - show AI analysis
+        return FutureBuilder<Map<String, dynamic>>(
+          future: _loadAIAnalysis(),
+          builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return SingleChildScrollView(
             child: Column(
@@ -2384,6 +2495,8 @@ class _ReportsScreenState extends State<ReportsScreen>
               ),
             ),
           ],
+        );
+          },
         );
       },
     );
@@ -3873,6 +3986,48 @@ class _ReportsScreenState extends State<ReportsScreen>
           ),
         ],
       ),
+    );
+  }
+
+  // Helper method for premium feature items
+  Widget _buildPremiumFeatureItem(IconData icon, String title, String subtitle) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFD700).withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            color: const Color(0xFFFFA500),
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

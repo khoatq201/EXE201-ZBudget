@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../models/budget.dart';
@@ -54,20 +55,29 @@ class BudgetService extends ChangeNotifier {
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ JSON decode error: $e');
-        debugPrint('Response body: ${body.substring(0, body.length > 200 ? 200 : body.length)}...');
+        debugPrint(
+          'Response body: ${body.substring(0, body.length > 200 ? 200 : body.length)}...',
+        );
       }
       return null;
     }
   }
 
+  /// Safely notify listeners after current build phase
+  void _safeNotifyListeners() {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      notifyListeners();
+    });
+  }
+
   void _setLoading(bool loading) {
     _isLoading = loading;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void _setError(String? error) {
     _error = error;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   /// Get all budgets with optional filters
@@ -252,12 +262,31 @@ class BudgetService extends ChangeNotifier {
         if (data['success'] == true) {
           final newBudget = Budget.fromJson(data['data']);
           _budgets.insert(0, newBudget);
-          notifyListeners();
-          return {'success': true, 'message': data['message']};
+          _safeNotifyListeners();
+          return {
+            'success': true,
+            'message': data['message'],
+            'limitInfo': data['limitInfo'],
+          };
         } else {
           _setError(data['message'] ?? 'Lỗi khi tạo ngân sách');
-          return {'success': false, 'message': data['message']};
+          return {
+            'success': false,
+            'message': data['message'],
+            'upgradeRequired': data['upgradeRequired'],
+          };
         }
+      } else if (response.statusCode == 403) {
+        final data = json.decode(response.body);
+        _setError(data['message'] ?? 'Đã đạt giới hạn ngân sách');
+        return {
+          'success': false,
+          'message':
+              data['message'] ??
+              'Đã đạt giới hạn ngân sách. Nâng cấp Premium để tạo thêm.',
+          'upgradeRequired': true,
+          'limitExceeded': true,
+        };
       } else {
         final data = json.decode(response.body);
         _setError(data['message'] ?? 'Lỗi khi tạo ngân sách');
@@ -315,7 +344,7 @@ class BudgetService extends ChangeNotifier {
           // ✅ KEY: Trigger notification refresh after successful update
           await _refreshNotificationsAfterAction();
 
-          notifyListeners();
+          _safeNotifyListeners();
           return {'success': true, 'message': data['message']};
         } else {
           _setError(data['message'] ?? 'Lỗi khi cập nhật ngân sách');
@@ -349,7 +378,7 @@ class BudgetService extends ChangeNotifier {
         final data = json.decode(response.body);
         if (data['success'] == true) {
           _budgets.removeWhere((b) => b.id == id);
-          notifyListeners();
+          _safeNotifyListeners();
           return {'success': true, 'message': data['message']};
         } else {
           _setError(data['message'] ?? 'Lỗi khi xóa ngân sách');
@@ -422,7 +451,7 @@ class BudgetService extends ChangeNotifier {
             }
             _readyToAssign = newReadyToAssign;
 
-            notifyListeners();
+            _safeNotifyListeners();
             return {'success': true, 'message': data['message']};
           } catch (e) {
             debugPrint('❌ Error parsing fund response: $e');
@@ -485,7 +514,7 @@ class BudgetService extends ChangeNotifier {
   /// Clear error
   void clearError() {
     _error = null;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   /// Clear all data
@@ -495,7 +524,7 @@ class BudgetService extends ChangeNotifier {
     _stats = null;
     _readyToAssign = 0;
     _error = null;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   /// ✅ NEW: Refresh notifications after action

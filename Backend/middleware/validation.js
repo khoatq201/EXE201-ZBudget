@@ -82,7 +82,7 @@ const commonSchemas = {
     .label("Mật khẩu"),
   // Vietnamese text
   vietnameseText: Joi.string()
-    .pattern(/^[\p{L}\p{N}\s\.,!?\-()'"]+$/u)
+    .pattern(/^[\p{L}\p{N}\s\.,!?\-()'":\n]+$/u)
     .message("Chỉ được chứa chữ cái, số và dấu câu cơ bản")
     .label("Văn bản"),
 };
@@ -687,8 +687,8 @@ export const validate = (schema, property = "body") => {
       property === "query"
         ? req.query
         : property === "params"
-        ? req.params
-        : req.body;
+          ? req.params
+          : req.body;
     try {
       const { error, value } = schema.validate(dataToValidate, {
         abortEarly: false,

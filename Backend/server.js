@@ -9,6 +9,7 @@ import { connectDB } from "./models/index.js";
 import logger from "morgan";
 import sessionCleanupJob from "./services/SessionCleanupJob.js";
 import notificationSchedulerJob from "./services/NotificationSchedulerJob.js";
+import subscriptionJobs from "./jobs/subscriptionJobs.js";
 // Import routes
 import authRoutes from "./routes/authRoutes.js";
 import expenseRoutes from "./routes/expenseRoutes.js";
@@ -29,6 +30,7 @@ import aiAnalysisRoutes from "./routes/aiAnalysisRoutes.js";
 // import groupRoutes from './routes/groups.js';
 import notificationRoutes from "./routes/notificationRoutes.js";
 import feedbackRoutes from "./routes/feedbackRoutes.js";
+import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 // import healthRoutes from './routes/health.js';
 // Middleware
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -193,6 +195,7 @@ app.use("/api/ai/analysis", aiAnalysisRoutes);
 // app.use('/api/groups', authenticate, groupRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/feedback", feedbackRoutes);
+app.use("/api/subscription", subscriptionRoutes);
 // API documentation
 app.get("/api", (req, res) => {
   res.json({
@@ -249,6 +252,13 @@ const gracefulShutdown = (signal) => {
   // Close HTTP server first
   if (server && server.listening) {
     server.close(async () => {
+      // Stop cron jobs
+      try {
+        subscriptionJobs.stopAll();
+      } catch (error) {
+        console.error("❌ Lỗi khi dừng subscription jobs:", error);
+      }
+
       // Close database connections
       try {
         if (mongoose.connection.readyState !== 0) {
@@ -315,6 +325,8 @@ async function startServer() {
       sessionCleanupJob.start();
       // Start notification scheduler job
       notificationSchedulerJob.start();
+      // Start subscription cron jobs (daily reset, expiry checks, etc.)
+      subscriptionJobs.init();
       console.log("✅ Background jobs started");
 
       if (process.env.NODE_ENV === "development") {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/savings_service.dart';
+import '../../services/subscription_service.dart';
 import '../../models/savings_models.dart';
 import '../../constants/typography.dart';
 import '../../utils/theme_extensions.dart';
@@ -186,6 +187,10 @@ class _CreateSavingsScreenState extends State<CreateSavingsScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            // Limit Info Banner
+            if (!_isEditMode) _buildLimitInfoBanner(),
+            if (!_isEditMode) const SizedBox(height: 16),
+
             // Name
             TextFormField(
               controller: _nameController,
@@ -494,6 +499,95 @@ class _CreateSavingsScreenState extends State<CreateSavingsScreen> {
           }).toList(),
         ),
       ],
+    );
+  }
+
+  Widget _buildLimitInfoBanner() {
+    return Consumer2<SubscriptionService, SavingsService>(
+      builder: (context, subscriptionService, savingsService, child) {
+        final subscription = subscriptionService.subscription;
+        final isPremium = subscription?.isPremium ?? false;
+        final limit = subscription?.features.maxSavingsGoals ?? 2;
+
+        // Count active savings goals
+        final goals = savingsService.savingsGoals;
+        final activeGoals = goals.where((g) => g.status == SavingsStatus.active).length;
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isPremium
+                  ? [const Color(0xFFFFD700).withValues(alpha: 0.1), const Color(0xFFFFA500).withValues(alpha: 0.1)]
+                  : [Colors.green.withValues(alpha: 0.1), Colors.green.withValues(alpha: 0.05)],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isPremium ? const Color(0xFFFFD700).withValues(alpha: 0.3) : Colors.green.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isPremium ? const Color(0xFFFFD700).withValues(alpha: 0.2) : Colors.green.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  isPremium ? Icons.workspace_premium : Icons.savings_outlined,
+                  color: isPremium ? const Color(0xFFFFA500) : Colors.green,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isPremium ? 'Gói Premium' : 'Gói Free',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Mục tiêu: $activeGoals/$limit đang hoạt động',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isPremium) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    'Premium: 10',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }

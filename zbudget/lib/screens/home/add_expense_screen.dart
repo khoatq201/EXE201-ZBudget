@@ -5,11 +5,14 @@ import '../../constants/colors.dart';
 import '../../constants/typography.dart';
 import '../../utils/theme_extensions.dart';
 import '../../widgets/scan_receipt_modal.dart';
+import '../../widgets/premium/usage_progress_widget.dart';
+import '../../widgets/premium/upgrade_dialog.dart';
+import '../../widgets/premium/premium_paywall.dart';
 import '../../models/expense.dart';
 import '../../models/budget.dart';
 import '../../services/expense_service.dart';
 import '../../services/budget_service.dart';
-import '../../services/dashboard_service.dart';
+import '../../services/subscription_service.dart';
 import '../../utils/formatters.dart';
 import '../../utils/currency_formatter.dart';
 import '../../utils/ready_to_assign_dialog.dart';
@@ -190,6 +193,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
       end: 1.0,
     ).animate(_fadeController);
 
+    // Load subscription usage stats for OCR progress display
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SubscriptionService>().getUsage();
+    });
+
     _slideController.forward();
     _fadeController.forward();
     _loadActiveBudgets();
@@ -366,77 +374,117 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
   }
 
   Widget _buildScanReceiptBanner() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primary500.withValues(alpha: 0.1),
-            AppColors.accent500.withValues(alpha: 0.1),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.primary500.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.primary500,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              Icons.qr_code_scanner,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Quét hóa đơn thông minh',
-                  style: AppTypography.body.copyWith(
-                    color: context.primaryTextColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  'AI tự động điền thông tin từ hóa đơn',
-                  style: AppTypography.caption.copyWith(
-                    color: context.secondaryTextColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: _showScanReceiptModal,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    return Consumer<SubscriptionService>(
+      builder: (context, subscriptionService, child) {
+        final usageStats = subscriptionService.usageStats;
+        final isPremium = subscriptionService.isPremium;
+
+        return Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.primary500,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                'Quét ngay',
-                style: AppTypography.body.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary500.withValues(alpha: 0.1),
+                    AppColors.accent500.withValues(alpha: 0.1),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppColors.primary500.withValues(alpha: 0.2),
+                  width: 1,
                 ),
               ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary500,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.qr_code_scanner,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Quét hóa đơn thông minh',
+                          style: AppTypography.body.copyWith(
+                            color: context.primaryTextColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (usageStats == null)
+                          Text(
+                            'Đang tải...',
+                            style: AppTypography.caption.copyWith(
+                              color: context.secondaryTextColor,
+                            ),
+                          )
+                        else if (isPremium)
+                          Text(
+                            'Unlimited - Premium ⭐',
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.accent500,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          )
+                        else
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Free: ${usageStats.ocr.count}/${usageStats.ocr.limit} lần/ngày',
+                                style: AppTypography.caption.copyWith(
+                                  color: context.secondaryTextColor,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              CompactUsageProgress(
+                                current: usageStats.ocr.count,
+                                limit: usageStats.ocr.limit,
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _showScanReceiptModal,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary500,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'Quét ngay',
+                        style: AppTypography.body.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 
@@ -1008,24 +1056,76 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
     );
   }
 
-  void _showScanReceiptModal() {
+  Future<void> _showScanReceiptModal() async {
+    // Check subscription service for OCR quota
+    final subscriptionService = context.read<SubscriptionService>();
+
+    // Refresh usage stats to get latest data
+    await subscriptionService.getUsage();
+
+    final canUseOCR = await subscriptionService.canUseOCR();
+    final usageStats = subscriptionService.usageStats;
+    final isPremium = subscriptionService.isPremium;
+
+    if (!canUseOCR && !isPremium) {
+      // Show quota exceeded dialog
+      if (!mounted) return;
+
+      final ocrUsage = usageStats?.ocr;
+      showUpgradeDialog(
+        context,
+        feature: 'Quét hóa đơn',
+        reason: ocrUsage != null
+            ? 'Bạn đã sử dụng ${ocrUsage.count}/${ocrUsage.limit} lần quét hôm nay. Nâng cấp Premium để quét không giới hạn!'
+            : 'Bạn đã hết quota quét hóa đơn hôm nay. Nâng cấp Premium để tiếp tục!',
+        onUpgrade: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const PremiumPaywallScreen(
+                feature: 'Quét hóa đơn không giới hạn',
+                reason: 'Nâng cấp để sử dụng tính năng OCR không giới hạn',
+              ),
+            ),
+          );
+        },
+      );
+      return;
+    }
+
+    // Show scan modal
+    if (!mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => ScanReceiptModal(
-        onReceiptScanned: _handleReceiptScanned,
-        onClose: () => Navigator.of(context).pop(),
+      builder: (dialogContext) => ScanReceiptModal(
+        onReceiptScanned: (receiptData) {
+          // Close dialog first using dialog context
+          Navigator.of(dialogContext).pop();
+          // Then fill form
+          _handleReceiptScanned(receiptData);
+        },
+        onClose: () => Navigator.of(dialogContext).pop(),
       ),
     );
   }
 
   void _handleReceiptScanned(Map<String, dynamic> receiptData) {
+    debugPrint('📸 [ADD EXPENSE] Receipt scanned callback received!');
+    debugPrint('📸 [ADD EXPENSE] Receipt data: $receiptData');
+
+    // Refresh usage stats to show updated count
+    context.read<SubscriptionService>().getUsage();
+
     // Auto-fill form with scanned data
     setState(() {
+      debugPrint('📸 [ADD EXPENSE] Starting setState to fill form...');
+
       // Format amount with currency formatter
       _amountController.text = CurrencyFormatter.formatVND(
         receiptData['amount'],
       );
+      debugPrint('📸 [ADD EXPENSE] Amount filled: ${_amountController.text}');
 
       // Map category from receipt to our enum
       switch (receiptData['category']) {
@@ -1071,160 +1171,37 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
         noteText += 'Items: ${(receiptData['items'] as List).join(', ')}';
       }
       _noteController.text = noteText;
+      debugPrint('📸 [ADD EXPENSE] Note filled: $noteText');
 
       // Set default payment method to cash for scanned receipts
       _selectedPaymentMethod = paymentMethods.firstWhere(
         (method) => method.id == 'cash',
         orElse: () => paymentMethods.first,
       );
+      debugPrint('📸 [ADD EXPENSE] Payment method set to cash');
     });
+    debugPrint('📸 [ADD EXPENSE] setState completed, form filled successfully');
 
-    // Close the dialog after data is processed
-    Navigator.of(context).pop();
-
-    // AUTO-SUBMIT the expense after OCR (with delay to avoid navigation conflicts)
-    Future.delayed(const Duration(milliseconds: 100), () {
-      _submitExpenseFromOCR(receiptData);
-    });
-  }
-
-  String _getCategoryName(ExpenseCategory category) {
-    switch (category) {
-      case ExpenseCategory.food:
-        return 'Food & Dining';
-      case ExpenseCategory.transport:
-        return 'Transportation';
-      case ExpenseCategory.shopping:
-        return 'Shopping';
-      case ExpenseCategory.entertainment:
-        return 'Entertainment';
-      case ExpenseCategory.healthcare:
-        return 'Healthcare';
-      case ExpenseCategory.education:
-        return 'Education';
-      case ExpenseCategory.utilities:
-        return 'Utilities';
-      case ExpenseCategory.other:
-        return 'Other';
-    }
-  }
-
-  String _getCategoryString(ExpenseCategory category) {
-    switch (category) {
-      case ExpenseCategory.food:
-        return 'food';
-      case ExpenseCategory.transport:
-        return 'transport';
-      case ExpenseCategory.shopping:
-        return 'shopping';
-      case ExpenseCategory.entertainment:
-        return 'entertainment';
-      case ExpenseCategory.healthcare:
-        return 'healthcare';
-      case ExpenseCategory.education:
-        return 'education';
-      case ExpenseCategory.utilities:
-        return 'utilities';
-      case ExpenseCategory.other:
-        return 'other';
-    }
-  }
-
-  String _cleanTextForBackend(String text) {
-    // Remove Vietnamese characters and special characters
-    return text
-        .replaceAll(RegExp(r'[àáạảãâầấậẩẫăằắặẳẵ]'), 'a')
-        .replaceAll(RegExp(r'[èéẹẻẽêềếệểễ]'), 'e')
-        .replaceAll(RegExp(r'[ìíịỉĩ]'), 'i')
-        .replaceAll(RegExp(r'[òóọỏõôồốộổỗơờớợởỡ]'), 'o')
-        .replaceAll(RegExp(r'[ùúụủũưừứựửữ]'), 'u')
-        .replaceAll(RegExp(r'[ỳýỵỷỹ]'), 'y')
-        .replaceAll(RegExp(r'[đ]'), 'd')
-        .replaceAll(RegExp(r'[ÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴ]'), 'A')
-        .replaceAll(RegExp(r'[ÈÉẸẺẼÊỀẾỆỂỄ]'), 'E')
-        .replaceAll(RegExp(r'[ÌÍỊỈĨ]'), 'I')
-        .replaceAll(RegExp(r'[ÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠ]'), 'O')
-        .replaceAll(RegExp(r'[ÙÚỤỦŨƯỪỨỰỬỮ]'), 'U')
-        .replaceAll(RegExp(r'[ỲÝỴỶỸ]'), 'Y')
-        .replaceAll(RegExp(r'[Đ]'), 'D')
-        .replaceAll(
-          RegExp(r'[^\w\s.,!?-]'),
-          '',
-        ) // Remove special characters except basic punctuation
-        .trim();
-  }
-
-  Future<void> _submitExpenseFromOCR(Map<String, dynamic> receiptData) async {
-    try {
-      final expenseService = Provider.of<ExpenseService>(
-        context,
-        listen: false,
-      );
-
-      // Get category name for title
-      final categoryName = _getCategoryName(_selectedCategory!);
-      final categoryStr = _getCategoryString(_selectedCategory!);
-      final amount = CurrencyFormatter.parse(_amountController.text).toDouble();
-
-      // Clean description for backend
-      final cleanDescription = _noteController.text.isNotEmpty
-          ? _cleanTextForBackend(_noteController.text)
-          : null;
-
-      // Create expense automatically
-      await expenseService.createExpense(
-        title: categoryName,
-        description: cleanDescription,
-        amount: amount,
-        category: categoryStr,
-        paymentMethod: _selectedPaymentMethod?.id ?? 'cash',
-        date: DateTime.now(),
-      );
-
-      // Show success message and navigate back
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '✅ Đã thêm chi tiêu từ hóa đơn! (${receiptData['confidence']}% chính xác)',
-            ),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
+    // Show success message after form is filled (dialog already closed by caller)
+    debugPrint('📸 [ADD EXPENSE] Showing success SnackBar...');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '✅ Đã quét hóa đơn! (${receiptData['confidence']}% chính xác)\nVui lòng kiểm tra và xác nhận thông tin.',
           ),
-        );
-
-        // Refresh dashboard data after successful expense creation
-        try {
-          final dashboardService = Provider.of<DashboardService>(
-            context,
-            listen: false,
-          );
-          await dashboardService.refresh();
-        } catch (e) {
-          // Silent refresh - don't show error to user
-        }
-
-        // Navigate back to dashboard after a short delay
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            Navigator.of(context).pop(true); // Return true to indicate success
-          }
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Lỗi thêm chi tiêu: ${e.toString()}'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
           ),
-        );
-      }
+        ),
+      );
     }
+
+    // NOTE: Removed auto-submit - let user review and manually submit
+    // Users can now check the OCR results before saving
   }
 
   Future<void> _handleSaveExpense() async {

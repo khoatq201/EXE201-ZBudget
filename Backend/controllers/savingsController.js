@@ -71,11 +71,22 @@ export const createSavingsGoal = async (req, res) => {
       daysRemaining: savingsGoal.daysRemaining,
       suggestedMonthlyContribution: savingsGoal.suggestedMonthlyContribution,
     };
-    res.status(201).json({
+    const response = {
       success: true,
       message: "Savings goal created successfully",
       data: formattedGoal,
-    });
+    };
+
+    // Add savings goal limit info if middleware attached it
+    if (req.savingsGoalCount !== undefined && req.savingsGoalLimit !== undefined) {
+      response.limitInfo = {
+        current: req.savingsGoalCount + 1, // +1 because we just created one
+        limit: req.savingsGoalLimit,
+        remaining: req.savingsGoalLimit - (req.savingsGoalCount + 1),
+      };
+    }
+
+    res.status(201).json(response);
   } catch (error) {
     console.error("❌ Create savings goal error:", error);
     throw new BadRequestError(error.message);

@@ -200,11 +200,20 @@ class SavingsService extends ChangeNotifier {
         return {
           'success': true,
           'message': 'Savings goal created successfully',
+          'limitInfo': data['limitInfo'],
+        };
+      } else if (response.statusCode == 403) {
+        return {
+          'success': false,
+          'message': data?['message'] ?? 'Đã đạt giới hạn mục tiêu tiết kiệm. Nâng cấp Premium để tạo thêm.',
+          'upgradeRequired': true,
+          'limitExceeded': true,
         };
       } else {
         return {
           'success': false,
           'message': data?['message'] ?? 'Failed to create savings goal',
+          'upgradeRequired': data?['upgradeRequired'],
         };
       }
     } catch (e) {

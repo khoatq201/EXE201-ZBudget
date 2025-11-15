@@ -453,13 +453,17 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 16, color: context.headerSubtitleColor),
             const SizedBox(width: 4),
-            Text(
-              label,
-              style: AppTypography.bodySmall.copyWith(
-                color: context.headerSubtitleColor,
+            Flexible(
+              child: Text(
+                label,
+                style: AppTypography.bodySmall.copyWith(
+                  color: context.headerSubtitleColor,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -471,6 +475,7 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
             color: context.headerTextColor,
             fontWeight: FontWeight.w600,
           ),
+          overflow: TextOverflow.ellipsis,
         ),
       ],
     );
@@ -614,7 +619,14 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(budget.name, style: AppTypography.h3),
+              Flexible(
+                child: Text(
+                  budget.name,
+                  style: AppTypography.h3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
               Text(
                 '${budget.spentPercentage}%',
                 style: AppTypography.h3.copyWith(
@@ -641,15 +653,23 @@ class _DashboardScreenApiState extends State<DashboardScreenApi>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Đã chi: ${budget.spent.toVND()}',
-                style: AppTypography.bodySmall,
+              Flexible(
+                child: Text(
+                  'Đã chi: ${budget.spent.toVND()}',
+                  style: AppTypography.bodySmall,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              Text(
-                'Còn lại: ${budget.remaining.toVND()}',
-                style: AppTypography.bodySmall.copyWith(
-                  color: context.headerGradientStart,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  'Còn lại: ${budget.remaining.toVND()}',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: context.headerGradientStart,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
                 ),
               ),
             ],
