@@ -214,7 +214,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
         });
       }
     } catch (e) {
-      debugPrint('Error loading budgets: $e');
+      // Error loading budgets
     } finally {
       if (mounted) {
         setState(() => _loadingBudgets = false);
@@ -1111,21 +1111,15 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
   }
 
   void _handleReceiptScanned(Map<String, dynamic> receiptData) {
-    debugPrint('📸 [ADD EXPENSE] Receipt scanned callback received!');
-    debugPrint('📸 [ADD EXPENSE] Receipt data: $receiptData');
-
     // Refresh usage stats to show updated count
     context.read<SubscriptionService>().getUsage();
 
     // Auto-fill form with scanned data
     setState(() {
-      debugPrint('📸 [ADD EXPENSE] Starting setState to fill form...');
-
       // Format amount with currency formatter
       _amountController.text = CurrencyFormatter.formatVND(
         receiptData['amount'],
       );
-      debugPrint('📸 [ADD EXPENSE] Amount filled: ${_amountController.text}');
 
       // Map category from receipt to our enum
       switch (receiptData['category']) {
@@ -1171,7 +1165,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
         noteText += 'Items: ${(receiptData['items'] as List).join(', ')}';
       }
       _noteController.text = noteText;
-      debugPrint('📸 [ADD EXPENSE] Note filled: $noteText');
 
       // Set default payment method to cash for scanned receipts
       _selectedPaymentMethod = paymentMethods.firstWhere(

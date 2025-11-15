@@ -29,6 +29,9 @@ class _BudgetListScreenYNABState extends State<BudgetListScreenYNAB>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Clear any previous errors when entering screen
+      final budgetService = Provider.of<BudgetService>(context, listen: false);
+      budgetService.clearError();
       _loadBudgets();
     });
   }

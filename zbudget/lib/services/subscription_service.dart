@@ -239,7 +239,15 @@ class SubscriptionService extends ChangeNotifier {
         final data = responseData['data'];
         if (data != null) {
           debugPrint('📊 Usage data structure: $data');
+          debugPrint(
+            '🔍 OCR count from API: ${data['usage']?['ocr']?['count']}',
+          );
+          debugPrint(
+            '🔍 OCR limit from API: ${data['usage']?['ocr']?['limit']}',
+          );
           _usageStats = UsageStats.fromJson(data);
+          debugPrint('✅ Parsed OCR count: ${_usageStats?.ocr.count}');
+          debugPrint('✅ Parsed OCR limit: ${_usageStats?.ocr.limit}');
           _safeNotifyListeners();
           return SubscriptionApiResponse(
             success: true,

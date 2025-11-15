@@ -11,7 +11,9 @@ export async function startChatSession(req, res, next) {
     // Create a real session immediately
     const session = await aiService.createChatSession(req.userId);
 
-    console.log(`✅ Created new session: ${session.sessionId} for user: ${req.userId}`);
+    console.log(
+      `✅ Created new session: ${session.sessionId} for user: ${req.userId}`
+    );
 
     res.json({
       success: true,
@@ -144,6 +146,19 @@ export async function getChatHistory(req, res, next) {
       return res.status(400).json({
         success: false,
         error: "SessionId is required",
+      });
+    }
+
+    // Check if session exists first
+    const session = await ChatSession.findOne({
+      sessionId,
+      userId: req.userId,
+    });
+
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        error: "Session not found",
       });
     }
 

@@ -232,13 +232,17 @@ class AuthService extends ChangeNotifier {
         }
       } else {
         // Đăng nhập thất bại
+        final errorMessage = responseData['error'] ??
+            responseData['message'] ??
+            'Đăng nhập thất bại';
+
         debugPrint('❌ Login failed with status: ${response.statusCode}');
+        debugPrint('❌ Error message: $errorMessage');
+        debugPrint('❌ Full response: $responseData');
+
         return {
           'success': false,
-          'message':
-              responseData['error'] ??
-              responseData['message'] ??
-              'Đăng nhập thất bại',
+          'message': errorMessage,
         };
       }
     } catch (e) {

@@ -8,6 +8,7 @@ import '../../models/budget.dart' as budget_model;
 import '../../utils/currency_input_formatter.dart';
 import '../../utils/currency_formatter.dart';
 import '../../utils/theme_extensions.dart';
+import '../settings/subscription_settings_screen.dart';
 
 enum BudgetPeriod { daily, weekly, monthly, yearly }
 
@@ -623,6 +624,19 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
         );
         Navigator.pop(context, true); // Return true to indicate success
       } else {
+        // Check if it's a limit exceeded error (403)
+        if (result['limitExceeded'] == true ||
+            result['upgradeRequired'] == true) {
+          if (!mounted) return;
+          // Clear error before showing dialog to prevent error state persisting
+          final budgetService = Provider.of<BudgetService>(
+            context,
+            listen: false,
+          );
+          budgetService.clearError();
+          _showUpgradeDialog(result['message'] ?? 'Đã đạt giới hạn ngân sách');
+          return;
+        }
         throw Exception(result['message'] ?? 'Lỗi khi tạo ngân sách');
       }
     } catch (error) {
@@ -638,6 +652,105 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
         });
       }
     }
+  }
+
+  /// Show upgrade dialog when limit is reached
+  void _showUpgradeDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.workspace_premium,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text('Nâng cấp Premium', style: TextStyle(fontSize: 18)),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(message, style: const TextStyle(fontSize: 14)),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFD700).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFFFFD700).withValues(alpha: 0.3),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Với Premium bạn có thể:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildBenefit('Tạo tối đa 20 ngân sách'),
+                  _buildBenefit('Tạo tối đa 10 mục tiêu tiết kiệm'),
+                  _buildBenefit('Quét OCR không giới hạn'),
+                  _buildBenefit('Phân tích AI chi tiết'),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Để sau'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SubscriptionSettingsScreen(),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFFD700),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Nâng cấp ngay'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBenefit(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, color: Color(0xFFFFA500), size: 16),
+          const SizedBox(width: 8),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 12))),
+        ],
+      ),
+    );
   }
 
   // Helper methods to map enums
@@ -698,7 +811,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildLimitInfoBanner(),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 4),
                         _buildBasicInfo(),
                         const SizedBox(height: 24),
                         _buildBudgetTemplates(),
@@ -793,71 +906,82 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
         final activeBudgets = budgets.where((b) => b.isActive).length;
 
         return Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: isPremium
-                  ? [const Color(0xFFFFD700).withValues(alpha: 0.1), const Color(0xFFFFA500).withValues(alpha: 0.1)]
-                  : [Colors.blue.withValues(alpha: 0.1), Colors.blue.withValues(alpha: 0.05)],
+                  ? [
+                      const Color(0xFFFFD700).withValues(alpha: 0.1),
+                      const Color(0xFFFFA500).withValues(alpha: 0.1),
+                    ]
+                  : [
+                      Colors.blue.withValues(alpha: 0.1),
+                      Colors.blue.withValues(alpha: 0.05),
+                    ],
             ),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isPremium ? const Color(0xFFFFD700).withValues(alpha: 0.3) : Colors.blue.withValues(alpha: 0.3),
+              color: isPremium
+                  ? const Color(0xFFFFD700).withValues(alpha: 0.3)
+                  : Colors.blue.withValues(alpha: 0.3),
               width: 1,
             ),
           ),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: isPremium ? const Color(0xFFFFD700).withValues(alpha: 0.2) : Colors.blue.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
+                  color: isPremium
+                      ? const Color(0xFFFFD700).withValues(alpha: 0.2)
+                      : Colors.blue.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Icon(
                   isPremium ? Icons.workspace_premium : Icons.info_outline,
                   color: isPremium ? const Color(0xFFFFA500) : Colors.blue,
-                  size: 24,
+                  size: 18,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       isPremium ? 'Gói Premium' : 'Gói Free',
                       style: const TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
-                      'Ngân sách: $activeBudgets/${isPremium ? limit : limit} đang hoạt động',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
+                      'Ngân sách: $activeBudgets/$limit đang hoạt động',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                     ),
                   ],
                 ),
               ),
               if (!isPremium) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
                     ),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Text(
                     'Premium: 20',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1068,7 +1192,10 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
                       ),
                     ),
                     const Spacer(),
-                    Icon(Icons.arrow_drop_down, color: context.secondaryTextColor),
+                    Icon(
+                      Icons.arrow_drop_down,
+                      color: context.secondaryTextColor,
+                    ),
                   ],
                 ),
               ),
@@ -1298,7 +1425,10 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
         children: [
           Row(
             children: [
-              Icon(Icons.description_outlined, color: context.colorScheme.primary),
+              Icon(
+                Icons.description_outlined,
+                color: context.colorScheme.primary,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Mẫu ngân sách Việt Nam',
@@ -1312,7 +1442,9 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
           const SizedBox(height: 8),
           Text(
             'Chọn mẫu phù hợp với hoàn cảnh của bạn',
-            style: AppTypography.body.copyWith(color: context.secondaryTextColor),
+            style: AppTypography.body.copyWith(
+              color: context.secondaryTextColor,
+            ),
           ),
           const SizedBox(height: 16),
           Column(
@@ -1432,7 +1564,9 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
           const SizedBox(height: 8),
           Text(
             'Chọn và phân bổ ngân sách cho từng danh mục',
-            style: AppTypography.body.copyWith(color: context.secondaryTextColor),
+            style: AppTypography.body.copyWith(
+              color: context.secondaryTextColor,
+            ),
           ),
           const SizedBox(height: 8),
           // Total percentage display
@@ -1497,7 +1631,8 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen>
               crossAxisCount: 2,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: 1.1,
+              childAspectRatio:
+                  0.75, // Giảm từ 1.1 xuống 0.75 để card cao hơn, tránh overflow
             ),
             itemCount: _categories.length,
             itemBuilder: (context, index) {

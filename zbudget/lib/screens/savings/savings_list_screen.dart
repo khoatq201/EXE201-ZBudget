@@ -28,6 +28,9 @@ class _SavingsListScreenState extends State<SavingsListScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Clear any previous errors when entering screen
+      final savingsService = Provider.of<SavingsService>(context, listen: false);
+      savingsService.clearError();
       _loadSavingsGoals();
     });
   }

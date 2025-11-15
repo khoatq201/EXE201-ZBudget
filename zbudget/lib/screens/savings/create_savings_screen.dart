@@ -9,6 +9,7 @@ import '../../utils/theme_extensions.dart';
 import '../../utils/currency_formatter.dart';
 import '../../utils/currency_input_formatter.dart';
 import '../../utils/date_formatter.dart';
+import '../settings/subscription_settings_screen.dart';
 
 class CreateSavingsScreen extends StatefulWidget {
   final String? goalId; // For edit mode
@@ -162,6 +163,14 @@ class _CreateSavingsScreenState extends State<CreateSavingsScreen> {
       );
       context.pop();
     } else {
+      // Check if it's a limit exceeded error (403)
+      if (result['limitExceeded'] == true || result['upgradeRequired'] == true) {
+        // Clear error before showing dialog to prevent error state persisting
+        final savingsService = Provider.of<SavingsService>(context, listen: false);
+        savingsService.clearError();
+        _showUpgradeDialog(result['message'] ?? 'Đã đạt giới hạn mục tiêu tiết kiệm');
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result['message'] ?? 'Có lỗi xảy ra'),
@@ -169,6 +178,99 @@ class _CreateSavingsScreenState extends State<CreateSavingsScreen> {
         ),
       );
     }
+  }
+
+  /// Show upgrade dialog when limit is reached
+  void _showUpgradeDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.workspace_premium, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text('Nâng cấp Premium', style: TextStyle(fontSize: 18)),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(message, style: const TextStyle(fontSize: 14)),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFD700).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Với Premium bạn có thể:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildBenefit('Tạo tối đa 20 ngân sách'),
+                  _buildBenefit('Tạo tối đa 10 mục tiêu tiết kiệm'),
+                  _buildBenefit('Quét OCR không giới hạn'),
+                  _buildBenefit('Phân tích AI chi tiết'),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Để sau'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SubscriptionSettingsScreen(),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFFD700),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Nâng cấp ngay'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBenefit(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, color: Color(0xFFFFA500), size: 16),
+          const SizedBox(width: 8),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 12))),
+        ],
+      ),
+    );
   }
 
   @override
@@ -189,7 +291,7 @@ class _CreateSavingsScreenState extends State<CreateSavingsScreen> {
           children: [
             // Limit Info Banner
             if (!_isEditMode) _buildLimitInfoBanner(),
-            if (!_isEditMode) const SizedBox(height: 16),
+            if (!_isEditMode) const SizedBox(height: 4),
 
             // Name
             TextFormField(
@@ -514,7 +616,7 @@ class _CreateSavingsScreenState extends State<CreateSavingsScreen> {
         final activeGoals = goals.where((g) => g.status == SavingsStatus.active).length;
 
         return Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: isPremium
@@ -530,34 +632,35 @@ class _CreateSavingsScreenState extends State<CreateSavingsScreen> {
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: isPremium ? const Color(0xFFFFD700).withValues(alpha: 0.2) : Colors.green.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Icon(
                   isPremium ? Icons.workspace_premium : Icons.savings_outlined,
                   color: isPremium ? const Color(0xFFFFA500) : Colors.green,
-                  size: 24,
+                  size: 18,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       isPremium ? 'Gói Premium' : 'Gói Free',
                       style: const TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       'Mục tiêu: $activeGoals/$limit đang hoạt động',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         color: Colors.grey[600],
                       ),
                     ),
@@ -565,20 +668,20 @@ class _CreateSavingsScreenState extends State<CreateSavingsScreen> {
                 ),
               ),
               if (!isPremium) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
                     ),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Text(
                     'Premium: 10',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

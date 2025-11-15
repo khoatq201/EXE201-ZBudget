@@ -35,11 +35,8 @@ class _LoginScreenState extends State<LoginScreen> {
       final authService = context.read<AuthService>();
       final result = await authService.signInWithGoogle();
 
-      debugPrint('� Google Sign-In result: $result');
-
       if (mounted) {
         if (result['success']) {
-          debugPrint('✅ Google Sign-In successful');
 
           // Check if user needs to complete profile
           final user = result['user'] as Map<String, dynamic>?;
@@ -68,7 +65,6 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (e) {
-      debugPrint('❌ Google Sign-In error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -92,12 +88,10 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    print('🔥 LoginScreen: initState called');
   }
 
   @override
   void dispose() {
-    print('🔥 LoginScreen: dispose called');
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -118,65 +112,51 @@ class _LoginScreenState extends State<LoginScreen> {
         rememberMe: _rememberMe,
       );
 
-      debugPrint('🔍 Login result: $result');
+      // ⚠️ CRITICAL: Check mounted BEFORE any widget tree operations
+      if (!mounted) return;
 
       if (result['success']) {
-        if (mounted) {
-          debugPrint('✅ Login successful, navigating to /home');
-          // Đăng nhập thành công, chuyển về dashboard
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Đăng nhập thành công!'),
-              backgroundColor: context.colorScheme.primary,
-              duration: Duration(seconds: 2),
-            ),
-          );
-
-          // ✅ Use pushReplacement để clear login screen khỏi navigation stack
-          context.pushReplacement('/home');
-        }
-      } else {
-        if (mounted) {
-          // Hiển thị lỗi cụ thể từ backend
-          String errorMessage = result['message'] ?? 'Đăng nhập thất bại';
-
-          // Xử lý các loại lỗi đặc biệt
-          if (errorMessage.contains('khóa')) {
-            // Account locked error - hiển thị màu warning
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(errorMessage),
-                backgroundColor: Colors.orange,
-                duration: Duration(seconds: 5),
-              ),
-            );
-          } else {
-            // Lỗi thông thường
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(errorMessage),
-                backgroundColor: context.errorColor,
-                duration: Duration(seconds: 4),
-              ),
-            );
-          }
-        }
+        context.go('/home');
+        return;
       }
+
+      // Only reach here if login FAILED
+      final errorMessage = result['message'] ?? 'Đăng nhập thất bại';
+      _showErrorMessage(errorMessage);
     } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi kết nối. Vui lòng thử lại sau.'),
-            backgroundColor: context.errorColor,
-          ),
-        );
-      }
+      if (!mounted) return;
+      _showErrorMessage('Lỗi kết nối. Vui lòng thử lại sau.');
     } finally {
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  /// Safely show error message with mounted check
+  void _showErrorMessage(String message) {
+    if (!mounted) return;
+
+    try {
+      final backgroundColor = message.contains('khóa')
+          ? Colors.orange
+          : Theme.of(context).colorScheme.error;
+
+      final duration = message.contains('khóa')
+          ? const Duration(seconds: 5)
+          : const Duration(seconds: 4);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: backgroundColor,
+          duration: duration,
+        ),
+      );
+    } catch (e) {
+      // Silently fail if SnackBar cannot be shown
     }
   }
 
@@ -322,7 +302,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           onChanged: (bool? value) {
                             setState(() {
                               _rememberMe = value ?? false;
-                              print('🔥 Remember Me changed: $_rememberMe');
                             });
                           },
                           activeColor: context.colorScheme.primary,
@@ -333,7 +312,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           onTap: () {
                             setState(() {
                               _rememberMe = !_rememberMe;
-                              print('🔥 Remember Me tapped: $_rememberMe');
                             });
                           },
                           child: Text(
@@ -420,14 +398,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   key: _googleSignInKey, // ✅ Use key for stability
                   height: 50,
                   child: OutlinedButton.icon(
-                    onPressed: _isLoading
-                        ? null
-                        : () {
-                            print(
-                              '🔥 Google Sign-In button pressed, isLoading: $_isLoading',
-                            );
-                            _handleGoogleSignIn();
-                          },
+                    onPressed: _isLoading ? null : _handleGoogleSignIn,
                     icon: Container(
                       width: 24,
                       height: 24,

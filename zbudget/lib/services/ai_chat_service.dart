@@ -50,9 +50,16 @@ class AiChatService {
     if (!forceNew) {
       final existingSessionId = await _getActiveSessionId();
       if (existingSessionId != null) {
-        debugPrint('♻️ Reusing existing session: $existingSessionId');
-        _currentSessionId = existingSessionId;
-        return existingSessionId;
+        // Validate session exists in database
+        final isValid = await _validateSession(existingSessionId, token);
+        if (isValid) {
+          debugPrint('♻️ Reusing existing session: $existingSessionId');
+          _currentSessionId = existingSessionId;
+          return existingSessionId;
+        } else {
+          debugPrint('⚠️ Cached session invalid, clearing and creating new...');
+          await clearActiveSession();
+        }
       }
     }
 
@@ -74,6 +81,36 @@ class AiChatService {
       return _currentSessionId!;
     }
     throw Exception('Failed to start chat session');
+  }
+
+  // Validate session exists in database
+  Future<bool> _validateSession(String sessionId, String token) async {
+    try {
+      debugPrint('🔍 Validating session: $sessionId');
+      final response = await http.get(
+        Uri.parse('$baseUrl/ai/chat/history/$sessionId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ Session exists in database');
+        return true;
+      } else if (response.statusCode == 404) {
+        debugPrint('❌ Session not found (404) - will create new session');
+        return false;
+      } else {
+        debugPrint(
+          '⚠️ Session validation returned ${response.statusCode} - treating as invalid',
+        );
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ Error validating session: $e');
+      return false;
+    }
   }
 
   // Get active session ID from local storage

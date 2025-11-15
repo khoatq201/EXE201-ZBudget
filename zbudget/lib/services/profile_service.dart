@@ -19,6 +19,7 @@ class ProfileService extends ChangeNotifier {
   bool _isSyncing = false;
   String? _errorMessage;
   DateTime? _lastSync;
+  bool _isInitializing = false; // ✅ Flag to prevent multiple initializations
 
   final ProfileApiService _apiService = ProfileApiService();
   AuthService? _authService;
@@ -39,6 +40,15 @@ class ProfileService extends ChangeNotifier {
 
   void _onAuthChanged() {
     print('🔔 ProfileService._onAuthChanged() called');
+
+    // ✅ Prevent multiple simultaneous refreshes
+    if (_isInitializing) {
+      print(
+        '⚠️ ProfileService: Already initializing, skipping auth change handler',
+      );
+      return;
+    }
+
     if (_authService != null) {
       print(
         '🔔 ProfileService: Auth service exists, isAuthenticated: ${_authService!.isAuthenticated}',
@@ -64,6 +74,14 @@ class ProfileService extends ChangeNotifier {
   // Initialize with backend sync or local fallback
   Future<void> initialize() async {
     print('🚀 ProfileService.initialize() called');
+
+    // ✅ Prevent multiple simultaneous initializations
+    if (_isInitializing) {
+      print('⚠️ ProfileService: Already initializing, returning early');
+      return;
+    }
+
+    _isInitializing = true;
     _isLoading = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       notifyListeners();
@@ -104,6 +122,7 @@ class ProfileService extends ChangeNotifier {
       _currentProfile = null;
     } finally {
       _isLoading = false;
+      _isInitializing = false; // ✅ Reset flag
       WidgetsBinding.instance.addPostFrameCallback((_) {
         notifyListeners();
       });
