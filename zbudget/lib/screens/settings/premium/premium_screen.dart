@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../../services/theme_manager.dart';
 import '../../../constants/colors.dart';
 import '../../../constants/typography.dart';
@@ -61,6 +62,8 @@ class _PremiumScreenState extends State<PremiumScreen>
                         _buildHeroSection(context),
                         const SizedBox(height: AppSpacing.xl),
                         _buildPricingSection(context),
+                        const SizedBox(height: AppSpacing.xl),
+                        _buildPaymentHistoryButton(context),
                         const SizedBox(height: AppSpacing.xl),
                         _buildFeaturesSection(context),
                         const SizedBox(height: AppSpacing.xl),
@@ -206,7 +209,7 @@ class _PremiumScreenState extends State<PremiumScreen>
             period: 'tháng đầu tiên',
             isPopular: false,
             isFree: true,
-            onTap: () => _showSubscriptionDialog(context, true),
+            onTap: () => _showSubscriptionDialog(context, true, null),
           ),
 
           const SizedBox(height: AppSpacing.md),
@@ -220,7 +223,7 @@ class _PremiumScreenState extends State<PremiumScreen>
             period: 'mỗi tháng',
             isPopular: false,
             isFree: false,
-            onTap: () => _showSubscriptionDialog(context, false),
+            onTap: () => _showSubscriptionDialog(context, false, 'monthly'),
           ),
 
           const SizedBox(height: AppSpacing.md),
@@ -235,7 +238,7 @@ class _PremiumScreenState extends State<PremiumScreen>
             originalPrice: '600.000 VND',
             isPopular: true,
             isFree: false,
-            onTap: () => _showSubscriptionDialog(context, false),
+            onTap: () => _showSubscriptionDialog(context, false, 'yearly'),
           ),
         ],
       ),
@@ -592,7 +595,7 @@ class _PremiumScreenState extends State<PremiumScreen>
     );
   }
 
-  void _showSubscriptionDialog(BuildContext context, bool isFree) {
+  void _showSubscriptionDialog(BuildContext context, bool isFree, String? planType) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -603,7 +606,7 @@ class _PremiumScreenState extends State<PremiumScreen>
         content: Text(
           isFree
               ? 'Bạn sẽ được sử dụng miễn phí tất cả tính năng Premium trong 1 tháng đầu tiên.'
-              : 'Bạn sẽ được truy cập vào tất cả tính năng Premium ngay lập tức.',
+              : 'Bạn sẽ chuyển đến trang thanh toán để hoàn tất đăng ký Premium.',
           style: AppTypography.body.copyWith(
             color: context.customTextSecondary,
           ),
@@ -621,7 +624,7 @@ class _PremiumScreenState extends State<PremiumScreen>
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _processSubscription(isFree);
+              _processSubscription(isFree, planType: planType);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: context.colorScheme.primary,
@@ -639,17 +642,41 @@ class _PremiumScreenState extends State<PremiumScreen>
     );
   }
 
-  void _processSubscription(bool isFree) {
-    // TODO: Implement subscription logic
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          isFree
-              ? 'Đã bắt đầu dùng thử miễn phí Premium!'
-              : 'Đã đăng ký thành công gói Premium!',
+  Widget _buildPaymentHistoryButton(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.pagePadding),
+      child: OutlinedButton.icon(
+        onPressed: () {
+          context.push('/payment-history');
+        },
+        icon: const Icon(Icons.receipt_long_outlined),
+        label: const Text('Xem lịch sử thanh toán'),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          side: BorderSide(color: context.colorScheme.primary, width: 2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
-        backgroundColor: AppColors.success,
       ),
     );
+  }
+
+  void _processSubscription(bool isFree, {String? planType}) {
+    if (isFree) {
+      // TODO: Free trial - call upgrade API directly if needed
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã bắt đầu dùng thử miễn phí Premium!'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } else if (planType != null) {
+      // Navigate to Payment QR Screen using go_router
+      context.push(
+        '/payment-qr',
+        extra: {'planType': planType},
+      );
+    }
   }
 }

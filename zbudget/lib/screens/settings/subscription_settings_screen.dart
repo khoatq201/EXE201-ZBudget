@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 import '../../services/subscription_service.dart';
+import '../../services/payment_service.dart';
 import '../../models/subscription_models.dart';
+import '../../models/payment_model.dart';
 import '../../widgets/premium/premium_badge.dart';
 import '../../widgets/premium/usage_progress_widget.dart';
 import '../../widgets/premium/premium_paywall.dart';
@@ -20,7 +22,7 @@ class _SubscriptionSettingsScreenState
     extends State<SubscriptionSettingsScreen> {
   bool _isLoading = false;
   bool _isInitialized = false;
-  Future<SubscriptionApiResponse<List<SubscriptionHistory>>>? _historyFuture;
+  Future<List<Payment>>? _paymentsFuture;
 
   @override
   void initState() {
@@ -37,6 +39,7 @@ class _SubscriptionSettingsScreenState
   Future<void> _loadSubscriptionData() async {
     if (!mounted) return;
     final subscriptionService = context.read<SubscriptionService>();
+    final paymentService = context.read<PaymentService>();
 
     // Load status and usage
     await Future.wait([
@@ -44,12 +47,18 @@ class _SubscriptionSettingsScreenState
       subscriptionService.getUsage(),
     ]);
 
-    // Load history once and cache it
+    // Load payment history once and cache it
     if (mounted) {
       setState(() {
-        _historyFuture = subscriptionService.getHistory();
+        _paymentsFuture = _loadPayments();
       });
     }
+  }
+
+  Future<List<Payment>> _loadPayments() async {
+    final paymentService = context.read<PaymentService>();
+    await paymentService.fetchMyPayments();
+    return paymentService.payments;
   }
 
   Future<void> _handleUpgrade() async {
@@ -64,60 +73,6 @@ class _SubscriptionSettingsScreenState
     }
   }
 
-  Future<void> _handleDowngrade() async {
-    // Show confirmation dialog
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Xác nhận hủy Premium'),
-        content: const Text(
-          'Bạn có chắc chắn muốn hủy gói Premium? Bạn sẽ mất tất cả quyền lợi Premium và quay về giới hạn của gói Free.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Xác nhận'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    setState(() => _isLoading = true);
-
-    final subscriptionService = context.read<SubscriptionService>();
-    final result = await subscriptionService.downgradeToFree();
-
-    setState(() => _isLoading = false);
-
-    if (!mounted) return;
-
-    if (result.success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.message ?? 'Đã hủy Premium thành công'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      await _loadSubscriptionData();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.message ?? 'Không thể hủy Premium'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -346,15 +301,16 @@ class _SubscriptionSettingsScreenState
     String value,
     bool isEnabled,
   ) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isEnabled
               ? const Color(0xFFFFD700).withValues(alpha: 0.3)
-              : Colors.grey.withValues(alpha: 0.2),
+              : theme.dividerColor,
         ),
       ),
       child: Row(
@@ -380,15 +336,19 @@ class _SubscriptionSettingsScreenState
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
+                    color: theme.textTheme.bodyLarge?.color,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: theme.textTheme.bodySmall?.color,
+                  ),
                 ),
               ],
             ),
@@ -403,32 +363,12 @@ class _SubscriptionSettingsScreenState
   Widget _buildActionButtons(Subscription? subscription) {
     final isPremium = subscription?.isPremium ?? false;
 
+    // If user is already premium, don't show cancel button
     if (isPremium) {
-      return Column(
-        children: [
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _isLoading ? null : _handleDowngrade,
-              icon: const Icon(Icons.cancel),
-              label: const Text('Hủy Premium'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                side: const BorderSide(color: Colors.red),
-                foregroundColor: Colors.red,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Bạn sẽ vẫn có quyền truy cập Premium cho đến ngày hết hạn',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      );
+      return const SizedBox.shrink();
     }
 
+    // If user is free, show upgrade button
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
@@ -456,8 +396,8 @@ class _SubscriptionSettingsScreenState
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        FutureBuilder<SubscriptionApiResponse<List<SubscriptionHistory>>>(
-          future: _historyFuture,
+        FutureBuilder<List<Payment>>(
+          future: _paymentsFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
@@ -468,23 +408,29 @@ class _SubscriptionSettingsScreenState
               );
             }
 
-            if (!snapshot.hasData ||
-                snapshot.data?.data == null ||
-                snapshot.data!.data!.isEmpty) {
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              final theme = Theme.of(context);
               return Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: theme.cardColor,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
                   child: Column(
                     children: [
-                      Icon(Icons.history, size: 48, color: Colors.grey[400]),
+                      Icon(
+                        Icons.history,
+                        size: 48,
+                        color: theme.textTheme.bodySmall?.color,
+                      ),
                       const SizedBox(height: 12),
                       Text(
                         'Chưa có giao dịch nào',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: theme.textTheme.bodySmall?.color,
+                        ),
                       ),
                     ],
                   ),
@@ -492,15 +438,15 @@ class _SubscriptionSettingsScreenState
               );
             }
 
-            final history = snapshot.data!.data!;
+            final payments = snapshot.data!;
             return ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: history.length,
+              itemCount: payments.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                final item = history[index];
-                return _buildHistoryItem(item);
+                final payment = payments[index];
+                return _buildPaymentItem(payment);
               },
             );
           },
@@ -509,44 +455,46 @@ class _SubscriptionSettingsScreenState
     );
   }
 
-  Widget _buildHistoryItem(SubscriptionHistory item) {
+  Widget _buildPaymentItem(Payment payment) {
+    final theme = Theme.of(context);
     IconData icon;
-    Color color;
+    Color iconColor;
 
-    switch (item.action.toLowerCase()) {
-      case 'upgrade':
-        icon = Icons.arrow_upward;
-        color = Colors.green;
+    switch (payment.status) {
+      case PaymentStatus.completed:
+        icon = Icons.check_circle;
+        iconColor = Colors.green;
         break;
-      case 'downgrade':
-        icon = Icons.arrow_downward;
-        color = Colors.orange;
+      case PaymentStatus.pending:
+        icon = Icons.pending;
+        iconColor = Colors.orange;
         break;
-      case 'renewal':
-        icon = Icons.refresh;
-        color = Colors.blue;
+      case PaymentStatus.rejected:
+        icon = Icons.cancel;
+        iconColor = Colors.red;
         break;
-      default:
-        icon = Icons.info;
-        color = Colors.grey;
+      case PaymentStatus.cancelled:
+        icon = Icons.block;
+        iconColor = Colors.grey;
+        break;
     }
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
+              color: iconColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: iconColor, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -554,40 +502,37 @@ class _SubscriptionSettingsScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.action,
-                  style: const TextStyle(
+                  payment.planDisplayName,
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
+                    color: theme.textTheme.bodyLarge?.color,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  DateFormatter.toDisplayFormat(item.date),
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  payment.status.displayName,
+                  style: TextStyle(fontSize: 12, color: iconColor),
                 ),
-                if (item.notes != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    item.notes!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                      fontStyle: FontStyle.italic,
-                    ),
+                const SizedBox(height: 4),
+                Text(
+                  DateFormatter.toDisplayFormat(payment.createdAt),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: theme.textTheme.bodySmall?.color,
                   ),
-                ],
+                ),
               ],
             ),
           ),
-          if (item.amount != null)
-            Text(
-              '${item.amount! ~/ 1000}k',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+          Text(
+            '${payment.amount ~/ 1000}k',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: theme.textTheme.bodyLarge?.color,
             ),
+          ),
         ],
       ),
     );

@@ -41,11 +41,25 @@ class SessionService {
     // Simple detection từ User-Agent
     if (/Mobile|Android|iPhone|iPad/.test(userAgent)) {
       deviceInfo.deviceType = "mobile";
-      deviceInfo.platform = "Mobile";
+      if (/Android/.test(userAgent)) {
+        deviceInfo.platform = "Android";
+      } else if (/iPhone|iPad/.test(userAgent)) {
+        deviceInfo.platform = "iOS";
+      } else {
+        deviceInfo.platform = "Unknown";
+      }
       deviceInfo.deviceName = "Mobile Device";
     } else {
       deviceInfo.deviceType = "desktop";
-      deviceInfo.platform = "Desktop";
+      if (/Windows/.test(userAgent)) {
+        deviceInfo.platform = "Windows";
+      } else if (/Mac/.test(userAgent)) {
+        deviceInfo.platform = "macOS";
+      } else if (/Linux/.test(userAgent)) {
+        deviceInfo.platform = "Linux";
+      } else {
+        deviceInfo.platform = "Unknown";
+      }
       deviceInfo.deviceName = "Desktop Browser";
     }
     if (/Chrome/.test(userAgent)) {

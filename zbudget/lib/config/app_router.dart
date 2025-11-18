@@ -41,6 +41,10 @@ import '../screens/settings/currency/currency_screen.dart';
 import '../screens/settings/about/about_screen.dart';
 import '../screens/settings/help/help_screen.dart';
 import '../screens/settings/feedback/feedback_screen.dart';
+import '../screens/settings/premium/premium_screen.dart';
+import '../screens/payment/payment_qr_screen.dart';
+import '../screens/payment/payment_history_screen.dart';
+import '../screens/admin/admin_dashboard_screen.dart';
 import '../screens/auth/result_screen.dart';
 import '../screens/auth/complete_profile_screen.dart';
 import '../screens/notifications/notifications_list_screen.dart';
@@ -297,6 +301,27 @@ final router = GoRouter(
         GoRoute(
           path: '/feedback',
           builder: (context, state) => const FeedbackScreen(),
+        ),
+        GoRoute(
+          path: '/premium',
+          builder: (context, state) => const PremiumScreen(),
+        ),
+        GoRoute(
+          path: '/payment-qr',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>?;
+            return PaymentQRScreen(
+              planType: extra?['planType'] ?? 'monthly',
+            );
+          },
+        ),
+        GoRoute(
+          path: '/payment-history',
+          builder: (context, state) => const PaymentHistoryScreen(),
+        ),
+        GoRoute(
+          path: '/admin',
+          builder: (context, state) => const AdminDashboardScreen(),
         ),
       ],
     ),

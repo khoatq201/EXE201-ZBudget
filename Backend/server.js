@@ -31,6 +31,8 @@ import aiAnalysisRoutes from "./routes/aiAnalysisRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import feedbackRoutes from "./routes/feedbackRoutes.js";
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 // import healthRoutes from './routes/health.js';
 // Middleware
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -196,6 +198,8 @@ app.use("/api/ai/analysis", aiAnalysisRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/feedback", feedbackRoutes);
 app.use("/api/subscription", subscriptionRoutes);
+app.use("/api/payment", paymentRoutes);
+app.use("/api/admin", adminRoutes);
 // API documentation
 app.get("/api", (req, res) => {
   res.json({

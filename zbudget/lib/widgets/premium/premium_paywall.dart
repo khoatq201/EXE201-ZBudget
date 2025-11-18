@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../models/subscription_models.dart';
 import '../../services/subscription_service.dart';
 
@@ -18,7 +19,6 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen> {
   PricingInfo? _pricing;
   Subscription? _currentSubscription;
   String _selectedPlan = 'monthly'; // Default to monthly
-  bool _isLoading = false;
   bool _isPremium = false;
 
   @override
@@ -61,36 +61,13 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen> {
   }
 
   Future<void> _handleUpgrade() async {
-    setState(() => _isLoading = true);
-
-    final subscriptionService = context.read<SubscriptionService>();
-    final result = await subscriptionService.upgradeToPremium(
-      duration: _selectedPlan,
-    );
-
-    setState(() => _isLoading = false);
-
+    // Navigate to Payment QR Screen with selected plan
     if (!mounted) return;
 
-    if (result.success) {
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.message ?? 'Nâng cấp Premium thành công!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      // Close paywall
-      Navigator.pop(context, true);
-    } else {
-      // Show error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.message ?? 'Nâng cấp thất bại'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+    context.push(
+      '/payment-qr',
+      extra: {'planType': _selectedPlan},
+    );
   }
 
   @override
@@ -295,19 +272,19 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen> {
 
   Widget _buildFeatureItem(IconData icon, String title, String subtitle) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFD700).withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
+              color: const Color(0xFFFFD700).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: const Color(0xFFFFA500), size: 24),
+            child: Icon(icon, color: const Color(0xFFFFA500), size: 22),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,14 +292,20 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen> {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                    height: 1.3,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF666666),
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),
@@ -333,42 +316,26 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen> {
   }
 
   Widget _buildPricingPlans() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFDF5),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFFFD700).withValues(alpha: 0.4),
-          width: 1.5,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.star, color: Color(0xFFFFD700), size: 20),
-              const SizedBox(width: 8),
-              const Text(
-                'Chọn gói phù hợp với bạn',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.star, color: Color(0xFFFFD700), size: 22),
+            const SizedBox(width: 8),
+            const Text(
+              'Chọn gói phù hợp với bạn',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
               ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Chạm vào để chọn gói',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-              fontStyle: FontStyle.italic,
             ),
-          ),
-          const SizedBox(height: 16),
-          ...(_pricing?.plans.map((plan) => _buildPlanCard(plan)) ?? []),
-        ],
-      ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ...(_pricing?.plans.map((plan) => _buildPlanCard(plan)) ?? []),
+      ],
     );
   }
 
@@ -530,7 +497,7 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _handleUpgrade,
+        onPressed: _handleUpgrade,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFFFFD700),
           foregroundColor: Colors.white,
@@ -540,49 +507,40 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen> {
           ),
           elevation: 4,
         ),
-        child: _isLoading
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    _isPremium
-                        ? 'Gia hạn ${selectedPlanInfo?.name ?? "Premium"}'
-                        : 'Nâng cấp ${selectedPlanInfo?.name ?? "Premium"}',
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (selectedPlanInfo != null) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '${selectedPlanInfo.price.toInt() ~/ 1000}k',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              _isPremium
+                  ? 'Gia hạn ${selectedPlanInfo?.name ?? "Premium"}'
+                  : 'Nâng cấp ${selectedPlanInfo?.name ?? "Premium"}',
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
               ),
+            ),
+            if (selectedPlanInfo != null) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${selectedPlanInfo.price.toInt() ~/ 1000}k',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
