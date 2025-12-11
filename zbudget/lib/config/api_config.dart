@@ -6,13 +6,13 @@ class ApiConfig {
   static const String _devBaseUrlWeb = 'http://localhost:3000/api';
   static const String _devBaseUrlAndroid = 'http://10.0.2.2:3000/api';
   static const String _prodBaseUrl =
-      'https://exe201-zbudget-production.up.railway.app/api';
+      'https://exe201-zbudget-production-9c28.up.railway.app/api';
   static const String _stagingBaseUrl =
-      'https://exe201-zbudget-production.up.railway.app/api';
+      'https://exe201-zbudget-production-9c28.up.railway.app/api';
 
   // Current environment - sử dụng environment variables
-  static const bool _isDevelopment = false;
-  static const bool _isProduction = true;
+  static const bool _isDevelopment = true;
+  static const bool _isProduction = false;
   // static String get baseUrl {
   //   if (kIsWeb) {
   //     // Cho Flutter web, sử dụng localhost

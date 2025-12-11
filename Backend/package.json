@@ -19,6 +19,7 @@
     "seed:add": "node scripts/addMoreData.js",
     "seed:sample": "node scripts/createSampleData.js",
     "seed:user": "node scripts/seedUserData.js",
+    "add:users": "node scripts/addUsers.js",
     "sample:create": "node scripts/createSampleData.js",
     "migrate:subscription": "node scripts/migrate-add-subscription.js",
     "migrate:subscription:test": "node scripts/test-subscription-migration.js",
