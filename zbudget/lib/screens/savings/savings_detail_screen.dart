@@ -54,35 +54,37 @@ class _SavingsDetailScreenState extends State<SavingsDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Đóng góp tiết kiệm'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: amountController,
-              decoration: InputDecoration(
-                labelText: 'Số tiền',
-                prefixIcon: const Icon(Icons.attach_money),
-                suffixText: '₫',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: amountController,
+                decoration: InputDecoration(
+                  labelText: 'Số tiền',
+                  prefixIcon: const Icon(Icons.attach_money),
+                  suffixText: '₫',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [CurrencyInputFormatter()],
               ),
-              keyboardType: TextInputType.number,
-              inputFormatters: [CurrencyInputFormatter()],
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: noteController,
-              decoration: InputDecoration(
-                labelText: 'Ghi chú (tùy chọn)',
-                prefixIcon: const Icon(Icons.note_outlined),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: noteController,
+                decoration: InputDecoration(
+                  labelText: 'Ghi chú (tùy chọn)',
+                  prefixIcon: const Icon(Icons.note_outlined),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
+                maxLines: 2,
               ),
-              maxLines: 2,
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -301,9 +303,7 @@ class _SavingsDetailScreenState extends State<SavingsDetailScreen> {
               title: 'Chi tiết mục tiêu',
               subtitle: 'Đang tải...',
             ),
-            const Expanded(
-              child: Center(child: CircularProgressIndicator()),
-            ),
+            const Expanded(child: Center(child: CircularProgressIndicator())),
           ],
         ),
       );
@@ -360,7 +360,8 @@ class _SavingsDetailScreenState extends State<SavingsDetailScreen> {
               actions: [
                 IconButton(
                   icon: const Icon(Icons.edit),
-                  onPressed: () => context.push('/savings/edit/${widget.goalId}'),
+                  onPressed: () =>
+                      context.push('/savings/edit/${widget.goalId}'),
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete),
@@ -399,10 +400,7 @@ class _SavingsDetailScreenState extends State<SavingsDetailScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            _goal!.colorValue,
-            _goal!.colorValue.withOpacity(0.8),
-          ],
+          colors: [_goal!.colorValue, _goal!.colorValue.withOpacity(0.8)],
         ),
         borderRadius: BorderRadius.circular(16),
       ),
@@ -452,10 +450,7 @@ class _SavingsDetailScreenState extends State<SavingsDetailScreen> {
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(
-                    Icons.check_circle,
-                    color: Colors.white,
-                  ),
+                  child: const Icon(Icons.check_circle, color: Colors.white),
                 ),
             ],
           ),
@@ -571,6 +566,7 @@ class _SavingsDetailScreenState extends State<SavingsDetailScreen> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -593,18 +589,10 @@ class _SavingsDetailScreenState extends State<SavingsDetailScreen> {
             Icons.access_time,
           ),
           const Divider(height: 24),
-          _buildStatRow(
-            'Độ ưu tiên',
-            _goal!.priority.displayName,
-            Icons.flag,
-          ),
+          _buildStatRow('Độ ưu tiên', _goal!.priority.displayName, Icons.flag),
           if (_goal!.description != null) ...[
             const Divider(height: 24),
-            _buildStatRow(
-              'Mô tả',
-              _goal!.description!,
-              Icons.description,
-            ),
+            _buildStatRow('Mô tả', _goal!.description!, Icons.description),
           ],
         ],
       ),
@@ -613,15 +601,13 @@ class _SavingsDetailScreenState extends State<SavingsDetailScreen> {
 
   Widget _buildStatRow(String label, String value, IconData icon) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          size: 20,
-          color: context.settingsItemSubtitleColor,
-        ),
+        Icon(icon, size: 20, color: context.settingsItemSubtitleColor),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -637,6 +623,7 @@ class _SavingsDetailScreenState extends State<SavingsDetailScreen> {
                   color: context.settingsItemTitleColor,
                   fontWeight: FontWeight.w500,
                 ),
+                softWrap: true,
               ),
             ],
           ),

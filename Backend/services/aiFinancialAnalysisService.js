@@ -11,7 +11,11 @@ import {
 } from "../models/index.js";
 import { config } from "../config/env.js";
 
-const groq = new Groq({ apiKey: config.GROQ_API_KEY });
+const groq = new Groq({
+  apiKey: config.GROQ_API_KEY,
+  timeout: 30000, // 30s timeout for non-streaming
+  maxRetries: 0, // We handle retries ourselves
+});
 const cache = new NodeCache({
   stdTTL: config.AI_ANALYSIS_CACHE_TTL, // 5 min cache
   checkperiod: 120, // Check for expired keys every 2 minutes
@@ -73,6 +77,66 @@ function setRateLimit(retryAfterSeconds) {
 
 function recordApiCall() {
   lastApiCallTime = Date.now();
+}
+
+// Retry helper for network errors with exponential backoff
+async function retryableApiCall(apiCallFn, maxRetries = 5) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[AI] API call attempt ${attempt}/${maxRetries}...`);
+      recordApiCall();
+      return await apiCallFn();
+    } catch (error) {
+      lastError = error;
+
+      // Handle rate limits differently
+      if (error.status === 429) {
+        const retryAfter = error.headers?.["retry-after"] || 600;
+        setRateLimit(parseInt(retryAfter));
+        console.error(
+          `🚫 Rate limit exceeded. Setting cooldown for ${retryAfter} seconds`
+        );
+        throw new Error(
+          `Rate limit exceeded. Please try again in ${Math.ceil(
+            retryAfter / 60
+          )} minutes`
+        );
+      }
+
+      // Check if it's a network error
+      const isNetworkError =
+        error.code === "ECONNRESET" ||
+        error.code === "ETIMEDOUT" ||
+        error.code === "ENOTFOUND" ||
+        error.message?.includes("ECONNRESET") ||
+        error.message?.includes("Connection error") ||
+        error.message?.includes("timeout");
+
+      if (!isNetworkError || attempt === maxRetries) {
+        console.error(
+          `[AI] ❌ API call failed (attempt ${attempt}):`,
+          error.message
+        );
+        console.error(`[AI] Error details:`, {
+          code: error.code,
+          status: error.status,
+          cause: error.cause?.message,
+        });
+        throw error;
+      }
+
+      // Exponential backoff: 2s, 4s, 8s, 16s, 30s
+      const delay = Math.min(Math.pow(2, attempt) * 1000, 30000);
+      console.log(
+        `[AI] ⏳ Network error (${error.code}), retrying in ${delay}ms...`
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  throw lastError;
 }
 
 // Smart queue processing
@@ -212,34 +276,21 @@ ${financialData}`;
 
   let completion;
   try {
-    // Record API call time
-    recordApiCall();
-
-    completion = await groq.chat.completions.create({
-      model: config.GROQ_MODEL,
-      messages: [
-        { role: "system", content: systemPrompt },
-        {
-          role: "user",
-          content: "Hãy phân tích chuyên sâu tài chính của tôi.",
-        },
-      ],
-      temperature: 0.3,
-      response_format: { type: "json_object" },
-    });
+    completion = await retryableApiCall(() =>
+      groq.chat.completions.create({
+        model: config.GROQ_MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: "Hãy phân tích chuyên sâu tài chính của tôi.",
+          },
+        ],
+        temperature: 0.3,
+        response_format: { type: "json_object" },
+      })
+    );
   } catch (error) {
-    if (error.status === 429) {
-      const retryAfter = error.headers?.["retry-after"] || 600; // Default 10 minutes
-      setRateLimit(parseInt(retryAfter));
-      console.error(
-        `🚫 Rate limit exceeded. Setting cooldown for ${retryAfter} seconds`
-      );
-      throw new Error(
-        `Rate limit exceeded. Please try again in ${Math.ceil(
-          retryAfter / 60
-        )} minutes`
-      );
-    }
     throw error;
   }
 
@@ -586,15 +637,17 @@ YÊU CẦU:
 
 OUTPUT: JSON object với field "recommendations"`;
 
-  const completion = await groq.chat.completions.create({
-    model: config.GROQ_MODEL,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: JSON.stringify({ analysis, anomalies }) },
-    ],
-    temperature: 0.5,
-    response_format: { type: "json_object" },
-  });
+  const completion = await retryableApiCall(() =>
+    groq.chat.completions.create({
+      model: config.GROQ_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: JSON.stringify({ analysis, anomalies }) },
+      ],
+      temperature: 0.5,
+      response_format: { type: "json_object" },
+    })
+  );
 
   return JSON.parse(completion.choices[0].message.content);
 }

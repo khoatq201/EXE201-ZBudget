@@ -311,6 +311,19 @@ export const logout = async (req, res) => {
     console.error("❌ Failed to terminate session:", sessionError);
     // Don't fail logout if session cleanup fails
   }
+
+  // Clear AI analysis cache for this user
+  try {
+    const { clearUserCache } = await import(
+      "../services/aiFinancialAnalysisService.js"
+    );
+    clearUserCache(userId);
+    console.log(`✅ Cleared AI cache for user ${userId}`);
+  } catch (cacheError) {
+    console.error("❌ Failed to clear AI cache:", cacheError);
+    // Don't fail logout if cache cleanup fails
+  }
+
   // Remove refresh token from user
   const refreshToken = req.body.refreshToken || req.headers["x-refresh-token"];
   if (refreshToken) {

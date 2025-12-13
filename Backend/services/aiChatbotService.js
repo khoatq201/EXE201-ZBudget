@@ -10,10 +10,65 @@ import SavingsGoal from "../models/SavingsGoal.js";
 import Challenge from "../models/Challenge.js";
 import UserChallenge from "../models/UserChallenge.js";
 
-// Initialize Groq client
+// Initialize Groq client with timeout config for better streaming reliability
 const groq = new Groq({
   apiKey: config.GROQ_API_KEY,
+  timeout: 60000, // 60s timeout for streaming connections
+  maxRetries: 0, // We handle retries ourselves
 });
+
+/**
+ * Retry helper for network errors with exponential backoff
+ */
+async function retryableApiCall(apiCallFn, maxRetries = 5) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[AI Chat] API call attempt ${attempt}/${maxRetries}...`);
+      return await apiCallFn();
+    } catch (error) {
+      lastError = error;
+
+      // Handle rate limits
+      if (error.status === 429) {
+        console.error(`🚫 Rate limit exceeded`);
+        throw error;
+      }
+
+      // Check if it's a network error
+      const isNetworkError =
+        error.code === "ECONNRESET" ||
+        error.code === "ETIMEDOUT" ||
+        error.code === "ENOTFOUND" ||
+        error.message?.includes("ECONNRESET") ||
+        error.message?.includes("Connection error") ||
+        error.message?.includes("timeout");
+
+      if (!isNetworkError || attempt === maxRetries) {
+        console.error(
+          `[AI Chat] ❌ API call failed (attempt ${attempt}):`,
+          error.message
+        );
+        console.error(`[AI Chat] Error details:`, {
+          code: error.code,
+          status: error.status,
+          cause: error.cause?.message,
+        });
+        throw error;
+      }
+
+      // Exponential backoff: 2s, 4s, 8s, 16s
+      const delay = Math.min(Math.pow(2, attempt) * 1000, 30000);
+      console.log(
+        `[AI Chat] ⏳ Network error (${error.code}), retrying in ${delay}ms...`
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  throw lastError;
+}
 
 /**
  * Fix common Vietnamese spelling errors from AI response
@@ -532,15 +587,17 @@ ${await buildFinancialContext(userId)}`;
       })),
     ];
 
-    // Call Groq API with streaming
-    const chatCompletion = await groq.chat.completions.create({
-      messages: messages,
-      model: config.GROQ_MODEL || "llama-3.3-70b-versatile",
-      temperature: 0.5, // Groq works well with 0.5 for Vietnamese
-      max_tokens: 1024,
-      top_p: 1,
-      stream: true,
-    });
+    // Call Groq API with streaming (with retry for network errors)
+    const chatCompletion = await retryableApiCall(() =>
+      groq.chat.completions.create({
+        messages: messages,
+        model: config.GROQ_MODEL || "llama-3.3-70b-versatile",
+        temperature: 0.5, // Groq works well with 0.5 for Vietnamese
+        max_tokens: 1024,
+        top_p: 1,
+        stream: true,
+      })
+    );
 
     let fullResponse = "";
     let tokensUsed = 0;

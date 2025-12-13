@@ -8,33 +8,121 @@ import fetch from "node-fetch";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const genAI = new GoogleGenerativeAI(
-  config.GEMINI_API_KEY || "AIzaSyCKmDwUjGxdtVE6vRUT41oh5CeDK9PBHAA"
-);
+// Validate API key exists
+if (!config.GEMINI_API_KEY) {
+  console.error("❌ GEMINI_API_KEY is not set in environment variables!");
+  throw new Error("GEMINI_API_KEY is required for OCR service");
+}
+
+const genAI = new GoogleGenerativeAI(config.GEMINI_API_KEY);
 
 class OCRService {
   constructor() {
     this.model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
   }
 
-  async extractTextFromImage(imagePath) {
+  async extractTextFromImage(
+    input,
+    providedMimeType = null,
+    originalName = null
+  ) {
     try {
       let imageBuffer;
       let mimeType;
 
-      // Check if it's a Cloudinary URL or local file path
-      if (imagePath.startsWith("http")) {
-        // It's a Cloudinary URL, download the image
-        const response = await fetch(imagePath);
-        if (!response.ok) {
-          throw new Error(`Failed to download image: ${response.statusText}`);
+      // Check if input is a Buffer (from memory storage)
+      if (Buffer.isBuffer(input)) {
+        console.log(`[OCR] Processing from buffer (${input.length} bytes)`);
+        imageBuffer = input;
+
+        // Fix HEIC files that come as application/octet-stream
+        const filenameMimeType = this.getMimeTypeFromFilename(originalName);
+        if (filenameMimeType) {
+          mimeType = filenameMimeType;
+          console.log(`[OCR] Detected mimetype from filename: ${mimeType}`);
+        } else if (
+          providedMimeType &&
+          providedMimeType !== "application/octet-stream"
+        ) {
+          mimeType = providedMimeType;
+        } else {
+          mimeType = "image/jpeg"; // Safe fallback
         }
-        imageBuffer = Buffer.from(await response.arrayBuffer());
-        mimeType = "image/jpeg"; // Cloudinary URLs are typically JPEG
+
+        // Gemini doesn't support application/octet-stream, force to image/jpeg for HEIC
+        if (mimeType === "image/heic" || mimeType === "image/heif") {
+          console.log(
+            `[OCR] Converting HEIC/HEIF mimetype to image/jpeg for Gemini compatibility`
+          );
+          mimeType = "image/jpeg";
+        }
+
+        console.log(`[OCR] Using mimetype: ${mimeType}`);
+      }
+      // Check if it's a Cloudinary URL or local file path
+      else if (typeof input === "string" && input.startsWith("http")) {
+        // It's a Cloudinary URL, download the image with retry logic
+        let lastError;
+        const maxRetries = 3;
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            console.log(
+              `[OCR] Fetching image from Cloudinary (attempt ${attempt}/${maxRetries})...`
+            );
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout (shorter to avoid ECONNRESET)
+
+            const response = await fetch(imagePath, {
+              signal: controller.signal,
+              headers: {
+                "User-Agent": "ZBudget-OCR-Service/1.0",
+              },
+            });
+            clearTimeout(timeout);
+
+            if (!response.ok) {
+              throw new Error(
+                `HTTP ${response.status}: ${response.statusText}`
+              );
+            }
+
+            imageBuffer = Buffer.from(await response.arrayBuffer());
+            mimeType = "image/jpeg"; // Cloudinary URLs are typically JPEG
+            console.log(
+              `[OCR] ✅ Image fetched successfully (${imageBuffer.length} bytes)`
+            );
+            break; // Success, exit retry loop
+          } catch (fetchError) {
+            lastError = fetchError;
+            console.error(
+              `[OCR] ❌ Attempt ${attempt} failed:`,
+              fetchError.message
+            );
+
+            if (attempt < maxRetries) {
+              const delay = attempt * 1000; // Progressive delay
+              console.log(`[OCR] Retrying in ${delay}ms...`);
+              await new Promise((resolve) => setTimeout(resolve, delay));
+            }
+          }
+        }
+
+        if (!imageBuffer) {
+          throw new Error(
+            `Failed to download image after ${maxRetries} attempts: ${
+              lastError?.message || "Unknown error"
+            }`
+          );
+        }
+      }
+      // It's a local file path
+      else if (typeof input === "string") {
+        console.log(`[OCR] Reading from file: ${input}`);
+        imageBuffer = fs.readFileSync(input);
+        mimeType = this.getMimeType(input);
       } else {
-        // It's a local file path
-        imageBuffer = fs.readFileSync(imagePath);
-        mimeType = this.getMimeType(imagePath);
+        throw new Error("Invalid input type for OCR processing");
       }
 
       // Create prompt for Vietnamese receipt processing
@@ -268,6 +356,22 @@ class OCRService {
       return new Date();
     }
     return new Date();
+  }
+
+  getMimeTypeFromFilename(filename) {
+    if (!filename) return null;
+    const ext = filename.toLowerCase().split(".").pop();
+    const mimeTypes = {
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+      webp: "image/webp",
+      gif: "image/gif",
+      bmp: "image/bmp",
+      heic: "image/heic",
+      heif: "image/heif",
+    };
+    return mimeTypes[ext] || null;
   }
 }
 

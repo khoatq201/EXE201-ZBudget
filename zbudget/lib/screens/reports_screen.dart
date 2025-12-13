@@ -211,9 +211,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(
-                                alpha: 0.24,
-                              ),
+                              color: Colors.white.withValues(alpha: 0.24),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
@@ -2168,19 +2166,13 @@ class _ReportsScreenState extends State<ReportsScreen>
                   const SizedBox(height: 24),
                   const Text(
                     'Tính năng Premium',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'Phân tích AI chi tiết chỉ dành cho người dùng Premium',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
@@ -2251,9 +2243,197 @@ class _ReportsScreenState extends State<ReportsScreen>
         return FutureBuilder<Map<String, dynamic>>(
           future: _loadAIAnalysis(),
           builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return SingleChildScrollView(
-            child: Column(
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    // AI Analysis Header with Refresh Button
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Phân tích AI - ${_getPeriodLabel(selectedPeriod)}',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: context.settingsItemTitleColor,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              _clearAIAnalysisCache();
+                              setState(() {});
+                            },
+                            icon: const Icon(Icons.refresh),
+                            tooltip: 'Làm mới phân tích',
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Progress bar
+                    _buildAnalysisProgressBar(selectedPeriod),
+                    // Loading shimmer effect
+                    _buildLoadingShimmer(),
+                  ],
+                ),
+              );
+            }
+
+            if (snapshot.hasError) {
+              // Check if it's a rate limit error
+              final errorMessage = snapshot.error.toString();
+              final isRateLimited =
+                  errorMessage.contains('Rate limit') ||
+                  errorMessage.contains('429') ||
+                  errorMessage.contains('rate_limit_exceeded') ||
+                  errorMessage.contains('Vui lòng chờ');
+
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      isRateLimited ? Icons.schedule : Icons.error_outline,
+                      size: 64,
+                      color: context.settingsItemSubtitleColor.withOpacity(0.6),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      isRateLimited
+                          ? 'AI đang quá tải. Vui lòng thử lại sau 10 phút.'
+                          : 'Lỗi: ${snapshot.error}',
+                      style: TextStyle(
+                        color: context.settingsItemSubtitleColor,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    if (isRateLimited) ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.orange.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(Icons.info, color: Colors.orange),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'AI đã đạt giới hạn sử dụng hôm nay.\nHãy thử lại vào ngày mai.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    ElevatedButton(
+                      onPressed: () {
+                        _clearAIAnalysisCache();
+                        setState(() {});
+                      },
+                      child: const Text('Thử lại'),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            final analysis = snapshot.data!;
+
+            // Process analysis data
+
+            // Safe type casting with fallback
+            final financialAnalysis =
+                analysis['financialAnalysis'] is FinancialAnalysis
+                ? analysis['financialAnalysis'] as FinancialAnalysis
+                : analysis['financialAnalysis'] is Map
+                ? FinancialAnalysis.fromJson(
+                    analysis['financialAnalysis'] as Map<String, dynamic>,
+                  )
+                : FinancialAnalysis(
+                    healthScore: 'N/A',
+                    strengths: [],
+                    weaknesses: [],
+                    risks: [],
+                    opportunities: [],
+                    recommendations: [],
+                    summary: 'Dữ liệu tạm thời không khả dụng',
+                  );
+
+            final forecast = analysis['forecast'] is AIForecast
+                ? analysis['forecast'] as AIForecast
+                : analysis['forecast'] is Map
+                ? AIForecast.fromJson(
+                    analysis['forecast'] as Map<String, dynamic>,
+                  )
+                : AIForecast(
+                    method: 'fallback',
+                    forecast: [],
+                    historicalData: null,
+                    message: 'Dự báo tạm thời không khả dụng',
+                  );
+
+            final anomalies = analysis['anomalies'] is List
+                ? (analysis['anomalies'] as List).map((a) {
+                    if (a is Anomaly) {
+                      return a; // Already an Anomaly object
+                    } else if (a is Map<String, dynamic>) {
+                      return Anomaly.fromJson(a); // Convert from Map
+                    } else {
+                      return Anomaly(
+                        date: DateTime.now(),
+                        category: 'unknown',
+                        amount: 0,
+                        description: 'Unknown anomaly',
+                        expectedRange: 'N/A',
+                        severity: 'low',
+                      );
+                    }
+                  }).toList()
+                : <Anomaly>[];
+
+            final recommendations = analysis['recommendations'] is List
+                ? (analysis['recommendations'] as List).map((r) {
+                    if (r is Recommendation) {
+                      return r; // Already a Recommendation object
+                    } else if (r is Map<String, dynamic>) {
+                      return Recommendation.fromJson(r); // Convert from Map
+                    } else {
+                      return Recommendation(
+                        title: 'Unknown',
+                        description: 'Unknown recommendation',
+                        priority: 'low',
+                        estimatedSavings: 0,
+                      );
+                    }
+                  }).toList()
+                : <Recommendation>[];
+
+            final quickInsights = analysis['quickInsights'] is QuickInsights
+                ? analysis['quickInsights'] as QuickInsights
+                : analysis['quickInsights'] is Map
+                ? QuickInsights.fromJson(
+                    analysis['quickInsights'] as Map<String, dynamic>,
+                  )
+                : QuickInsights(
+                    healthScore: 'N/A',
+                    summary: {'text': 'Dữ liệu tạm thời không khả dụng'},
+                    alerts: 0,
+                    topIssue: null,
+                    strengths: [],
+                    weaknesses: [],
+                    opportunities: [],
+                  );
+
+            return Column(
               children: [
                 // AI Analysis Header with Refresh Button
                 Container(
@@ -2280,222 +2460,40 @@ class _ReportsScreenState extends State<ReportsScreen>
                     ],
                   ),
                 ),
-                // Progress bar
-                _buildAnalysisProgressBar(selectedPeriod),
-                // Loading shimmer effect
-                _buildLoadingShimmer(),
-              ],
-            ),
-          );
-        }
-
-        if (snapshot.hasError) {
-          // Check if it's a rate limit error
-          final errorMessage = snapshot.error.toString();
-          final isRateLimited =
-              errorMessage.contains('Rate limit') ||
-              errorMessage.contains('429') ||
-              errorMessage.contains('rate_limit_exceeded') ||
-              errorMessage.contains('Vui lòng chờ');
-
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  isRateLimited ? Icons.schedule : Icons.error_outline,
-                  size: 64,
-                  color: context.settingsItemSubtitleColor.withOpacity(0.6),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  isRateLimited
-                      ? 'AI đang quá tải. Vui lòng thử lại sau 10 phút.'
-                      : 'Lỗi: ${snapshot.error}',
-                  style: TextStyle(color: context.settingsItemSubtitleColor),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                if (isRateLimited) ...[
-                  Container(
+                Expanded(
+                  child: ListView(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange.withOpacity(0.3)),
-                    ),
-                    child: Column(
-                      children: [
-                        const Icon(Icons.info, color: Colors.orange),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'AI đã đạt giới hạn sử dụng hôm nay.\nHãy thử lại vào ngày mai.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 12),
-                        ),
+                    children: [
+                      // Health Score Card
+                      _buildHealthScoreCard(financialAnalysis),
+                      const SizedBox(height: 16),
+
+                      // Quick Insights
+                      _buildQuickInsightsCardAI(quickInsights),
+                      const SizedBox(height: 16),
+
+                      // Strengths/Weaknesses
+                      _buildStrengthsWeaknessesCard(financialAnalysis),
+                      const SizedBox(height: 16),
+
+                      // Recommendations
+                      _buildRecommendationsCard(recommendations),
+                      const SizedBox(height: 16),
+
+                      // AI Forecast Chart
+                      _buildAIForecastChart(forecast),
+                      const SizedBox(height: 16),
+
+                      // Anomalies Alert
+                      if (anomalies.isNotEmpty) ...[
+                        _buildAnomaliesCard(anomalies),
+                        const SizedBox(height: 16),
                       ],
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                ],
-                ElevatedButton(
-                  onPressed: () {
-                    _clearAIAnalysisCache();
-                    setState(() {});
-                  },
-                  child: const Text('Thử lại'),
                 ),
               ],
-            ),
-          );
-        }
-
-        final analysis = snapshot.data!;
-
-        // Process analysis data
-
-        // Safe type casting with fallback
-        final financialAnalysis =
-            analysis['financialAnalysis'] is FinancialAnalysis
-            ? analysis['financialAnalysis'] as FinancialAnalysis
-            : analysis['financialAnalysis'] is Map
-            ? FinancialAnalysis.fromJson(
-                analysis['financialAnalysis'] as Map<String, dynamic>,
-              )
-            : FinancialAnalysis(
-                healthScore: 'N/A',
-                strengths: [],
-                weaknesses: [],
-                risks: [],
-                opportunities: [],
-                recommendations: [],
-                summary: 'Dữ liệu tạm thời không khả dụng',
-              );
-
-        final forecast = analysis['forecast'] is AIForecast
-            ? analysis['forecast'] as AIForecast
-            : analysis['forecast'] is Map
-            ? AIForecast.fromJson(analysis['forecast'] as Map<String, dynamic>)
-            : AIForecast(
-                method: 'fallback',
-                forecast: [],
-                historicalData: null,
-                message: 'Dự báo tạm thời không khả dụng',
-              );
-
-        final anomalies = analysis['anomalies'] is List
-            ? (analysis['anomalies'] as List).map((a) {
-                if (a is Anomaly) {
-                  return a; // Already an Anomaly object
-                } else if (a is Map<String, dynamic>) {
-                  return Anomaly.fromJson(a); // Convert from Map
-                } else {
-                  return Anomaly(
-                    date: DateTime.now(),
-                    category: 'unknown',
-                    amount: 0,
-                    description: 'Unknown anomaly',
-                    expectedRange: 'N/A',
-                    severity: 'low',
-                  );
-                }
-              }).toList()
-            : <Anomaly>[];
-
-        final recommendations = analysis['recommendations'] is List
-            ? (analysis['recommendations'] as List).map((r) {
-                if (r is Recommendation) {
-                  return r; // Already a Recommendation object
-                } else if (r is Map<String, dynamic>) {
-                  return Recommendation.fromJson(r); // Convert from Map
-                } else {
-                  return Recommendation(
-                    title: 'Unknown',
-                    description: 'Unknown recommendation',
-                    priority: 'low',
-                    estimatedSavings: 0,
-                  );
-                }
-              }).toList()
-            : <Recommendation>[];
-
-        final quickInsights = analysis['quickInsights'] is QuickInsights
-            ? analysis['quickInsights'] as QuickInsights
-            : analysis['quickInsights'] is Map
-            ? QuickInsights.fromJson(
-                analysis['quickInsights'] as Map<String, dynamic>,
-              )
-            : QuickInsights(
-                healthScore: 'N/A',
-                summary: {'text': 'Dữ liệu tạm thời không khả dụng'},
-                alerts: 0,
-                topIssue: null,
-                strengths: [],
-                weaknesses: [],
-                opportunities: [],
-              );
-
-        return Column(
-          children: [
-            // AI Analysis Header with Refresh Button
-            Container(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Phân tích AI - ${_getPeriodLabel(selectedPeriod)}',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: context.settingsItemTitleColor,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      _clearAIAnalysisCache();
-                      setState(() {});
-                    },
-                    icon: const Icon(Icons.refresh),
-                    tooltip: 'Làm mới phân tích',
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  // Health Score Card
-                  _buildHealthScoreCard(financialAnalysis),
-                  const SizedBox(height: 16),
-
-                  // Quick Insights
-                  _buildQuickInsightsCardAI(quickInsights),
-                  const SizedBox(height: 16),
-
-                  // Strengths/Weaknesses
-                  _buildStrengthsWeaknessesCard(financialAnalysis),
-                  const SizedBox(height: 16),
-
-                  // Recommendations
-                  _buildRecommendationsCard(recommendations),
-                  const SizedBox(height: 16),
-
-                  // AI Forecast Chart
-                  _buildAIForecastChart(forecast),
-                  const SizedBox(height: 16),
-
-                  // Anomalies Alert
-                  if (anomalies.isNotEmpty) ...[
-                    _buildAnomaliesCard(anomalies),
-                    const SizedBox(height: 16),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        );
+            );
           },
         );
       },
@@ -2503,6 +2501,18 @@ class _ReportsScreenState extends State<ReportsScreen>
   }
 
   Future<Map<String, dynamic>> _loadAIAnalysis() async {
+    // Check premium status FIRST - prevent API calls for free users
+    final subscriptionService = Provider.of<SubscriptionService>(
+      context,
+      listen: false,
+    );
+    if (!subscriptionService.isPremium) {
+      debugPrint('❌ [AI Analysis] User is not premium, blocking API call');
+      throw Exception('Premium subscription required for AI Analysis');
+    }
+
+    debugPrint('✅ [AI Analysis] User is premium, proceeding with analysis');
+
     // Check if we have valid cache for this period
     final now = DateTime.now();
     final cacheKey = selectedPeriod;
@@ -3990,7 +4000,11 @@ class _ReportsScreenState extends State<ReportsScreen>
   }
 
   // Helper method for premium feature items
-  Widget _buildPremiumFeatureItem(IconData icon, String title, String subtitle) {
+  Widget _buildPremiumFeatureItem(
+    IconData icon,
+    String title,
+    String subtitle,
+  ) {
     return Row(
       children: [
         Container(
@@ -3999,11 +4013,7 @@ class _ReportsScreenState extends State<ReportsScreen>
             color: const Color(0xFFFFD700).withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(
-            icon,
-            color: const Color(0xFFFFA500),
-            size: 20,
-          ),
+          child: Icon(icon, color: const Color(0xFFFFA500), size: 20),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -4019,10 +4029,7 @@ class _ReportsScreenState extends State<ReportsScreen>
               ),
               Text(
                 subtitle,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
             ],
           ),

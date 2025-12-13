@@ -75,10 +75,9 @@ class CommonHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Calculate effective height
-    final double effectiveHeight = height ??
-        (child != null
-            ? double.infinity
-            : (subtitle != null ? 140.0 : 100.0));
+    final double effectiveHeight =
+        height ??
+        (child != null ? double.infinity : (subtitle != null ? 140.0 : 100.0));
 
     // Build header decoration based on variant
     final decoration = _buildDecoration(context);
@@ -86,46 +85,59 @@ class CommonHeader extends StatelessWidget {
     // Build header content
     final content = Container(
       width: double.infinity,
-      height: effectiveHeight == double.infinity ? null : effectiveHeight,
+      constraints: effectiveHeight == double.infinity
+          ? null
+          : BoxConstraints(minHeight: effectiveHeight),
       decoration: decoration,
       child: SafeArea(
         bottom: false,
         child: Padding(
           padding: padding ?? const EdgeInsets.all(16.0),
           child: Column(
-            mainAxisSize: child != null ? MainAxisSize.min : MainAxisSize.max,
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Leading, Title, Trailing row
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Leading widget
-                  if (leading != null) ...[
-                    leading!,
-                    const SizedBox(width: 12),
-                  ],
+                  if (leading != null) ...[leading!, const SizedBox(width: 12)],
 
                   // Title and subtitle
                   Expanded(
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           title,
-                          style: titleStyle ??
-                              Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                    color: _getTextColor(context),
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                          style:
+                              titleStyle ??
+                              Theme.of(
+                                context,
+                              ).textTheme.headlineSmall?.copyWith(
+                                color: _getTextColor(context),
+                                fontWeight: FontWeight.bold,
+                              ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         if (subtitle != null) ...[
                           const SizedBox(height: 4),
                           Text(
                             subtitle!,
-                            style: subtitleStyle ??
-                                Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: _getTextColor(context).withValues(alpha: 0.85),
-                                    ),
+                            style:
+                                subtitleStyle ??
+                                Theme.of(
+                                  context,
+                                ).textTheme.bodyMedium?.copyWith(
+                                  color: _getTextColor(
+                                    context,
+                                  ).withValues(alpha: 0.85),
+                                ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ],
@@ -141,10 +153,7 @@ class CommonHeader extends StatelessWidget {
               ),
 
               // Custom child content
-              if (child != null) ...[
-                const SizedBox(height: 16),
-                child!,
-              ],
+              if (child != null) ...[const SizedBox(height: 16), child!],
             ],
           ),
         ),
@@ -153,10 +162,7 @@ class CommonHeader extends StatelessWidget {
 
     // Wrap with Material for elevation variant
     if (variant == HeaderVariant.elevated) {
-      return Material(
-        elevation: 4,
-        child: content,
-      );
+      return Material(elevation: 4, child: content);
     }
 
     return content;
@@ -169,12 +175,7 @@ class CommonHeader extends StatelessWidget {
       return BoxDecoration(
         color: backgroundColor,
         border: showBorder
-            ? Border(
-                bottom: BorderSide(
-                  color: context.cardBorder,
-                  width: 1,
-                ),
-              )
+            ? Border(bottom: BorderSide(color: context.cardBorder, width: 1))
             : null,
       );
     }
@@ -186,11 +187,9 @@ class CommonHeader extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: gradientColors ??
-                [
-                  context.headerGradientStart,
-                  context.headerGradientEnd,
-                ],
+            colors:
+                gradientColors ??
+                [context.headerGradientStart, context.headerGradientEnd],
           ),
           border: showBorder
               ? Border(
@@ -206,12 +205,7 @@ class CommonHeader extends StatelessWidget {
         return BoxDecoration(
           color: context.appBarBackground,
           border: showBorder
-              ? Border(
-                  bottom: BorderSide(
-                    color: context.cardBorder,
-                    width: 1,
-                  ),
-                )
+              ? Border(bottom: BorderSide(color: context.cardBorder, width: 1))
               : null,
         );
 
@@ -219,12 +213,7 @@ class CommonHeader extends StatelessWidget {
         return BoxDecoration(
           color: Colors.transparent,
           border: showBorder
-              ? Border(
-                  bottom: BorderSide(
-                    color: context.cardBorder,
-                    width: 1,
-                  ),
-                )
+              ? Border(bottom: BorderSide(color: context.cardBorder, width: 1))
               : null,
         );
 
@@ -232,12 +221,7 @@ class CommonHeader extends StatelessWidget {
         return BoxDecoration(
           color: context.cardBackground,
           border: showBorder
-              ? Border(
-                  bottom: BorderSide(
-                    color: context.cardBorder,
-                    width: 1,
-                  ),
-                )
+              ? Border(bottom: BorderSide(color: context.cardBorder, width: 1))
               : null,
         );
     }
@@ -302,10 +286,7 @@ class CommonHeaderPresets {
         onPressed: () => Navigator.of(context).pop(),
       ),
       trailing: actions != null && actions.isNotEmpty
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              children: actions,
-            )
+          ? Row(mainAxisSize: MainAxisSize.min, children: actions)
           : null,
       showBorder: true,
     );

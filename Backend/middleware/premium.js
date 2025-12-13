@@ -29,7 +29,7 @@ export const requirePremium = async (req, res, next) => {
       });
     }
 
-    const user = await User.findById(userId).select("subscription");
+    const user = await User.findById(userId).select("subscription email");
 
     if (!user) {
       return res.status(404).json({
@@ -38,8 +38,17 @@ export const requirePremium = async (req, res, next) => {
       });
     }
 
+    console.log(
+      `[Premium Check] User: ${user.email}, Tier: ${
+        user.subscription.tier
+      }, isPremium: ${user.isPremium()}`
+    );
+
     // Check if premium and active
     if (!user.isPremium()) {
+      console.log(
+        `[Premium Check] ❌ Access denied for ${user.email} - Not premium`
+      );
       return res.status(403).json({
         success: false,
         message: "Tính năng này chỉ dành cho người dùng Premium",
@@ -49,6 +58,8 @@ export const requirePremium = async (req, res, next) => {
         upgradeTo: "/api/subscription/pricing",
       });
     }
+
+    console.log(`[Premium Check] ✅ Access granted for ${user.email}`);
 
     // Check if subscription has expired
     const hasExpired = user.checkSubscriptionExpiry();

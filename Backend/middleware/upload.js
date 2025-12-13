@@ -65,9 +65,9 @@ const getCloudinaryStorage = () => {
       if (file.fieldname === "avatar") {
         folder = "zbudget/avatars";
         allowedFormats = ["jpeg", "jpg", "png", "webp"];
-      } else if (file.fieldname === "receipt") {
+      } else if (file.fieldname === "receipt" || file.fieldname === "image") {
         folder = "zbudget/receipts";
-        allowedFormats = ["jpeg", "jpg", "png", "webp", "pdf"];
+        allowedFormats = ["jpeg", "jpg", "png", "webp", "pdf", "heic", "heif"];
       } else if (file.fieldname === "groupAvatar") {
         folder = "zbudget/groups";
         allowedFormats = ["jpeg", "jpg", "png", "webp"];
@@ -79,13 +79,14 @@ const getCloudinaryStorage = () => {
           Math.random() * 1e9
         )}`,
         resource_type: "auto", // Automatically detect file type
+        format: "jpg", // Force convert to JPG (supports HEIC)
         transformation: [
           {
-            width: file.fieldname === "avatar" ? 300 : 800,
-            height: file.fieldname === "avatar" ? 300 : 800,
+            width: file.fieldname === "avatar" ? 300 : 1200,
+            height: file.fieldname === "avatar" ? 300 : 1200,
             crop: file.fieldname === "avatar" ? "fill" : "limit",
             quality: "auto:good",
-            fetch_format: "auto",
+            fetch_format: "jpg", // Ensure JPG output
           },
         ],
       };
@@ -114,7 +115,19 @@ const fileFilter = (req, file, cb) => {
     "image/heic": true, // Add HEIC support
     "image/heif": true, // Add HEIF support
     "application/pdf": true,
+    "application/octet-stream": true, // For HEIC files from iOS
   };
+
+  // Check file extension for octet-stream files (HEIC from iOS)
+  if (file.mimetype === "application/octet-stream") {
+    const ext = file.originalname.toLowerCase().split(".").pop();
+    const allowedExtensions = ["heic", "heif", "jpg", "jpeg", "png"];
+    if (allowedExtensions.includes(ext)) {
+      cb(null, true);
+      return;
+    }
+  }
+
   // Check if file type is allowed
   if (allowedMimes[file.mimetype]) {
     cb(null, true);
@@ -168,9 +181,9 @@ export const uploadMiddleware = {
   ]),
   // Any single file
   any: upload.any(),
-  // OCR specific - allow all image types
+  // OCR specific - use memory storage to avoid Cloudinary fetch issues
   ocr: multer({
-    storage: getStorage(),
+    storage: multer.memoryStorage(), // Store in memory for direct processing
     fileFilter: (req, file, cb) => {
       console.log("🔍 OCR File upload debug:", {
         fieldname: file.fieldname,

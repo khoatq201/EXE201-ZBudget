@@ -24,22 +24,21 @@ class OCRController {
         });
       }
 
-      const imagePath = req.files[0].path;
-      const ocrResult = await OCRService.extractTextFromImage(imagePath);
+      const file = req.files[0];
+      console.log(
+        `[OCR] Processing file: ${file.originalname}, size: ${
+          file.buffer?.length || file.size
+        } bytes`
+      );
+
+      // Use buffer directly from memory storage (no Cloudinary fetch needed)
+      const ocrResult = await OCRService.extractTextFromImage(
+        file.buffer,
+        file.mimetype,
+        file.originalname
+      );
 
       if (!ocrResult.success) {
-        // Clean up uploaded file (only if it's a local file)
-        if (
-          req.files &&
-          req.files[0] &&
-          !req.files[0].path.startsWith("http")
-        ) {
-          try {
-            fs.unlinkSync(req.files[0].path);
-          } catch (cleanupError) {
-            // Silent cleanup
-          }
-        }
         return res.status(500).json({
           success: false,
           message: "Lỗi khi xử lý ảnh: " + ocrResult.error,
@@ -47,15 +46,7 @@ class OCRController {
       }
 
       const receiptData = OCRService.processReceiptData(ocrResult);
-
-      // Clean up uploaded file (only if it's a local file)
-      if (req.files && req.files[0] && !req.files[0].path.startsWith("http")) {
-        try {
-          fs.unlinkSync(req.files[0].path);
-        } catch (cleanupError) {
-          console.error("File cleanup error:", cleanupError);
-        }
-      }
+      // No file cleanup needed - using memory storage
 
       // Track OCR usage AFTER successful scan
       console.log(`[OCR] Starting usage tracking for user ${req.userId}...`);
@@ -116,14 +107,7 @@ class OCRController {
 
       res.json(response);
     } catch (error) {
-      // Clean up uploaded file on error (only if it's a local file)
-      if (req.files && req.files[0] && !req.files[0].path.startsWith("http")) {
-        try {
-          fs.unlinkSync(req.files[0].path);
-        } catch (cleanupError) {
-          console.error("File cleanup error:", cleanupError);
-        }
-      }
+      console.error("[OCR] Error processing receipt:", error);
 
       res.status(500).json({
         success: false,
